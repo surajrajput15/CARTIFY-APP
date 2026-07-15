@@ -298,7 +298,7 @@ npm run dev
 
 | Detail | Value |
 |--------|-------|
-| **Live URL** | [https://cartify.vercel.app](https://cartify.vercel.app) |
+| **Live URL** | [https://cartify.vercel.app](https://cartify-hub.vercel.app) |
 | **Root Directory** | `Frontend` |
 | **Framework Preset** | Vite |
 | **Environment Variables** | `VITE_API_URL`, `VITE_RAZORPAY_KEY` |
