@@ -11,7 +11,7 @@
 [![Express](https://img.shields.io/badge/Express-4.19-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://mongodb.com/)
 [![Razorpay](https://img.shields.io/badge/Razorpay-Payments-02042B?style=for-the-badge&logo=razorpay&logoColor=white)](https://razorpay.com/)
-[![Vercel](https://img.shields.io/badge/Frontend-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://cartify.vercel.app/)
+[![Vercel](https://img.shields.io/badge/Frontend-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://cartify-hub.vercel.app/)
 [![Render](https://img.shields.io/badge/Backend-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://cartify-api-10g3.onrender.com/)
 
 🌐 **[Live App](https://cartify-hub.vercel.app/)** · 📘 **[API Docs](#-api-endpoints)** · 🐛 **[Report Bug](https://github.com/surajrajput999/CARTIFY-APP/issues)** · ⭐ **[Star on GitHub](https://github.com/surajrajput999/CARTIFY-APP)**
@@ -298,7 +298,7 @@ npm run dev
 
 | Detail | Value |
 |--------|-------|
-| **Live URL** | [https://cartify.vercel.app](https://cartify-hub.vercel.app) |
+| **Live URL** | [https://cartify-hub.vercel.app](https://cartify-hub.vercel.app) |
 | **Root Directory** | `Frontend` |
 | **Framework Preset** | Vite |
 | **Environment Variables** | `VITE_API_URL`, `VITE_RAZORPAY_KEY` |
