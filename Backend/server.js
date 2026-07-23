@@ -44,7 +44,7 @@ app.use((req, res, next) => {
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:5173', 'https://cartify-hub.vercel.app'],
+  origin: ['http://localhost:5173', 'http://localhost:5174', 'https://cartify-hub.vercel.app'],
   credentials: true
 }));
 app.use(express.json({ limit: "10kb" }));
