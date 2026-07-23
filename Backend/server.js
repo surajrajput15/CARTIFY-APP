@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
 require('dotenv').config();
 
 // Startup Diagnostics
@@ -42,8 +43,12 @@ app.use((req, res, next) => {
 });
 
 // Middleware
-app.use(cors());
-app.use(express.json());
+app.use(cors({
+  origin: ['http://localhost:5173', 'https://cartify-hub.vercel.app'],
+  credentials: true
+}));
+app.use(express.json({ limit: "10kb" }));
+app.use(helmet());
 
 // MongoDB Database Connection
 mongoose.connect(process.env.MONGO_URI)

@@ -11,7 +11,7 @@ import { CartProvider } from './context/cartContext';
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     {/* Yahan apni Google Cloud wali asali Client ID zaroor daalein */}
-    <GoogleOAuthProvider clientId="887275066950-mvtu65qu4fpt9t915ue8njjado8vvl77.apps.googleusercontent.com"> 
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}> 
       <AuthProvider>
         <CartProvider>
           <App />
