@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/authContext';
 import { useNavigate } from 'react-router-dom';
 import { Package, User, MapPin, Settings, LogOut, Plus, Lock, Calendar, CreditCard, Loader2, Edit2, Check, X, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import api from '../api/axios';
 
 const ProfilePage = () => {
@@ -47,7 +48,8 @@ const ProfilePage = () => {
       const response = await api.get(`/api/orders/myorders/${user.id}`);
       setOrders(response.data);
     } catch (error) {
-      console.error("Failed to fetch orders");
+      console.error("Failed to fetch orders", error);
+      toast.error("Failed to load orders");
     } finally {
       setLoadingOrders(false);
     }
@@ -58,7 +60,8 @@ const ProfilePage = () => {
       const response = await api.get(`/api/addresses/${user.id}`);
       setAddresses(response.data);
     } catch (error) {
-      console.error("Failed to fetch addresses");
+      console.error("Failed to fetch addresses", error);
+      toast.error("Failed to load addresses");
     }
   };
 
@@ -77,7 +80,8 @@ const ProfilePage = () => {
       login(response.data.user); 
       setIsEditing(false);
     } catch (error) {
-      console.error("Failed to update profile");
+      console.error("Failed to update profile", error);
+      toast.error("Failed to update profile");
     } finally {
       setUpdateLoading(false);
     }
@@ -91,7 +95,8 @@ const ProfilePage = () => {
         logout();
         navigate('/');
       } catch (error) {
-        console.error("Failed to delete account");
+        console.error("Failed to delete account", error);
+        toast.error("Failed to delete account");
       }
     }
   };
@@ -106,7 +111,8 @@ const ProfilePage = () => {
       setNewAddress({ fullName: '', phone: '', street: '', city: '', state: '', pinCode: '' });
       fetchAddresses(); // Refresh the list
     } catch (error) {
-      console.error("Error saving address");
+      console.error("Error saving address", error);
+      toast.error("Failed to save address");
     } finally {
       setAddressLoading(false);
     }
@@ -119,7 +125,8 @@ const ProfilePage = () => {
         await api.delete(`/api/addresses/${id}`);
         fetchAddresses(); // Refresh the list
       } catch (error) {
-        console.error("Error deleting address");
+        console.error("Error deleting address", error);
+        toast.error("Failed to delete address");
       }
     }
   };

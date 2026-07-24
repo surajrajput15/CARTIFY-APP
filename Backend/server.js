@@ -17,6 +17,7 @@ const orderRoutes = require('./routes/orderRoutes');
 const addressRoutes = require('./routes/addressRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
 
@@ -85,8 +86,11 @@ app.get('/favicon.ico', (req, res) => res.status(204).end());
 // 🔍 DIAGNOSTIC 404 HANDLER - agar koi route match nahi hua to ye chalega
 app.use((req, res) => {
   console.log(`❌ No route matched for: ${req.method} ${req.originalUrl}`);
-  res.status(404).json({ message: "Route not found", path: req.originalUrl });
+  res.status(404).json({ message: "Route not found" });
 });
+
+// Centralized error handler
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

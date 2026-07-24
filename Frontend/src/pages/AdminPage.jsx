@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/authContext';
+import toast from 'react-hot-toast';
 import api from '../api/axios';
 import { Plus, Trash2, Loader2, Package, ArrowLeft } from 'lucide-react';
 
@@ -27,7 +28,8 @@ const AdminPage = () => {
       const { data } = await api.get('/api/products', { params: { limit: 100 } });
       setProducts(Array.isArray(data) ? data : data.products);
     } catch (err) {
-      console.error('Failed to fetch products');
+      console.error('Failed to fetch products', err);
+      toast.error('Failed to fetch products');
     } finally {
       setLoading(false);
     }

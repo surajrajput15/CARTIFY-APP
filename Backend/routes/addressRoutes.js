@@ -10,6 +10,7 @@ router.post('/add', protect, async (req, res) => {
         const savedAddress = await newAddress.save();
         res.status(201).json(savedAddress);
     } catch (error) {
+        console.error("❌ Address save error:", error);
         res.status(500).json({ message: "Error saving address" });
     }
 });
@@ -23,6 +24,7 @@ router.get('/:userId', protect, async (req, res) => {
         const addresses = await Address.find({ userId: req.params.userId });
         res.status(200).json(addresses);
     } catch (error) {
+        console.error("❌ Address fetch error:", error);
         res.status(500).json({ message: "Error fetching addresses" });
     }
 });
@@ -38,6 +40,7 @@ router.delete('/:id', protect, async (req, res) => {
         await Address.findByIdAndDelete(req.params.id);
         res.status(200).json({ message: "Address deleted successfully" });
     } catch (error) {
+        console.error("❌ Address delete error:", error);
         res.status(500).json({ message: "Error deleting address" });
     }
 });

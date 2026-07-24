@@ -3,6 +3,7 @@ import { useAuth } from '../context/authContext';
 import { useCart } from '../context/cartContext'; 
 import { useNavigate } from 'react-router-dom';
 import { MapPin, CreditCard, ShieldCheck, Loader2, CheckCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
 import api from '../api/axios';
 import { RAZORPAY_KEY } from '../config';
 
@@ -32,7 +33,8 @@ const CheckoutPage = () => {
           setSelectedAddress(response.data[0]); 
         }
       } catch (error) {
-        console.error("Failed to fetch addresses");
+        console.error("Failed to fetch addresses", error);
+        toast.error("Failed to load addresses");
       } finally {
         setFetchingAddresses(false);
       }

@@ -32,7 +32,7 @@ router.get('/', async (req, res) => {
         });
     } catch (error) {
         console.error("❌ Products route error:", error.message);
-        res.status(500).json({ message: "Products lane mein error aayi" });
+        res.status(500).json({ message: "Failed to fetch products" });
     }
 });
 
@@ -43,7 +43,8 @@ router.post('/add', protect, admin, async (req, res) => {
         await newProduct.save(); // Database mein save karo
         res.status(201).json({ message: "Product successfully add ho gaya! 🎉", product: newProduct });
     } catch (error) {
-        res.status(500).json({ message: "Product add karne mein error aayi", error });
+        console.error("❌ Product add error:", error);
+        res.status(500).json({ message: "Failed to add product" });
     }
 });
 
@@ -54,7 +55,8 @@ router.post('/seed', protect, admin, async (req, res) => {
         const products = await Product.insertMany(req.body); 
         res.status(201).json({ message: "Dukaan full ho gayi! Saare products add ho gaye! 🛒🎉", count: products.length });
     } catch (error) {
-        res.status(500).json({ message: "Products add karne mein error aayi", error });
+        console.error("❌ Products seed error:", error);
+        res.status(500).json({ message: "Failed to seed products" });
     }
 });
 
@@ -67,7 +69,8 @@ router.get('/:id', async (req, res) => {
         }
         res.status(200).json(product);
     } catch (error) {
-        res.status(500).json({ message: "ID fetch karne mein error aayi", error });
+        console.error("❌ Product fetch by ID error:", error);
+        res.status(500).json({ message: "Failed to fetch product" });
     }
 });
 
@@ -77,7 +80,8 @@ router.delete('/clear', protect, admin, async (req, res) => {
         await Product.deleteMany({});
         res.status(200).json({ message: "Database ekdum saaf ho gaya! 🧹✨" });
     } catch (error) {
-        res.status(500).json({ message: "Delete karne mein error aayi", error });
+        console.error("❌ Product delete error:", error);
+        res.status(500).json({ message: "Failed to delete product" });
     }
 });
 
@@ -87,7 +91,8 @@ router.delete('/:id', protect, admin, async (req, res) => {
         await Product.findByIdAndDelete(req.params.id);
         res.status(200).json({ message: "Product delete ho gaya! 🗑️" });
     } catch (error) {
-        res.status(500).json({ message: "Delete karne mein error aayi", error });
+        console.error("❌ Product delete error:", error);
+        res.status(500).json({ message: "Failed to delete product" });
     }
 });
 

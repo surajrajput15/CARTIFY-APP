@@ -22,7 +22,8 @@ router.post('/create', protect, async (req, res) => {
         const savedOrder = await order.save();
         res.status(201).json({ message: "Order placed successfully!", order: savedOrder });
     } catch (error) {
-        res.status(500).json({ message: "Failed to place order.", error });
+        console.error("❌ Order create error:", error);
+        res.status(500).json({ message: "Failed to place order." });
     }
 });
 
@@ -35,7 +36,8 @@ router.get('/myorders/:userId', protect, async (req, res) => {
         const orders = await Order.find({ userId: req.params.userId }).sort({ createdAt: -1 });
         res.status(200).json(orders);
     } catch (error) {
-        res.status(500).json({ message: "Failed to fetch orders.", error });
+        console.error("❌ Orders fetch error:", error);
+        res.status(500).json({ message: "Failed to fetch orders." });
     }
 });
 
@@ -46,12 +48,8 @@ router.post('/add', protect, async (req, res) => {
         const savedOrder = await newOrder.save();
         res.status(201).json(savedOrder);
     } catch (error) {
-        console.error("Error saving order:", error);
-        res.status(500).json({ 
-            message: "Failed to save the final order.",
-            error: error.message,
-            details: error.errors ? Object.keys(error.errors).map(k => ({ field: k, msg: error.errors[k].message })) : undefined
-        });
+        console.error("❌ Order save error:", error);
+        res.status(500).json({ message: "Failed to save the final order." });
     }
 });
 

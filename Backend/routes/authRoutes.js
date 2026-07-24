@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const User = require('../models/User');
 const sendEmail = require('../utils/sendEmail');
 const { protect } = require('../middleware/auth');
@@ -24,7 +25,7 @@ router.post('/send-otp', async (req, res) => {
         }
 
         // Generate 6-digit OTP (e.g. 482910)
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otp = crypto.randomInt(100000, 1000000).toString();
         
         // OTP aur Expiry Time (10 mins) database mein save karo
         user.otp = otp;
@@ -75,6 +76,7 @@ router.post('/verify-otp', async (req, res) => {
             user: { id: user._id, name: user.name, email: user.email, isAdmin: user.isAdmin }
         });
     } catch (error) {
+        console.error("❌ OTP verify error:", error);
         res.status(500).json({ message: "Error verifying OTP." });
     }
 });
@@ -101,6 +103,7 @@ router.post('/register', async (req, res) => {
 
         res.status(201).json({ message: "Account created successfully!" });
     } catch (error) {
+        console.error("❌ Registration error:", error);
         res.status(500).json({ message: "Server error during registration." });
     }
 });
@@ -125,6 +128,7 @@ router.post('/login', async (req, res) => {
             user: { id: user._id, name: user.name, email: user.email, isAdmin: user.isAdmin }
         });
     } catch (error) {
+        console.error("❌ Login error:", error);
         res.status(500).json({ message: "Server error during login." });
     }
 });
@@ -142,7 +146,7 @@ router.post('/forgot-password', async (req, res) => {
         if (!user) return res.status(404).json({ message: "User with this email does not exist." });
 
         // Generate 6-digit OTP
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otp = crypto.randomInt(100000, 1000000).toString();
         
         user.otp = otp;
         user.otpExpire = Date.now() + 10 * 60 * 1000; // 10 minutes expiry
@@ -159,6 +163,7 @@ router.post('/forgot-password', async (req, res) => {
 
         res.status(200).json({ message: "Password reset OTP sent to your email!" });
     } catch (error) {
+        console.error("❌ Forgot password OTP error:", error);
         res.status(500).json({ message: "Error sending reset OTP." });
     }
 });
@@ -191,6 +196,7 @@ router.post('/reset-password', async (req, res) => {
 
         res.status(200).json({ message: "Password reset successful! You can now login." });
     } catch (error) {
+        console.error("❌ Reset password error:", error);
         res.status(500).json({ message: "Error resetting password." });
     }
 });
@@ -218,6 +224,7 @@ router.put('/update/:id', protect, async (req, res) => {
             user: { id: updatedUser._id, name: updatedUser.name, email: updatedUser.email, isAdmin: updatedUser.isAdmin } 
         });
     } catch (error) {
+        console.error("❌ Profile update error:", error);
         res.status(500).json({ message: "Error updating profile." });
     }
 });
@@ -231,6 +238,7 @@ router.delete('/delete/:id', protect, async (req, res) => {
         await User.findByIdAndDelete(req.params.id);
         res.status(200).json({ message: "Account deleted permanently." });
     } catch (error) {
+        console.error("❌ Account delete error:", error);
         res.status(500).json({ message: "Error deleting account." });
     }
 });

@@ -44,6 +44,7 @@ router.post('/verify-payment', protect, async (req, res) => {
             return res.status(400).json({ message: "Invalid signature sent!", success: false });
         }
     } catch (error) {
+        console.error("❌ Payment verification error:", error);
         res.status(500).json({ message: "Error verifying payment" });
     }
 });

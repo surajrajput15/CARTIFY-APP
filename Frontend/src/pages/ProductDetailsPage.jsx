@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useCart } from '../context/cartContext';
 import { ShoppingCart, Star, ArrowLeft } from 'lucide-react';
+import toast from 'react-hot-toast';
 import api from '../api/axios';
 
 const ProductDetailsPage = () => {
@@ -13,7 +14,10 @@ const ProductDetailsPage = () => {
     // API URL ko clean kar diya gaya hai
     api.get(`/api/products/${id}`)
       .then((response) => setProduct(response.data))
-      .catch((error) => console.error("Error fetching product:", error));
+      .catch((error) => {
+        console.error("Error fetching product:", error);
+        toast.error("Failed to load product details");
+      });
   }, [id]);
 
   if (!product) {

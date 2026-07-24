@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import api from '../api/axios';
 
 import HeroBanner from '../components/HeroBanner';
@@ -35,7 +36,10 @@ const HomePage = () => {
           setPages(d.pages);
         }
       })
-      .catch((error) => console.error("Data lane mein error:", error))
+      .catch((error) => {
+        console.error("Failed to fetch products:", error);
+        toast.error("Failed to load products");
+      })
       .finally(() => setLoading(false));
   }, [page, selectedCategory, searchQuery]);
 

@@ -45,3 +45,30 @@ Transform Cartify into a production-ready portfolio project.
 
 Next Goal:
 Complete remaining Sprint 1 security fixes.
+
+## Day 3 — Security & Error Handling
+
+### Completed
+
+* Replaced insecure OTP generation (`Math.random`) with `crypto.randomInt()`.
+* Removed backend error leakage from API responses.
+* Added centralized Express error-handling middleware.
+* Improved frontend API error handling using `react-hot-toast`.
+
+### Verification
+
+* OTP login flow tested successfully.
+* API failure scenarios display toast notifications.
+* Backend remains stable under error conditions.
+* Existing features (login, cart, checkout, products) continue to work correctly.
+* No new console errors observed during testing.
+
+### Sprint 1 Progress
+
+Security & Error Handling foundation is now largely complete. Remaining critical tasks:
+
+1. Server-side payment amount validation.
+2. Regex search sanitization (ReDoS protection).
+3. Admin creation race-condition hardening.
+
+Status: 🟢 On Track
