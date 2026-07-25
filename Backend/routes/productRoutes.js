@@ -3,6 +3,11 @@ const router = express.Router();
 const Product = require('../models/Product');
 const { protect, admin } = require('../middleware/auth');
 
+// Utility: Escape all regex special characters to prevent ReDoS (Regular Expression DoS)
+// Without this, a malicious user could inject patterns like "(?:.*)*" into $regex,
+// causing catastrophic backtracking that freezes the Node.js event loop.
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 // 1. GET API: Products with search, category filter & pagination
 router.get('/', async (req, res) => {
     try {
@@ -10,7 +15,23 @@ router.get('/', async (req, res) => {
         const query = {};
 
         if (search) {
-            query.title = { $regex: search, $options: 'i' };
+            // Trim whitespace — prevents accidental empty searches from sneaking through
+            const trimmed = search.trim();
+
+            // Ignore empty search strings (e.g. user typed only spaces)
+            if (trimmed.length > 0) {
+                // Reject overly long queries (ReDoS risk scales with input length)
+                // 100 chars is more than enough for legitimate product searches
+                if (trimmed.length > 100) {
+                    return res.status(400).json({ message: "Search query too long (max 100 characters)" });
+                }
+
+                // Escape regex metacharacters so user input is treated as literal text
+                // This neutralises ReDoS payloads like "((.*)*)*" or "(a+)+b"
+                const safeSearch = escapeRegex(trimmed);
+
+                query.title = { $regex: safeSearch, $options: 'i' };
+            }
         }
 
         if (category && category !== 'all') {
