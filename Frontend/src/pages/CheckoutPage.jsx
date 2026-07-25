@@ -72,8 +72,12 @@ const CheckoutPage = () => {
     }
 
     try {
+      // Send only product IDs + quantities — backend fetches real prices from MongoDB
       const { data: order } = await api.post('/api/payment/create-order', {
-        amount: calculatedTotal
+        items: cart.map(item => ({
+          productId: item._id || item.id,
+          quantity: item.quantity
+        }))
       });
 
       const options = {
@@ -95,19 +99,19 @@ const CheckoutPage = () => {
               await api.post('/api/orders/add', {
                 orderItems: cart,
                 shippingAddress: selectedAddress,
-                totalPrice: calculatedTotal,
+                totalPrice: order.calculatedAmount, // Use server-authoritative amount
                 paymentInfo: { id: response.razorpay_payment_id, status: 'Paid' },
                 status: 'Processing'
               });
 
-              alert("Payment Successful! 🎉 Order Placed.");
+              toast.success("Payment Successful! 🎉 Order Placed.");
               clearCart(); 
               navigate('/profile'); 
             }
           } catch (err) {
-   console.error("Asali Error:", err.response?.data || err.message);
-   alert("Error: " + (err.response?.data?.message || err.message));
-}
+            console.error("Verification Error:", err.response?.data || err.message);
+            toast.error(err.response?.data?.message || "Payment verification failed");
+          }
         },
         prefill: {
           name: user.name,
@@ -124,7 +128,7 @@ const CheckoutPage = () => {
 
     } catch (error) {
       console.error("Payment setup failed", error);
-      alert("Something went wrong with the payment gateway.");
+      toast.error(error.response?.data?.message || "Something went wrong with the payment gateway.");
     } finally {
       setLoading(false);
     }
