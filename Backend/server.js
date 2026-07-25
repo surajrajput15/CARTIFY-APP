@@ -21,6 +21,10 @@ const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
 
+// Trust Render's proxy so express-rate-limit correctly identifies users by IP
+// Without this, rate-limit logs "ERR_ERL_UNEXPECTED_X_FORWARDED_FOR" warnings
+app.set('trust proxy', 1);
+
 // Rate Limiting - Auth endpoints (5 requests per minute)
 const authLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,

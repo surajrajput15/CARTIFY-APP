@@ -127,11 +127,9 @@ router.post('/create-order', protect, async (req, res) => {
         const amountInPaise = Math.round(calculatedTotal * 100);
 
         // Step 8: Generate a cryptographically strong receipt ID
-        const receipt = "receipt_" + (
-            typeof crypto.randomUUID === 'function'
-                ? crypto.randomUUID()
-                : crypto.randomBytes(16).toString('hex')
-        );
+        // Razorpay enforces a 40-character limit on receipt — "receipt_" + UUID (36) = 44 → rejected.
+        // Use "rcpt_" prefix (5) + randomBytes(12) as hex (24) = 29 chars — well under 40.
+        const receipt = "rcpt_" + crypto.randomBytes(12).toString('hex');
 
         const options = {
             amount: amountInPaise,
