@@ -20,13 +20,36 @@
 
 </div>
 
+## 🟢 Project Status
+
+| Status | Phase |
+|--------|-------|
+| 🟢 Production Ready | Phase 3 — Engineering for Production |
+
+### Sprint Progress
+
+| Sprint | Status |
+|--------|--------|
+| Sprint 1 | ✅ Complete |
+| Sprint 2 | ✅ Complete |
+| Sprint 3 | 🚧 Coming Soon |
+| Sprint 4 | 🚧 Coming Soon |
+
+---
+
 ## 📋 Table of Contents
 
-- [About The Project](#-about-the-project)
+- [🟢 Project Status](#-project-status)
+- [📖 About The Project](#-about-the-project)
 - [📚 Engineering Documentation](#-engineering-documentation)
-- [Screenshots](#-screenshots)
+- [📸 Screenshots](#-screenshots)
 - [✨ Features](#-features)
 - [🛠️ Tech Stack](#️-tech-stack)
+- [🔒 Security](#-security)
+- [⚡ Performance](#-performance)
+- [♿ Accessibility](#-accessibility)
+- [🚀 Production Readiness](#-production-readiness)
+- [🗺 Roadmap](#-roadmap)
 - [📁 Monorepo Structure](#-monorepo-structure)
 - [⚡ Architecture](#-architecture)
 - [🚀 Getting Started](#-getting-started)
@@ -39,7 +62,17 @@
 
 ## 📖 About The Project
 
-**Cartify** is a production-ready full-stack e-commerce application, now fully hardened after completing **Sprint 1** (Security Foundation) and **Sprint 2** (Production Polish & UX). It features a sleek React frontend with multi-method authentication, a powerful Express backend with MongoDB, and seamless Razorpay payment integration — with improvements across **security, authentication, payment validation, accessibility, SEO, performance, and production hardening**.
+**Cartify** is a **production-ready**, full-stack e-commerce platform built with React, Node.js, Express, and MongoDB. It delivers a secure, performant, and accessible shopping experience with seamless Razorpay payment integration.
+
+### Key Highlights
+
+- **Secure Authentication** — Multi-method auth: password login, Google OAuth, and OTP-based passwordless login
+- **Payment Verification** — Server-side price calculation with HMAC SHA256 signature validation via Razorpay
+- **Role-based Authorization** — Admin and user route separation with JWT-protected middleware
+- **Performance Optimization** — Lazy loaded images, responsive layout, skeleton loading, and reduced motion support
+- **Accessibility** — ARIA labels, keyboard navigation, screen reader support, and accessible forms
+- **SEO** — Meta tags, semantic HTML structure, and optimized page load
+- **Production Deployment** — Frontend on Vercel, backend on Render, database on MongoDB Atlas
 
 > 🧑‍💻 Built by **Suraj Bhan Pratap Singh** as a portfolio project to demonstrate full-stack development, authentication flows, payment gateway integration, and production deployment on Vercel + Render.
 
@@ -49,17 +82,12 @@
 
 Cartify follows a sprint-based engineering process focused on building production-quality software.
 
-| Sprint | Status | Document |
-|--------|--------|----------|
-| Sprint 1 — Security Foundation | ✅ Complete | docs/SPRINT-01-COMPLETE.md |
-| Sprint 2 — Production Polish & UX | ✅ Complete | docs/SPRINT-02-COMPLETE.md |
-| Sprint 3 — Performance & Architecture | 🚧 Coming Soon | — |
-| Sprint 4 — Final Optimization & Testing | 🚧 Coming Soon | — |
-
-**Additional Engineering Docs**
-
-- docs/PHASE-03-ENGINEERING-FOR-PRODUCTION.md
-- docs/PRODUCTION-READINESS-AUDIT.md
+| Document | Description |
+|----------|-------------|
+| [Phase 3 — Engineering for Production](docs/PHASE-03-ENGINEERING-FOR-PRODUCTION.md) | Engineering approach, architecture decisions, and production standards |
+| [Production Readiness Audit](docs/PRODUCTION-READINESS-AUDIT.md) | Security, performance, and accessibility audit results |
+| [Sprint 1 — Security Foundation](docs/SPRINT-01-COMPLETE.md) | Completed security hardening and authentication improvements |
+| [Sprint 2 — Production Polish & UX](docs/SPRINT-02-COMPLETE.md) | Completed UX enhancements and production polish |
 
 ---
 
@@ -101,7 +129,7 @@ Cartify follows a sprint-based engineering process focused on building productio
 - **Account Settings** — Delete account permanently
 
 ### 🛠️ Admin Panel
-- **Product Management** — Add, view, delete products
+- **Product Management** — Add, view, delete, update products
 - **Bulk Seed** — Insert 20 sample products in one click
 - **Image Upload** — Admin-only image upload via Multer (JPEG/PNG/WebP, max 5MB)
 - **Clear Database** — Wipe all products safely
@@ -128,6 +156,19 @@ Cartify follows a sprint-based engineering process focused on building productio
 - **Accessibility Improvements** — ARIA labels, semantic HTML, keyboard navigation
 - **SEO Optimization** — Meta tags, semantic structure, fast loading
 
+### 🏗 Engineering Features
+- **Helmet** — HTTP header hardening against common web vulnerabilities
+- **Rate Limiting** — Prevents brute-force and DDoS abuse on API endpoints
+- **Server-side Price Validation** — All pricing computed server-side to prevent tampering
+- **JWT Authentication** — Stateless, secure token-based auth with httpOnly practices
+- **Google OAuth** — One-click social login integration
+- **OTP Login** — Passwordless email-based authentication
+- **Role-based Authorization** — Admin and user route separation with middleware
+- **Environment Validation** — Startup checks for required configuration variables
+- **Production Error Handling** — Structured error responses with proper status codes
+- **Accessibility Improvements** — ARIA labels, semantic HTML, keyboard navigation
+- **SEO Improvements** — Meta tags, semantic structure, optimized loading
+
 ---
 
 ## 🛠️ Tech Stack
@@ -147,10 +188,82 @@ Cartify follows a sprint-based engineering process focused on building productio
 | **Payments** | Razorpay SDK | Payment gateway |
 | **Email** | Nodemailer + Brevo API | OTP & password reset emails |
 | **Uploads** | Multer | File upload handling |
-| **Security** | express-rate-limit | Rate limiting |
+| **Security** | Helmet, CORS, express-rate-limit | HTTP hardening, cross-origin, rate limiting |
+| **Validation** | Server-side input validation | Request sanitization & type checking |
 | **Frontend Hosting** | Vercel | Edge-deployed frontend |
 | **Backend Hosting** | Render | Managed Node.js hosting |
 | **Database Hosting** | MongoDB Atlas | Cloud MongoDB |
+| **Development** | ESLint, Git, GitHub | Code quality, version control, collaboration |
+
+---
+
+## 🔒 Security
+
+Cartify implements multiple layers of security to protect users and data:
+
+- **JWT Authentication** — Stateless token-based auth with configurable expiry
+- **bcrypt Password Hashing** — Salted password storage with configurable rounds
+- **Helmet** — HTTP response header hardening against XSS, clickjacking, and other attacks
+- **Rate Limiting** — Auth endpoint (5 req/min) and general API (100 req/min) rate limits
+- **Server-side Payment Validation** — All pricing computed server-side to prevent client tampering
+- **HMAC Razorpay Verification** — SHA256 signature verification for payment authenticity
+- **ReDoS Protection** — Regex input sanitization to prevent Regular Expression DoS attacks
+- **Role-based Access Control** — Admin and user route separation with middleware guards
+- **Environment Validation** — Startup checks ensuring all required config variables are set
+
+---
+
+## ⚡ Performance
+
+- **Lazy Loaded Images** — Images loaded on demand to reduce initial page weight
+- **Responsive Layout** — Mobile-first design adapts across all screen sizes
+- **Reduced Motion Support** — Respects user `prefers-reduced-motion` settings
+- **Optimized Bundle** — Vite-powered build with tree-shaking and code splitting
+- **Skeleton Loading** — Placeholder UI during data fetching for perceived performance
+
+---
+
+## ♿ Accessibility
+
+- **ARIA Labels** — Descriptive labels on interactive elements for assistive technologies
+- **Keyboard Navigation** — Full keyboard support for all interactive components
+- **Accessible Forms** — Properly labeled form inputs with validation feedback
+- **Screen Reader Support** — Semantic HTML structure compatible with screen readers
+- **Reduced Motion** — Respects user accessibility preferences for reduced animations
+
+---
+
+## 🚀 Production Readiness
+
+| Area | Status |
+|------|--------|
+| Production Build Passing | ✅ |
+| Responsive Design | ✅ |
+| Authentication | ✅ |
+| Authorization | ✅ |
+| Payment Integration | ✅ |
+| Error Handling | ✅ |
+| SEO | ✅ |
+| Accessibility | ✅ |
+| Environment Validation | ✅ |
+| Secure API | ✅ |
+
+---
+
+## 🗺 Roadmap
+
+### Sprint 3 — Performance & Architecture
+- Architecture Improvements
+- Code Splitting
+- Performance Optimization
+- Error Boundary Implementation
+- Caching Strategy
+
+### Sprint 4 — Final Optimization & Testing
+- Testing Suite
+- CI/CD Pipeline
+- Monitoring & Logging
+- Analytics Integration
 
 ---
 
@@ -158,34 +271,40 @@ Cartify follows a sprint-based engineering process focused on building productio
 
 ```
 CARTIFY-APP/
-├── Frontend/          # React + Vite frontend
+├── docs/                    # Engineering documentation
+│   ├── PHASE-03-ENGINEERING-FOR-PRODUCTION.md
+│   ├── PRODUCTION-READINESS-AUDIT.md
+│   ├── SPRINT-01-COMPLETE.md
+│   └── SPRINT-02-COMPLETE.md
+│
+├── Frontend/                # React + Vite frontend
 │   ├── public/
-│   ├── screenshots/           # App screenshots
+│   ├── screenshots/         # App screenshots
 │   ├── src/
-│   │   ├── api/               # Axios config & interceptors
-│   │   ├── components/        # Navbar, HeroBanner, ProductCard
-│   │   ├── context/           # AuthContext, CartContext
-│   │   ├── pages/             # 7 pages (Home, Cart, Login, Profile, etc.)
-│   │   ├── App.jsx            # Router setup
-│   │   ├── main.jsx           # Entry point
-│   │   └── config.js          # API URL & Razorpay key
+│   │   ├── api/             # Axios config & interceptors
+│   │   ├── components/      # Navbar, HeroBanner, ProductCard
+│   │   ├── context/         # AuthContext, CartContext
+│   │   ├── pages/           # 7 pages (Home, Cart, Login, Profile, etc.)
+│   │   ├── App.jsx          # Router setup
+│   │   ├── main.jsx         # Entry point
+│   │   └── config.js        # API URL & Razorpay key
 │   ├── index.html
 │   ├── vite.config.js
 │   ├── tailwind.config.js
 │   └── vercel.json
 │
-├── Backend/           # Node.js + Express backend
-│   ├── middleware/            # Auth middleware (JWT protect, admin)
-│   ├── models/               # Mongoose schemas
-│   ├── routes/               # 6 route files
-│   ├── utils/                # Email utility
-│   ├── scripts/              # Admin setup script
-│   ├── server.js             # Express entry point
-│   ├── seedProducts.js       # Product seeder
+├── Backend/                 # Node.js + Express backend
+│   ├── middleware/           # Auth middleware (JWT protect, admin)
+│   ├── models/              # Mongoose schemas
+│   ├── routes/              # 6 route files
+│   ├── utils/               # Email utility
+│   ├── scripts/             # Admin setup script
+│   ├── server.js            # Express entry point
+│   ├── seedProducts.js      # Product seeder
 │   └── .env.example
 │
 ├── .gitignore
-└── README.md                 # ← You are here
+└── README.md                # ← You are here
 ```
 
 ---
@@ -310,12 +429,14 @@ npm run dev
 | GET | `/:id` | — | Get by ID |
 | POST | `/add` | Admin | Add product |
 | POST | `/seed` | Admin | Bulk insert |
+| PATCH | `/:id` | Admin | Update product |
 | DELETE | `/:id` | Admin | Delete product |
 | DELETE | `/clear` | Admin | Clear all |
 
 ### Orders (`/api/orders`)
 | Method | Route | Auth | Description |
 |--------|-------|------|-------------|
+| POST | `/create` | JWT | Create new order |
 | POST | `/add` | JWT | Save order after payment |
 | GET | `/myorders/:userId` | JWT | User order history |
 
@@ -331,6 +452,11 @@ npm run dev
 | POST | `/add` | JWT | Add address |
 | GET | `/:userId` | JWT | Get user addresses |
 | DELETE | `/:id` | JWT | Delete address |
+
+### Upload (`/api/upload`)
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| POST | `/` | Admin | Upload product image |
 
 ---
 
@@ -383,8 +509,8 @@ npm run dev
 **Suraj Bhan Pratap Singh**
 
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/suraj-bhan-pratap-singh-891727293/)
-[![Email](https://img.shields.io/badge/Email-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:surajdona2005@gmail.com)
 [![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/surajrajput999)
+[![Email](https://img.shields.io/badge/Email-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:surajdona2005@gmail.com)
 
 ---
 
@@ -392,6 +518,8 @@ npm run dev
 
 ### ⭐ If you like this project, give it a star on GitHub! ⭐
 
-Built with ❤️ using React, Node.js, MongoDB & Razorpay
+Built with ❤️ using React, Node.js, Express, MongoDB, Tailwind CSS and Razorpay.
+
+Designed and developed by Suraj Bhan Pratap Singh.
 
 </div>
