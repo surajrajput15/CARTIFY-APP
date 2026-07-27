@@ -1,10 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../api/axios';
-
 import HeroBanner from '../components/HeroBanner';
 import ProductCard from '../components/ProductCard';
+
+const getPageNumbers = (current, total) => {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+
+  if (current <= 3) {
+    return [1, 2, 3, 4, '...', total];
+  }
+
+  if (current >= total - 2) {
+    return [1, '...', total - 3, total - 2, total - 1, total];
+  }
+
+  return [1, '...', current - 1, current, current + 1, '...', total];
+};
 
 const HomePage = () => {
   const [products, setProducts] = useState([]);
@@ -58,6 +73,7 @@ const HomePage = () => {
             <button
               key={cat}
               onClick={() => handleCategoryChange(cat)}
+              aria-pressed={selectedCategory === cat}
               className={`px-5 py-2 rounded-full text-sm font-medium capitalize transition-colors ${
                 selectedCategory === cat
                   ? 'bg-teal-600 text-white shadow-md'
@@ -83,10 +99,21 @@ const HomePage = () => {
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {[...Array(8)].map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl border border-gray-100 p-4 animate-pulse">
-              <div className="bg-gray-200 h-48 rounded-xl mb-4"></div>
-              <div className="bg-gray-200 h-4 w-3/4 rounded mb-2"></div>
-              <div className="bg-gray-200 h-4 w-1/2 rounded"></div>
+            <div key={i} className="bg-white rounded-2xl border border-gray-100 overflow-hidden animate-pulse">
+              <div className="h-56 bg-gray-200"></div>
+              <div className="p-5 space-y-3">
+                <div className="h-3 w-16 bg-gray-200 rounded-full"></div>
+                <div className="h-4 w-full bg-gray-200 rounded"></div>
+                <div className="h-4 w-2/3 bg-gray-200 rounded"></div>
+                <div className="flex items-center gap-1">
+                  <div className="h-3 w-12 bg-gray-200 rounded"></div>
+                  <div className="h-3 w-16 bg-gray-200 rounded"></div>
+                </div>
+                <div className="flex items-center justify-between pt-2">
+                  <div className="h-6 w-16 bg-gray-200 rounded"></div>
+                  <div className="h-10 w-10 bg-gray-200 rounded-xl"></div>
+                </div>
+              </div>
             </div>
           ))}
         </div>
@@ -99,31 +126,57 @@ const HomePage = () => {
           </div>
 
           {pages > 1 && (
-            <div className="mt-10 flex justify-center items-center gap-2">
+            <div className="mt-10 flex justify-center items-center gap-1.5">
+              <button
+                onClick={() => setPage(1)}
+                disabled={page === 1}
+                className="px-3 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                aria-label="First page"
+              >
+                First
+              </button>
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="px-4 py-2 rounded-lg font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="px-3 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                aria-label="Previous page"
               >
-                Previous
+                Prev
               </button>
-              {[...Array(pages)].map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setPage(i + 1)}
-                  className={`w-10 h-10 rounded-lg font-bold transition-colors ${
-                    page === i + 1 ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {i + 1}
-                </button>
-              ))}
+
+              {getPageNumbers(page, pages).map((item, i) =>
+                item === '...' ? (
+                  <span key={`ellipsis-${i}`} className="px-2 text-gray-400 font-bold" aria-hidden="true">...</span>
+                ) : (
+                  <button
+                    key={item}
+                    onClick={() => setPage(item)}
+                    aria-label={`Page ${item}`}
+                    aria-current={page === item ? 'page' : undefined}
+                    className={`w-9 h-9 rounded-lg text-sm font-bold transition-colors ${
+                      page === item ? 'bg-teal-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {item}
+                  </button>
+                )
+              )}
+
               <button
                 onClick={() => setPage(p => Math.min(pages, p + 1))}
                 disabled={page === pages}
-                className="px-4 py-2 rounded-lg font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="px-3 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                aria-label="Next page"
               >
                 Next
+              </button>
+              <button
+                onClick={() => setPage(pages)}
+                disabled={page === pages}
+                className="px-3 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                aria-label="Last page"
+              >
+                Last
               </button>
             </div>
           )}

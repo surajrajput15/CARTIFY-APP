@@ -1,41 +1,40 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import { createContext, useState, useContext, useCallback } from 'react';
 
-// 1. Create the Authentication Context
 const AuthContext = createContext();
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-
-  // 2. Check localStorage for existing session on initial application load
-  useEffect(() => {
+const getInitialUser = () => {
+  try {
     const token = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user'); // Retrieve user data from memory
-    
+    const storedUser = localStorage.getItem('user');
     if (token && storedUser) {
-      setUser(JSON.parse(storedUser)); // If exists, set the user as logged in
+      return JSON.parse(storedUser);
     }
-  }, []);
+  } catch {
+    return null;
+  }
+  return null;
+};
 
-  // 3. Login function to save user data and token securely
-  const login = (userData, token) => {
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(getInitialUser);
+
+  const login = useCallback((userData, token) => {
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
-  };
+  }, []);
 
-  // 4. Logout function to clear user session and data
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
-  };
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, logout, authLoading: false }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-// 5. Custom Hook for easy access to AuthContext across the application
 export const useAuth = () => useContext(AuthContext);

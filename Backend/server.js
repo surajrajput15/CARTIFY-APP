@@ -6,9 +6,21 @@ const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 require('dotenv').config();
 
-// Startup Diagnostics
-console.log("🔍 MONGO_URI set hai?", process.env.MONGO_URI ? "✅ Haan" : "❌ Nahi - Render Dashboard mein DAALO!");
-console.log("🔍 JWT_SECRET set hai?", process.env.JWT_SECRET ? "✅ Haan" : "❌ Nahi");
+// Environment Validation
+const requiredBackendVars = [
+  { key: 'MONGO_URI', label: 'MongoDB URI' },
+  { key: 'JWT_SECRET', label: 'JWT Secret' },
+  { key: 'RAZORPAY_KEY_ID', label: 'Razorpay Key ID' },
+  { key: 'RAZORPAY_KEY_SECRET', label: 'Razorpay Key Secret' },
+];
+
+const missingBackend = requiredBackendVars.filter(v => !process.env[v.key]);
+if (missingBackend.length > 0) {
+  console.error(`Missing environment variables: ${missingBackend.map(v => `${v.key} (${v.label})`).join(', ')}`);
+  process.exit(1);
+}
+
+console.log('Environment variables validated successfully');
 
 // Import Routes
 const productRoutes = require('./routes/productRoutes');
