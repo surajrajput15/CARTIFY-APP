@@ -1,23 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/authContext';
-import { useCart } from '../context/cartContext'; 
+import { useCart } from '../context/cartContext';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, CreditCard, ShieldCheck, Loader2, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../api/axios';
 import { RAZORPAY_KEY } from '../config';
 
+const RAZORPAY_SCRIPT_URL = 'https://checkout.razorpay.com/v1/checkout.js';
+
 const CheckoutPage = () => {
   const { user } = useAuth();
-  const { cart, clearCart } = useCart(); // 👈 cartTotal yahan se hata diya
+  const { cart, clearCart } = useCart();
   const navigate = useNavigate();
 
   const [addresses, setAddresses] = useState([]);
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [loading, setLoading] = useState(false);
   const [fetchingAddresses, setFetchingAddresses] = useState(true);
+  const razorpayLoadedRef = useRef(false);
 
-  // 🚀 NAYA LOGIC: Khud total calculate karo
   const calculatedTotal = cart.reduce((total, item) => total + (item.price * (item.quantity || 1)), 0);
 
   useEffect(() => {
@@ -44,21 +46,47 @@ const CheckoutPage = () => {
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
-      const script = document.createElement("script");
-      script.src = "https://checkout.razorpay.com/v1/checkout.js";
-      script.onload = () => resolve(true);
+      if (razorpayLoadedRef.current) {
+        resolve(true);
+        return;
+      }
+
+      const existingScript = document.querySelector(`script[src="${RAZORPAY_SCRIPT_URL}"]`);
+      if (existingScript) {
+        razorpayLoadedRef.current = true;
+        resolve(true);
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = RAZORPAY_SCRIPT_URL;
+      script.id = 'razorpay-checkout-script';
+      script.onload = () => {
+        razorpayLoadedRef.current = true;
+        resolve(true);
+      };
       script.onerror = () => resolve(false);
       document.body.appendChild(script);
     });
   };
 
+  useEffect(() => {
+    return () => {
+      const script = document.getElementById('razorpay-checkout-script');
+      if (script && script.parentNode) {
+        script.parentNode.removeChild(script);
+      }
+      razorpayLoadedRef.current = false;
+    };
+  }, []);
+
   const handlePayment = async () => {
     if (!selectedAddress) {
-      alert("Please select a delivery address!");
+      toast.error('Please select a delivery address!');
       return;
     }
     if (cart.length === 0) {
-      alert("Your cart is empty!");
+      toast.error('Your cart is empty!');
       return;
     }
 
@@ -66,13 +94,12 @@ const CheckoutPage = () => {
 
     const res = await loadRazorpayScript();
     if (!res) {
-      alert("Razorpay SDK failed to load. Are you online?");
+      toast.error('Razorpay SDK failed to load. Please check your internet connection.');
       setLoading(false);
       return;
     }
 
     try {
-      // Send only product IDs + quantities — backend fetches real prices from MongoDB
       const { data: order } = await api.post('/api/payment/create-order', {
         items: cart.map(item => ({
           productId: item._id || item.id,
@@ -99,7 +126,7 @@ const CheckoutPage = () => {
               await api.post('/api/orders/add', {
                 orderItems: cart,
                 shippingAddress: selectedAddress,
-                totalPrice: order.calculatedAmount, // Use server-authoritative amount
+                totalPrice: order.calculatedAmount,
                 paymentInfo: { id: response.razorpay_payment_id, status: 'Paid' },
                 status: 'Processing'
               });
@@ -136,8 +163,8 @@ const CheckoutPage = () => {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <h1 className="text-3xl font-extrabold text-gray-900 mb-8 flex items-center gap-2">
-        <ShieldCheck className="text-teal-600" size={32} /> Secure Checkout
+          <h1 className="text-3xl font-extrabold text-gray-900 mb-8 flex items-center gap-2">
+        <ShieldCheck className="text-teal-600" size={32} aria-hidden="true" /> Secure Checkout
       </h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -146,11 +173,21 @@ const CheckoutPage = () => {
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <MapPin className="text-teal-600" /> Select Delivery Address
+              <MapPin className="text-teal-600" aria-hidden="true" /> Select Delivery Address
             </h2>
-            
+
             {fetchingAddresses ? (
-              <p className="text-gray-500 animate-pulse">Loading saved addresses...</p>
+              <div className="space-y-4 animate-pulse">
+                {[...Array(2)].map((_, i) => (
+                  <div key={i} className="flex items-start p-4 border border-gray-100 rounded-xl">
+                    <div className="w-4 h-4 bg-gray-200 rounded-full mt-1"></div>
+                    <div className="ml-3 flex-1 space-y-2">
+                      <div className="h-4 w-40 bg-gray-200 rounded"></div>
+                      <div className="h-3 w-56 bg-gray-200 rounded"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : addresses.length === 0 ? (
               <div className="text-center py-6 bg-gray-50 rounded-xl border border-gray-200">
                 <p className="text-gray-600 mb-4">You don't have any saved addresses.</p>
@@ -168,12 +205,13 @@ const CheckoutPage = () => {
                       className="mt-1 w-4 h-4 text-teal-600 focus:ring-teal-500"
                       checked={selectedAddress?._id === addr._id}
                       onChange={() => setSelectedAddress(addr)}
+                      aria-label={`Deliver to ${addr.fullName}, ${addr.street}, ${addr.city}`}
                     />
                     <div className="ml-3 flex-1">
                       <p className="font-bold text-gray-800">{addr.fullName} <span className="font-normal text-gray-500 ml-2">{addr.phone}</span></p>
                       <p className="text-sm text-gray-600 mt-1">{addr.street}, {addr.city}, {addr.state} - {addr.pinCode}</p>
                     </div>
-                    {selectedAddress?._id === addr._id && <CheckCircle className="text-teal-600" size={20} />}
+                    {selectedAddress?._id === addr._id && <CheckCircle className="text-teal-600" size={20} aria-hidden="true" />}
                   </label>
                 ))}
               </div>
@@ -197,7 +235,6 @@ const CheckoutPage = () => {
           <div className="border-t border-gray-100 pt-4 mb-6">
             <div className="flex justify-between items-center text-lg font-extrabold text-gray-900">
               <span>Total Amount</span>
-              {/* 👈 Niche total theek kiya gaya hai */}
               <span>₹{calculatedTotal}</span> 
             </div>
           </div>
@@ -206,17 +243,17 @@ const CheckoutPage = () => {
             onClick={handlePayment} 
             disabled={loading || !selectedAddress || cart.length === 0}
             className="w-full bg-gray-900 text-white py-4 rounded-xl font-bold text-lg hover:bg-teal-600 transition-all shadow-md flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label={loading ? 'Processing payment' : `Pay ${calculatedTotal} rupees`}
           >
             {loading ? <Loader2 className="animate-spin" size={24} /> : (
               <>
-                {/* 👈 Button par bhi total theek kiya gaya hai */}
-                <CreditCard size={20} /> Pay ₹{calculatedTotal} Now
+                <CreditCard size={20} aria-hidden="true" /> Pay ₹{calculatedTotal} Now
               </>
             )}
           </button>
           
           <p className="text-xs text-center text-gray-500 mt-4 flex items-center justify-center gap-1">
-            <ShieldCheck size={14} /> 100% Secure Payments by Razorpay
+            <ShieldCheck size={14} aria-hidden="true" /> 100% Secure Payments by Razorpay
           </p>
         </div>
 

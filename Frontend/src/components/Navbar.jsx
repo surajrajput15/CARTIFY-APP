@@ -1,17 +1,23 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { ShoppingCart, User, Search, LogOut, Shield } from 'lucide-react';
 import { useCart } from '../context/cartContext';
 import { useAuth } from '../context/authContext';
 
+const linkBase = 'flex items-center gap-1.5 font-medium transition-colors';
+const linkInactive = 'text-gray-600 hover:text-teal-600';
+const linkActiveBase = 'text-teal-600';
+
+const navLinkClass = ({ isActive }) =>
+  `${linkBase} ${isActive ? `${linkActiveBase} border-b-2 border-teal-500 pb-0.5` : linkInactive}`;
+
 const Navbar = () => {
   const { cart } = useCart();
-  const { user, logout } = useAuth(); // 👈 Retrieve user data and logout function
+  const { user, logout } = useAuth();
   const [keyword, setKeyword] = useState('');
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const navigate = useNavigate();
 
-  // Handle search submission
   const handleSearch = (e) => {
     e.preventDefault();
     if (keyword.trim()) {
@@ -21,111 +27,105 @@ const Navbar = () => {
     }
   };
 
-  // Handle user logout
   const handleLogout = () => {
     logout();
-    navigate('/'); // Redirect to the home page after logging out
+    navigate('/');
   };
 
   return (
     <nav className="bg-white border-b border-gray-100 sticky top-0 z-50 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16 gap-4">
-          
-          {/* Left: Logo */}
-          <Link to="/" className="flex-shrink-0 flex items-center cursor-pointer">
-            <span className="text-3xl font-extrabold text-teal-600 tracking-tight">Cartify.</span>
-          </Link>
 
-          {/* 🔍 Middle: Search Bar */}
+          <NavLink to="/" className={navLinkClass}>
+            <span className="text-3xl font-extrabold text-teal-600 tracking-tight">Cartify.</span>
+          </NavLink>
+
           <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-2xl relative mx-4">
-            <input 
-              type="text" 
-              placeholder="Search for products, brands and more..." 
+            <input
+              type="text"
+              placeholder="Search for products, brands and more..."
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
               className="w-full pl-4 pr-12 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 bg-gray-50 text-gray-800"
             />
-            <button type="submit" className="absolute right-0 top-0 h-full px-4 text-teal-600 hover:bg-teal-100 rounded-r-lg transition-colors">
-              <Search size={20} />
+            <button type="submit" className="absolute right-0 top-0 h-full px-4 text-teal-600 hover:bg-teal-100 rounded-r-lg transition-colors" aria-label="Search">
+              <Search size={20} aria-hidden="true" />
             </button>
           </form>
 
-          {/* Right: User Profile/Login & Cart */}
-          <div className="flex items-center space-x-4 sm:space-x-6">
-            
-            {/* Mobile Search Toggle Button */}
-            <button 
+          <div className="flex items-center space-x-2 sm:space-x-4">
+
+            <button
               type="button"
               onClick={() => setShowMobileSearch(!showMobileSearch)}
               className="md:hidden text-gray-600 hover:text-teal-600 p-1.5 rounded-lg hover:bg-gray-50 transition-colors"
-              title="Search"
+              aria-label="Toggle search"
             >
-              <Search size={20} />
+              <Search size={20} aria-hidden="true" />
             </button>
-            
-            {/* 👤 Conditional Rendering based on Authentication Status */}
+
             {user ? (
-              <div className="flex items-center space-x-4">
-                {/* Profile Link (We will build this page next) */}
-                <Link to="/profile" className="text-teal-700 hover:text-teal-800 flex items-center gap-1.5 font-bold transition-colors">
-                  <User size={20} />
-                  {/* Extract and display the first name of the user */}
-                  <span className="hidden sm:inline">Hi, {user.name.split(' ')[0]}</span> 
-                </Link>
-                
-                {/* Logout Button */}
+              <div className="flex items-center space-x-2 sm:space-x-3">
+                <NavLink to="/profile" className={({ isActive }) =>
+                  `${linkBase} font-bold ${isActive ? `${linkActiveBase} border-b-2 border-teal-500 pb-0.5` : 'text-teal-700 hover:text-teal-800'}`
+                }>
+                  <User size={20} aria-hidden="true" />
+                  <span className="hidden sm:inline">Hi, {user.name.split(' ')[0]}</span>
+                </NavLink>
+
                 {user.isAdmin && (
-                  <Link to="/admin" className="text-gray-600 hover:text-teal-600 flex items-center gap-1.5 font-medium transition-colors" title="Admin">
-                    <Shield size={20} />
+                  <NavLink to="/admin" className={navLinkClass} aria-label="Admin dashboard">
+                    <Shield size={20} aria-hidden="true" />
                     <span className="hidden sm:inline">Admin</span>
-                  </Link>
+                  </NavLink>
                 )}
-                <button 
-                  onClick={handleLogout} 
+                <button
+                  onClick={handleLogout}
                   className="text-red-500 hover:text-red-700 flex items-center gap-1.5 font-medium transition-colors"
-                  title="Logout"
+                  aria-label="Logout"
                 >
-                  <LogOut size={20} />
+                  <LogOut size={20} aria-hidden="true" />
                   <span className="hidden sm:inline">Logout</span>
                 </button>
               </div>
             ) : (
-              /* Default Login Button */
-              <Link to="/login" className="text-gray-600 hover:text-teal-600 flex items-center gap-1.5 font-medium transition-colors">
-                <User size={20} />
+              <NavLink to="/login" className={navLinkClass}>
+                <User size={20} aria-hidden="true" />
                 <span className="hidden sm:inline">Login</span>
-              </Link>
+              </NavLink>
             )}
-            
-            {/* Cart Icon */}
-            <Link to="/cart" className="text-gray-600 hover:text-teal-600 flex items-center gap-1.5 font-medium relative transition-colors">
-              <ShoppingCart size={20} />
+
+            <NavLink to="/cart" className={({ isActive }) =>
+              `${linkBase} ${isActive ? `${linkActiveBase} border-b-2 border-teal-500 pb-0.5` : linkInactive}`
+            }>
+              <div className="relative inline-flex items-center justify-center">
+                <ShoppingCart size={20} aria-hidden="true" />
+                {cart && cart.length > 0 && (
+                  <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shadow-sm px-1 leading-none">
+                    {cart.length}
+                  </span>
+                )}
+              </div>
               <span className="hidden sm:inline">Cart</span>
-              {cart && cart.length > 0 && (
-                <span className="absolute -top-2 -right-3 sm:-right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center shadow-sm">
-                  {cart.length}
-                </span>
-              )}
-            </Link>
+            </NavLink>
           </div>
-          
+
         </div>
       </div>
-      
-      {/* Mobile Search Input Panel */}
+
       {showMobileSearch && (
         <div className="md:hidden bg-gray-50 border-t border-gray-100 p-3 shadow-inner animate-fade-in-up">
           <form onSubmit={(e) => { handleSearch(e); setShowMobileSearch(false); }} className="relative">
-            <input 
-              type="text" 
-              placeholder="Search for products, brands..." 
+            <input
+              type="text"
+              placeholder="Search for products, brands..."
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
               className="w-full pl-4 pr-12 py-2 rounded-xl border border-gray-300 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 bg-white text-gray-800 text-sm"
               autoFocus
             />
-            <button type="submit" className="absolute right-0 top-0 h-full px-4 text-teal-600 hover:bg-teal-50 rounded-r-xl transition-colors">
+            <button type="submit" className="absolute right-0 top-0 h-full px-4 text-teal-600 hover:bg-teal-50 rounded-r-xl transition-colors" aria-label="Search">
               <Search size={18} />
             </button>
           </form>

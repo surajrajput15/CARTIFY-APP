@@ -6,8 +6,7 @@ const HeroBanner = () => {
   return (
     <div className="relative bg-gradient-to-r from-teal-700 via-teal-600 to-teal-500 rounded-3xl overflow-hidden shadow-xl mb-10 border border-teal-500/20">
       
-      {/* Background Graphic Pattern */}
-      <div className="absolute inset-0 opacity-15 bg-[radial-gradient(circle_at_30%_20%,_var(--tw-gradient-stops))] from-white via-transparent to-transparent"></div>
+      <div className="absolute inset-0 opacity-15 bg-[radial-gradient(circle_at_30%_20%,_var(--tw-gradient-stops))] from-white via-transparent to-transparent" aria-hidden="true"></div>
       
       <div className="relative flex flex-col md:flex-row items-center justify-between p-8 md:p-14 gap-8">
         
@@ -31,6 +30,7 @@ const HeroBanner = () => {
           <button 
             onClick={handleShopNow}
             className="mt-6 bg-white text-teal-700 font-extrabold py-3.5 px-9 rounded-xl shadow-lg hover:bg-teal-50 hover:text-teal-800 hover:-translate-y-0.5 hover:shadow-xl transition-all duration-300 active:translate-y-0 cursor-pointer"
+            aria-label="Shop now and browse products"
           >
             Shop Now ⚡
           </button>
@@ -43,6 +43,7 @@ const HeroBanner = () => {
             <img 
               src="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?q=80&w=2070&auto=format&fit=crop" 
               alt="Shopping Sale" 
+              loading="eager"
               className="relative rounded-2xl shadow-2xl object-cover h-60 w-80 md:h-72 md:w-96 border-4 border-white/20 hover:scale-[1.02] transition-transform duration-500 ease-out"
             />
           </div>

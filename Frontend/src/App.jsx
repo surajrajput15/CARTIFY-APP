@@ -2,14 +2,28 @@ import CheckoutPage from './pages/CheckoutPage';
 import ProfilePage from './pages/ProfilePage';
 import LoginPage from './pages/LoginPage';
 import AdminPage from './pages/AdminPage';
+import NotFound from './pages/NotFound';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import { Loader2 } from 'lucide-react';
 import Navbar from './components/Navbar';
+import Footer from './components/Footer';
 import HomePage from './pages/HomePage';
 import CartPage from './pages/CartPage';
 import ProductDetailsPage from './pages/ProductDetailsPage';
+import { useAuth } from './context/authContext';
 
 function App() {
+  const { authLoading } = useAuth();
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="animate-spin text-teal-600" size={36} />
+      </div>
+    );
+  }
+
   return (
     <Router>
       <div className="min-h-screen bg-gray-50 font-sans pb-10">
@@ -25,7 +39,10 @@ function App() {
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/product/:id" element={<ProductDetailsPage />} />
           <Route path="/admin" element={<AdminPage />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
+
+        <Footer />
         
       </div>
     </Router>
