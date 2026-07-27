@@ -103,7 +103,7 @@ const CheckoutPage = () => {
       const { data: order } = await api.post('/api/payment/create-order', {
         items: cart.map(item => ({
           productId: item._id || item.id,
-          quantity: item.quantity
+          quantity: Math.floor(Number(item.quantity)) || 1
         }))
       });
 
