@@ -33,7 +33,8 @@ router.post('/create-order', protect, async (req, res) => {
                 return res.status(400).json({ message: "Each item must have a productId" });
             }
 
-            if (!Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 20) {
+            const qty = Number(item.quantity);
+            if (!Number.isInteger(qty) || qty < 1 || qty > 20) {
                 return res.status(400).json({
                     message: "Each item must have an integer quantity between 1 and 20"
                 });
