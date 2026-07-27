@@ -23,6 +23,7 @@
 ## 📋 Table of Contents
 
 - [About The Project](#-about-the-project)
+- [📚 Engineering Documentation](#-engineering-documentation)
 - [Screenshots](#-screenshots)
 - [✨ Features](#-features)
 - [🛠️ Tech Stack](#️-tech-stack)
@@ -31,15 +32,34 @@
 - [🚀 Getting Started](#-getting-started)
 - [🔌 API Endpoints](#-api-endpoints)
 - [🌍 Deployment](#-deployment)
+- [🏆 Current Project Status](#-current-project-status)
 - [📬 Contact](#-contact)
 
 ---
 
 ## 📖 About The Project
 
-**Cartify** is a production-grade full-stack e-commerce application built from the ground up. It features a sleek React frontend with multi-method authentication, a powerful Express backend with MongoDB, and seamless Razorpay payment integration.
+**Cartify** is a production-ready full-stack e-commerce application, now fully hardened after completing **Sprint 1** (Security Foundation) and **Sprint 2** (Production Polish & UX). It features a sleek React frontend with multi-method authentication, a powerful Express backend with MongoDB, and seamless Razorpay payment integration — with improvements across **security, authentication, payment validation, accessibility, SEO, performance, and production hardening**.
 
 > 🧑‍💻 Built by **Suraj Bhan Pratap Singh** as a portfolio project to demonstrate full-stack development, authentication flows, payment gateway integration, and production deployment on Vercel + Render.
+
+---
+
+## 📚 Engineering Documentation
+
+Cartify follows a sprint-based engineering process focused on building production-quality software.
+
+| Sprint | Status | Document |
+|--------|--------|----------|
+| Sprint 1 — Security Foundation | ✅ Complete | docs/SPRINT-01-COMPLETE.md |
+| Sprint 2 — Production Polish & UX | ✅ Complete | docs/SPRINT-02-COMPLETE.md |
+| Sprint 3 — Performance & Architecture | 🚧 Coming Soon | — |
+| Sprint 4 — Final Optimization & Testing | 🚧 Coming Soon | — |
+
+**Additional Engineering Docs**
+
+- docs/PHASE-03-ENGINEERING-FOR-PRODUCTION.md
+- docs/PRODUCTION-READINESS-AUDIT.md
 
 ---
 
@@ -95,6 +115,18 @@
 - **Tailwind CSS** — Modern utility-first styling, custom brand colors
 - **Lucide Icons** — Clean, consistent iconography
 - **Toast Notifications** — Real-time feedback with react-hot-toast
+
+### 🚀 Production Engineering
+- **Server-side payment calculation** — All pricing computed server-side to prevent tampering
+- **Secure JWT authentication** — Token-based auth with httpOnly practices
+- **Role-based Admin Authorization** — Separate admin routes with middleware protection
+- **Helmet security middleware** — HTTP header hardening against common attacks
+- **Express Rate Limiting** — Prevents brute-force and abuse
+- **Input Validation** — Server-side validation for all API inputs
+- **Production Error Handling** — Structured error responses with proper status codes
+- **Responsive UI** — Mobile-first design across all pages
+- **Accessibility Improvements** — ARIA labels, semantic HTML, keyboard navigation
+- **SEO Optimization** — Meta tags, semantic structure, fast loading
 
 ---
 
@@ -169,6 +201,16 @@ graph TD
     Server -->|Razorpay SDK| Payment["💳 Razorpay Payments"]
     Client -->|Client-Side| Cart["🛒 Local Cart (localStorage)"]
 ```
+
+**Production Highlights**
+
+- **JWT Authentication** — Stateless, secure token-based auth
+- **Role-based Authorization** — Admin & user route separation
+- **Secure Razorpay Verification** — HMAC SHA256 signature validation
+- **MongoDB Atlas** — Cloud-hosted, auto-scaled database
+- **Production-ready API validation** — Request sanitization and error handling
+- **Responsive React UI** — Mobile-first, accessible, and fast
+- **Environment validation** — Startup checks for required config
 
 ---
 
@@ -311,6 +353,28 @@ npm run dev
 | **Root Directory** | `Backend` |
 | **Build Command** | `npm install` |
 | **Start Command** | `npm start` |
+
+### Production Status
+
+| Component | Status |
+|-----------|--------|
+| **Frontend** | ✅ Live on Vercel |
+| **Backend** | ✅ Live on Render |
+| **Database** | ✅ MongoDB Atlas |
+| **Payment** | ✅ Razorpay Test Mode |
+| **Authentication** | ✅ JWT + Google OAuth + OTP |
+| **Build** | ✅ Production Build Passing |
+
+---
+
+## 🏆 Current Project Status
+
+| Category | Detail |
+|----------|--------|
+| **Phase** | Engineering for Production |
+| **Current Progress** | ✅ Sprint 1 Complete · ✅ Sprint 2 Complete · 🚧 Sprint 3 Starting Soon |
+| **Production Readiness** | ✅ Ready |
+| **Build Status** | ✅ Passing |
 
 ---
 
