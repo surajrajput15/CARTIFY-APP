@@ -1,4 +1,4 @@
-import { createContext, useState, useContext, useRef } from 'react';
+import { createContext, useState, useContext, useRef, useCallback, useMemo } from 'react';
 
 const CartContext = createContext();
 
@@ -19,61 +19,70 @@ export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState(getInitialCart);
   const saveTimeoutRef = useRef(null);
 
-  const debouncedSave = (cartData) => {
+  const debouncedSave = useCallback((cartData) => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
       localStorage.setItem('cart', JSON.stringify(cartData));
     }, 300);
-  };
+  }, []);
 
-  const addToCart = (product, qty = 1) => {
+  const addToCart = useCallback((product, qty = 1) => {
     const productId = product._id || product.id;
-    const existingItemIndex = cart.findIndex(item => (item._id || item.id) === productId);
-
-    let updatedCart;
-    if (existingItemIndex >= 0) {
-      updatedCart = [...cart];
-      updatedCart[existingItemIndex].quantity = (updatedCart[existingItemIndex].quantity || 1) + qty;
-    } else {
-      updatedCart = [...cart, { ...product, quantity: qty }];
-    }
-
-    setCart(updatedCart);
-    debouncedSave(updatedCart);
-  };
-
-  const removeFromCart = (productId) => {
-    const updatedCart = cart.filter(item => (item._id || item.id) !== productId);
-    setCart(updatedCart);
-    debouncedSave(updatedCart);
-  };
-
-  const updateQuantity = (productId, action) => {
-    const updatedCart = cart.map(item => {
-      if ((item._id || item.id) === productId) {
-        let currentQuantity = item.quantity || 1;
-        if (action === 'increase') {
-          currentQuantity += 1;
-        } else if (action === 'decrease' && currentQuantity > 1) {
-          currentQuantity -= 1;
-        }
-        return { ...item, quantity: currentQuantity };
+    setCart(prev => {
+      const existingIndex = prev.findIndex(item => (item._id || item.id) === productId);
+      if (existingIndex >= 0) {
+        const updated = prev.map((item, i) =>
+          i === existingIndex ? { ...item, quantity: (item.quantity || 1) + qty } : item
+        );
+        debouncedSave(updated);
+        return updated;
       }
-      return item;
+      const updated = [...prev, { ...product, quantity: qty }];
+      debouncedSave(updated);
+      return updated;
     });
+  }, [debouncedSave]);
 
-    setCart(updatedCart);
-    debouncedSave(updatedCart);
-  };
+  const removeFromCart = useCallback((productId) => {
+    setCart(prev => {
+      const updated = prev.filter(item => (item._id || item.id) !== productId);
+      debouncedSave(updated);
+      return updated;
+    });
+  }, [debouncedSave]);
 
-  const clearCart = () => {
+  const updateQuantity = useCallback((productId, action) => {
+    setCart(prev => {
+      const updated = prev.map(item => {
+        if ((item._id || item.id) === productId) {
+          let currentQuantity = item.quantity || 1;
+          if (action === 'increase') {
+            currentQuantity += 1;
+          } else if (action === 'decrease' && currentQuantity > 1) {
+            currentQuantity -= 1;
+          }
+          return { ...item, quantity: currentQuantity };
+        }
+        return item;
+      });
+      debouncedSave(updated);
+      return updated;
+    });
+  }, [debouncedSave]);
+
+  const clearCart = useCallback(() => {
     setCart([]);
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     localStorage.removeItem('cart');
-  };
+  }, []);
+
+  const value = useMemo(
+    () => ({ cart, addToCart, removeFromCart, updateQuantity, clearCart }),
+    [cart, addToCart, removeFromCart, updateQuantity, clearCart]
+  );
 
   return (
-    <CartContext.Provider value={{ cart, addToCart, removeFromCart, updateQuantity, clearCart }}>
+    <CartContext.Provider value={value}>
       {children}
     </CartContext.Provider>
   );

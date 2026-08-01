@@ -3,8 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/cartContext';
 import { ShoppingCart, Star, ArrowLeft, RefreshCw, AlertTriangle, Minus, Plus } from 'lucide-react';
 import { getStockStatus } from '../utils/stockStatus';
+import StockBadge from '../components/StockBadge';
 import toast from 'react-hot-toast';
-import api from '../api/axios';
+import { fetchProductById, fetchProducts } from '../services/productsApi';
 import ProductCard from '../components/ProductCard';
 
 const ProductDetailsPage = () => {
@@ -22,7 +23,7 @@ const ProductDetailsPage = () => {
     setError(null);
     setProduct(null);
     try {
-      const response = await api.get(`/api/products/${id}`);
+      const response = await fetchProductById(id);
       setProduct(response.data);
     } catch (err) {
       console.error("Error fetching product:", err);
@@ -42,7 +43,7 @@ const ProductDetailsPage = () => {
   const fetchRelated = useCallback(async (category, excludeId) => {
     setRelatedLoading(true);
     try {
-      const response = await api.get('/api/products', { params: { category, limit: 5 } });
+      const response = await fetchProducts({ category, limit: 5 });
       const data = Array.isArray(response.data) ? response.data : response.data.products || [];
       setRelatedProducts(data.filter((p) => p._id !== excludeId).slice(0, 4));
     } catch {
@@ -117,6 +118,7 @@ const ProductDetailsPage = () => {
   }
 
   const maxQty = product?.countInStock > 0 ? product.countInStock : 20;
+  const stockStatus = getStockStatus(product.countInStock);
   const decreaseQty = () => setQuantity(q => Math.max(1, q - 1));
   const increaseQty = () => setQuantity(q => Math.min(maxQty, q + 1));
 
@@ -164,16 +166,7 @@ const ProductDetailsPage = () => {
             </span>
           </div>
 
-          {(() => {
-            const stock = getStockStatus(product.countInStock);
-            if (!stock) return null;
-            return (
-              <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full mb-4 ${stock.bgColor} ${stock.textColor}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${stock.dotColor}`} />
-                {stock.label}
-              </span>
-            );
-          })()}
+          <StockBadge countInStock={product.countInStock} className="mb-4" />
 
           <div className="flex items-center gap-4 mb-6">
             <span className="text-sm font-bold text-gray-700">Quantity:</span>
@@ -205,15 +198,15 @@ const ProductDetailsPage = () => {
               addToCart(product, quantity);
               toast.success(`Added ${quantity} item(s) to cart`);
             }}
-            disabled={getStockStatus(product.countInStock)?.disabled}
+            disabled={stockStatus?.disabled}
             className={`w-full py-4 rounded-xl font-bold text-lg transition-colors shadow-lg flex justify-center items-center gap-2 ${
-              getStockStatus(product.countInStock)?.disabled
+              stockStatus?.disabled
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-60 shadow-gray-200'
                 : 'bg-teal-600 text-white hover:bg-teal-700 shadow-teal-200'
             }`}
           >
             <ShoppingCart size={24} aria-hidden="true" />
-            {getStockStatus(product.countInStock)?.disabled ? 'Out of Stock' : `Add to Cart (${quantity})`}
+            {stockStatus?.disabled ? 'Out of Stock' : `Add to Cart (${quantity})`}
           </button>
         </div>
       </div>

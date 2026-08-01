@@ -1,38 +1,34 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/authContext';
 import toast from 'react-hot-toast';
-import api from '../api/axios';
-import { Plus, Trash2, Loader2, Package, ArrowLeft, Edit3, Search } from 'lucide-react';
-import { getStockStatus } from '../utils/stockStatus';
+import { uploadImage } from '../services/productsApi';
+import { useAdminProducts } from '../hooks/useAdminProducts';
+import { filterProducts, getProductCategories, EMPTY_PRODUCT_FORM } from '../utils/products';
 import ConfirmModal from '../components/ConfirmModal';
+import Spinner from '../components/Spinner';
+import EmptyState from '../components/EmptyState';
+import AdminHeader from '../components/admin/AdminHeader';
+import AdminFilterBar from '../components/admin/AdminFilterBar';
+import ProductTable from '../components/admin/ProductTable';
+import ProductFormModal from '../components/admin/ProductFormModal';
+
+const CLOSED_CONFIRM = { show: false, title: '', message: '', onConfirm: null, loading: false };
 
 const AdminPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { products, loading, fetchProducts, saveProduct, deleteProduct, seedProducts, clearAllProducts } = useAdminProducts();
+
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
-  const [confirmModal, setConfirmModal] = useState({ show: false, title: '', message: '', onConfirm: null, loading: false });
-  const [form, setForm] = useState({ title: '', price: '', description: '', category: 'electronics', image: '', rating: { rate: 0, count: 0 } });
+  const [confirmModal, setConfirmModal] = useState(CLOSED_CONFIRM);
+  const [form, setForm] = useState(EMPTY_PRODUCT_FORM);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
-
-  const fetchProducts = useCallback(async () => {
-    try {
-      const { data } = await api.get('/api/products', { params: { limit: 100 } });
-      setProducts(Array.isArray(data) ? data : data.products);
-    } catch (err) {
-      console.error('Failed to fetch products', err);
-      toast.error('Failed to fetch products');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   useEffect(() => {
     if (!user || !user.isAdmin) {
@@ -42,33 +38,20 @@ const AdminPage = () => {
     fetchProducts();
   }, [user, navigate, fetchProducts]);
 
-  const filteredProducts = useMemo(() => {
-    let result = products;
-    const term = searchTerm.trim().toLowerCase();
-    if (term) {
-      result = result.filter(p =>
-        p.title.toLowerCase().includes(term) ||
-        p.category.toLowerCase().includes(term) ||
-        (p.brand && p.brand.toLowerCase().includes(term))
-      );
-    }
-    if (filterCategory) {
-      result = result.filter(p => p.category === filterCategory);
-    }
-    return result;
-  }, [products, searchTerm, filterCategory]);
+  const filteredProducts = useMemo(
+    () => filterProducts(products, { searchTerm, filterCategory }),
+    [products, searchTerm, filterCategory]
+  );
+
+  const categories = useMemo(() => getProductCategories(products), [products]);
 
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const fd = new FormData();
-    fd.append('image', file);
     try {
-      const { data } = await api.post('/api/upload', fd, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      const { data } = await uploadImage(file);
       setForm({ ...form, image: data.image });
-    } catch (err) {
+    } catch {
       toast.error('Upload failed');
     }
   };
@@ -77,25 +60,11 @@ const AdminPage = () => {
     e.preventDefault();
     setSaving(true);
     try {
-      const payload = {
-        ...form,
-        price: Number(form.price),
-        rating: { rate: Number(form.rating.rate), count: Number(form.rating.count) }
-      };
-
-      if (editingProduct) {
-        await api.patch(`/api/products/${editingProduct._id}`, payload);
-        toast.success('Product updated successfully');
-      } else {
-        await api.post('/api/products/add', payload);
-        toast.success('Product saved successfully');
-      }
-
+      await saveProduct({ product: form, editingProduct });
       setShowForm(false);
       setEditingProduct(null);
-      setForm({ title: '', price: '', description: '', category: 'electronics', image: '', rating: { rate: 0, count: 0 } });
-      fetchProducts();
-    } catch (err) {
+      setForm(EMPTY_PRODUCT_FORM);
+    } catch {
       toast.error('Failed to save product');
     } finally {
       setSaving(false);
@@ -115,7 +84,7 @@ const AdminPage = () => {
     setShowForm(true);
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = (id) => {
     setConfirmModal({
       show: true,
       title: 'Delete Product',
@@ -124,19 +93,17 @@ const AdminPage = () => {
       onConfirm: async () => {
         setConfirmModal(prev => ({ ...prev, loading: true }));
         try {
-          await api.delete(`/api/products/${id}`);
-          fetchProducts();
-          toast.success('Product deleted');
-        } catch (err) {
+          await deleteProduct(id);
+        } catch {
           toast.error('Failed to delete product');
         } finally {
-          setConfirmModal({ show: false, title: '', message: '', onConfirm: null, loading: false });
+          setConfirmModal(CLOSED_CONFIRM);
         }
       }
     });
   };
 
-  const handleSeed = async () => {
+  const handleSeed = () => {
     setConfirmModal({
       show: true,
       title: 'Seed Products',
@@ -145,41 +112,17 @@ const AdminPage = () => {
       onConfirm: async () => {
         setConfirmModal(prev => ({ ...prev, loading: true }));
         try {
-          const productsData = [
-            { title: "MacBook Pro 14\" M3", price: 199999, description: "Apple M3 chip, 18GB RAM, 512GB SSD", category: "electronics", image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500", rating: { rate: 4.8, count: 342 } },
-            { title: "iPhone 15 Pro Max", price: 159999, description: "A17 Pro chip, 256GB, Titanium", category: "electronics", image: "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=500", rating: { rate: 4.7, count: 891 } },
-            { title: "Sony WH-1000XM5", price: 29999, description: "Wireless Noise Cancelling Headphones", category: "electronics", image: "https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=500", rating: { rate: 4.6, count: 2341 } },
-            { title: "Samsung Galaxy S24 Ultra", price: 134999, description: "Snapdragon 8 Gen 3, 256GB, S Pen", category: "electronics", image: "https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=500", rating: { rate: 4.5, count: 567 } },
-            { title: "Apple AirPods Pro 2", price: 24999, description: "Active Noise Cancellation, USB-C", category: "electronics", image: "https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?w=500", rating: { rate: 4.8, count: 3201 } },
-            { title: "Nike Air Force 1", price: 11995, description: "Classic white sneakers for men", category: "footwear", image: "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=500", rating: { rate: 4.4, count: 1892 } },
-            { title: "Adidas Ultraboost Light", price: 15999, description: "Ultra-lightweight running shoes", category: "footwear", image: "https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=500", rating: { rate: 4.5, count: 982 } },
-            { title: "Levi's 501 Original Jeans", price: 5499, description: "Regular fit straight leg jeans", category: "clothing", image: "https://images.unsplash.com/photo-1542272454315-4c01d7abdf4a?w=500", rating: { rate: 4.3, count: 4501 } },
-            { title: "Puma Hoodie", price: 3999, description: "Cotton-blend fleece hoodie", category: "clothing", image: "https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=500", rating: { rate: 4.2, count: 672 } },
-            { title: "Ray-Ban Aviator Sunglasses", price: 8999, description: "Gold frame, green classic lens", category: "accessories", image: "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=500", rating: { rate: 4.6, count: 2783 } },
-            { title: "Titan Smart Watch", price: 14995, description: "AMOLED display, 100+ sport modes", category: "accessories", image: "https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=500", rating: { rate: 4.3, count: 1245 } },
-            { title: "Wooden Study Table", price: 12999, description: "Premium engineered wood, 120x60cm", category: "furniture", image: "https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?w=500", rating: { rate: 4.1, count: 234 } },
-            { title: "Ergonomic Office Chair", price: 18999, description: "Mesh back, lumbar support, adjustable", category: "furniture", image: "https://images.unsplash.com/photo-1592078615290-033ee584e267?w=500", rating: { rate: 4.4, count: 876 } },
-            { title: "Maybelline Fit Me Foundation", price: 799, description: "Natural finish liquid foundation", category: "beauty", image: "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=500", rating: { rate: 4.2, count: 4321 } },
-            { title: "Lakme Absolute Lipstick", price: 949, description: "Matte finish, long-lasting", category: "beauty", image: "https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=500", rating: { rate: 4.1, count: 2987 } },
-            { title: "Sony PlayStation 5", price: 54999, description: "Slim disk edition, DualSense controller", category: "electronics", image: "https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=500", rating: { rate: 4.9, count: 4502 } },
-            { title: "Dell UltraSharp 27\" 4K", price: 44999, description: "IPS panel, USB-C hub, HDR400", category: "electronics", image: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=500", rating: { rate: 4.7, count: 543 } },
-            { title: "JBL Flip 6 Speaker", price: 12999, description: "Portable Bluetooth speaker, IP67", category: "electronics", image: "https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=500", rating: { rate: 4.5, count: 1876 } },
-            { title: "Zara Formal Blazer", price: 7999, description: "Slim fit, single-breasted blazer", category: "clothing", image: "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=500", rating: { rate: 4.0, count: 432 } },
-            { title: "Noise Cancelling Earbuds", price: 3999, description: "BT 5.3, 40hr battery, ENC", category: "electronics", image: "https://images.unsplash.com/photo-1590658268037-6bf12f032f5e?w=500", rating: { rate: 4.3, count: 1543 } }
-          ];
-          const { data } = await api.post('/api/products/seed', productsData);
-          toast.success(`${data.count} products seeded successfully!`);
-          fetchProducts();
-        } catch (err) {
+          await seedProducts();
+        } catch {
           toast.error('Failed to seed products');
         } finally {
-          setConfirmModal({ show: false, title: '', message: '', onConfirm: null, loading: false });
+          setConfirmModal(CLOSED_CONFIRM);
         }
       }
     });
   };
 
-  const handleClearAll = async () => {
+  const handleClearAll = () => {
     setConfirmModal({
       show: true,
       title: 'Clear All Products',
@@ -188,13 +131,11 @@ const AdminPage = () => {
       onConfirm: async () => {
         setConfirmModal(prev => ({ ...prev, loading: true }));
         try {
-          await api.delete('/api/products/clear');
-          fetchProducts();
-          toast.success('All products cleared');
-        } catch (err) {
+          await clearAllProducts();
+        } catch {
           toast.error('Failed to clear products');
         } finally {
-          setConfirmModal({ show: false, title: '', message: '', onConfirm: null, loading: false });
+          setConfirmModal(CLOSED_CONFIRM);
         }
       }
     });
@@ -202,164 +143,53 @@ const AdminPage = () => {
 
   if (!user || !user.isAdmin) return null;
 
-  const categories = [...new Set(products.map(p => p.category))].sort();
+  const emptyMessage = searchTerm && filterCategory
+    ? `No products match "${searchTerm}" in ${filterCategory} category.`
+    : searchTerm
+      ? `No products match "${searchTerm}".`
+      : `No products in the ${filterCategory} category.`;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <button onClick={() => navigate('/')} className="flex items-center text-sm font-bold text-teal-600 hover:text-teal-700 mb-2">
-            <ArrowLeft size={16} className="mr-1" /> Back to Store
-          </button>
-          <h1 className="text-3xl font-extrabold text-gray-900 flex items-center gap-3">
-            <Package className="text-teal-600" size={32} /> Admin Dashboard
-          </h1>
-        </div>
-        <div className="flex gap-3">
-          <button onClick={handleSeed} className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 transition-colors">
-            Seed 20 Products
-          </button>
-          <button onClick={handleClearAll} className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold text-sm hover:bg-red-700 transition-colors">
-            Clear All
-          </button>
-        </div>
-      </div>
+      <AdminHeader onBack={() => navigate('/')} onSeed={handleSeed} onClearAll={handleClearAll} />
 
-      <div className="mb-6 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between" role="search" aria-label="Filter products">
-        <p className="text-gray-600 font-medium whitespace-nowrap">
-          {searchTerm || filterCategory ? (
-            <>Showing {filteredProducts.length} of {products.length} products</>
-          ) : (
-            <>{products.length} products</>
-          )}
-        </p>
-        <div className="flex gap-3 flex-1 sm:flex-none justify-end">
-          <div className="relative flex-1 sm:flex-initial">
-            <label htmlFor="search-input" className="sr-only">Search products</label>
-            <Search className="absolute inset-y-0 left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              id="search-input"
-              type="text"
-              placeholder="Search products..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-teal-500 focus:border-teal-500 w-full sm:w-52"
-            />
-          </div>
-          <select
-            value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
-            aria-label="Filter by category"
-            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-teal-500 focus:border-teal-500"
-          >
-            <option value="">All Categories</option>
-            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <button onClick={() => { setShowForm(true); setEditingProduct(null); setForm({ title: '', price: '', description: '', category: 'electronics', image: '', rating: { rate: 0, count: 0 } }); }} className="flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white rounded-xl font-bold hover:bg-teal-700 transition-colors shadow-sm">
-            <Plus size={18} aria-hidden="true" /> Add Product
-          </button>
-        </div>
-      </div>
+      <AdminFilterBar
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        filterCategory={filterCategory}
+        onCategoryChange={setFilterCategory}
+        categories={categories}
+        productsCount={products.length}
+        filteredCount={filteredProducts.length}
+        hasFilters={Boolean(searchTerm || filterCategory)}
+        onAddProduct={() => {
+          setShowForm(true);
+          setEditingProduct(null);
+          setForm(EMPTY_PRODUCT_FORM);
+        }}
+      />
 
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowForm(false)}>
-          <div className="bg-white rounded-2xl p-8 max-w-lg w-full mx-4 shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-xl font-bold text-gray-900 mb-6">{editingProduct ? 'Edit Product' : 'Add New Product'}</h2>
-            <form onSubmit={handleSave} className="space-y-4">
-              <input type="text" placeholder="Product Title" required value={form.title} onChange={(e) => setForm({...form, title: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-teal-500 focus:border-teal-500" />
-              <input type="number" step="0.01" placeholder="Price (₹)" required value={form.price} onChange={(e) => setForm({...form, price: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-teal-500 focus:border-teal-500" />
-              <textarea placeholder="Description" required value={form.description} onChange={(e) => setForm({...form, description: e.target.value})} rows={3} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-teal-500 focus:border-teal-500" />
-              <select value={form.category} onChange={(e) => setForm({...form, category: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-teal-500 focus:border-teal-500">
-                {['electronics', 'clothing', 'footwear', 'accessories', 'furniture', 'beauty'].map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Product Image</label>
-                <input type="file" accept="image/*" onChange={handleImageUpload} className="w-full px-4 py-3 rounded-xl border border-gray-200" />
-                {form.image && <img src={form.image.startsWith('/uploads') ? `https://cartify-api-10g3.onrender.com${form.image}` : form.image} alt="preview" className="mt-2 h-24 object-contain rounded-lg border" />}
-              </div>
-              <div className="flex gap-4">
-                <input type="number" step="0.1" placeholder="Rating (0-5)" value={form.rating.rate} onChange={(e) => setForm({...form, rating: {...form.rating, rate: e.target.value}})} className="w-1/2 px-4 py-3 rounded-xl border border-gray-200 focus:ring-teal-500 focus:border-teal-500" />
-                <input type="number" placeholder="Review Count" value={form.rating.count} onChange={(e) => setForm({...form, rating: {...form.rating, count: e.target.value}})} className="w-1/2 px-4 py-3 rounded-xl border border-gray-200 focus:ring-teal-500 focus:border-teal-500" />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button type="submit" disabled={saving} className="flex-1 bg-teal-600 text-white py-3 rounded-xl font-bold hover:bg-teal-700 disabled:opacity-50 flex items-center justify-center gap-2">
-                  {saving ? <Loader2 className="animate-spin" size={20} /> : null} {editingProduct ? 'Update Product' : 'Save Product'}
-                </button>
-                <button type="button" onClick={() => setShowForm(false)} className="px-6 py-3 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200">Cancel</button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <ProductFormModal
+          form={form}
+          setForm={setForm}
+          saving={saving}
+          isEditing={Boolean(editingProduct)}
+          onImageUpload={handleImageUpload}
+          onSubmit={handleSave}
+          onClose={() => setShowForm(false)}
+        />
       )}
 
       {loading ? (
-        <div className="text-center py-20">
-          <Loader2 className="animate-spin mx-auto text-teal-600" size={40} />
-        </div>
+        <Spinner />
       ) : filteredProducts.length === 0 ? (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 py-20 px-4 text-center">
-          <Search className="mx-auto h-12 w-12 text-gray-300 mb-4" aria-hidden="true" />
-          <h3 className="text-lg font-bold text-gray-600 mb-1">No products found</h3>
-          <p className="text-sm text-gray-400 max-w-xs mx-auto">
-            {searchTerm && filterCategory
-              ? `No products match "${searchTerm}" in ${filterCategory} category.`
-              : searchTerm
-                ? `No products match "${searchTerm}".`
-                : `No products in the ${filterCategory} category.`}
-          </p>
-          <button
-            onClick={() => { setSearchTerm(''); setFilterCategory(''); }}
-            className="mt-6 text-sm font-medium text-teal-600 hover:text-teal-700 underline underline-offset-2"
-          >
-            Clear all filters
-          </button>
-        </div>
+        <EmptyState
+          message={emptyMessage}
+          onClearFilters={() => { setSearchTerm(''); setFilterCategory(''); }}
+        />
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-100">
-                <tr>
-                  <th className="text-left p-4 font-bold text-gray-600">Image</th>
-                  <th className="text-left p-4 font-bold text-gray-600">Title</th>
-                  <th className="text-left p-4 font-bold text-gray-600">Category</th>
-                  <th className="text-left p-4 font-bold text-gray-600">Stock</th>
-                  <th className="text-left p-4 font-bold text-gray-600">Price</th>
-                  <th className="text-left p-4 font-bold text-gray-600">Rating</th>
-                  <th className="text-center p-4 font-bold text-gray-600">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {filteredProducts.map((p) => (
-                  <tr key={p._id} className="hover:bg-gray-50 transition-colors">
-                    <td className="p-4">
-                      <img src={p.image} alt={p.title} loading="lazy" className="h-12 w-12 object-contain rounded-lg bg-gray-50" />
-                    </td>
-                    <td className="p-4 font-medium text-gray-800 max-w-xs truncate">{p.title}</td>
-                    <td className="p-4 capitalize text-gray-600">{p.category}</td>
-                    <td className="p-4">{(() => {
-                      const s = getStockStatus(p.countInStock);
-                      if (!s) return <span className="text-gray-400">&mdash;</span>;
-                      return <span className={`inline-flex items-center gap-1 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider ${s.bgColor} ${s.textColor}`}><span className={`w-1.5 h-1.5 rounded-full ${s.dotColor}`} />{s.label}</span>;
-                    })()}</td>
-                    <td className="p-4 font-bold text-gray-900">₹{p.price}</td>
-                    <td className="p-4 text-gray-600">{p.rating?.rate} ({p.rating?.count})</td>
-                    <td className="p-4 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <button onClick={() => handleEdit(p)} className="text-blue-500 hover:text-blue-700 p-2 hover:bg-blue-50 rounded-lg transition-colors" aria-label={`Edit ${p.title}`}>
-                          <Edit3 size={18} aria-hidden="true" />
-                        </button>
-                        <button onClick={() => handleDelete(p._id)} className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg transition-colors" aria-label={`Delete ${p.title}`}>
-                          <Trash2 size={18} aria-hidden="true" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <ProductTable products={filteredProducts} onEdit={handleEdit} onDelete={handleDelete} />
       )}
 
       {confirmModal.show && (
@@ -370,7 +200,7 @@ const AdminPage = () => {
           cancelLabel="Cancel"
           loading={confirmModal.loading}
           onConfirm={confirmModal.onConfirm}
-          onCancel={() => setConfirmModal({ show: false, title: '', message: '', onConfirm: null, loading: false })}
+          onCancel={() => setConfirmModal(CLOSED_CONFIRM)}
         />
       )}
     </div>

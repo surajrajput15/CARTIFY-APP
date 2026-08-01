@@ -1,4 +1,5 @@
 
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../context/cartContext';
 import { Trash2, Plus, Minus } from 'lucide-react';
@@ -6,13 +7,17 @@ import { Trash2, Plus, Minus } from 'lucide-react';
 const CartPage = () => {
   const { cart, removeFromCart, updateQuantity } = useCart();
 
-  const totalAmount = cart.reduce((total, item) => {
-    const itemPrice = Number(item.price) || 0;
-    const itemQuantity = Number(item.quantity) || 1;
-    return total + (itemPrice * itemQuantity);
-  }, 0);
-
-  const totalItems = cart.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
+  const { totalAmount, totalItems } = useMemo(() => {
+    let amount = 0;
+    let items = 0;
+    for (const item of cart) {
+      const itemPrice = Number(item.price) || 0;
+      const itemQuantity = Number(item.quantity) || 1;
+      amount += itemPrice * itemQuantity;
+      items += itemQuantity;
+    }
+    return { totalAmount: amount, totalItems: items };
+  }, [cart]);
 
   // Empty cart state
   if (cart.length === 0) {

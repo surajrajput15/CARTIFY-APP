@@ -32,7 +32,7 @@
 |--------|--------|
 | Sprint 1 | ✅ Complete |
 | Sprint 2 | ✅ Complete |
-| Sprint 3 | 🚧 Coming Soon |
+| Sprint 3 | 🚧 In Progress (~25%) |
 | Sprint 4 | 🚧 Coming Soon |
 
 ---
@@ -41,6 +41,7 @@
 
 - [🟢 Project Status](#-project-status)
 - [📖 About The Project](#-about-the-project)
+- [🚀 Latest Improvements](#-latest-improvements)
 - [📚 Engineering Documentation](#-engineering-documentation)
 - [📸 Screenshots](#-screenshots)
 - [✨ Features](#-features)
@@ -75,6 +76,19 @@
 - **Production Deployment** — Frontend on Vercel, backend on Render, database on MongoDB Atlas
 
 > 🧑‍💻 Built by **Suraj Bhan Pratap Singh** as a portfolio project to demonstrate full-stack development, authentication flows, payment gateway integration, and production deployment on Vercel + Render.
+
+---
+
+## 🚀 Latest Improvements
+
+- **Production-ready architecture** — Clean separation of concerns across pages, hooks, services, and components
+- **Route-based code splitting** — Pages loaded on demand with `React.lazy` + `Suspense` for faster initial load
+- **Global Error Boundary** — Catches runtime errors and renders a friendly fallback UI
+- **Reusable API Service Layer** — All HTTP logic extracted into reusable service modules
+- **Shared custom hooks** — Data-fetching and side-effect logic reused across pages
+- **Shared reusable UI components** — Consistent, maintainable building blocks
+- **Performance optimizations** — Memoization audit and reduced unnecessary re-renders
+- **Improved maintainability** — Smaller components and centralized business logic
 
 ---
 
@@ -168,6 +182,11 @@ Cartify follows a sprint-based engineering process focused on building productio
 - **Production Error Handling** — Structured error responses with proper status codes
 - **Accessibility Improvements** — ARIA labels, semantic HTML, keyboard navigation
 - **SEO Improvements** — Meta tags, semantic structure, optimized loading
+- **Route-based Code Splitting** — Pages loaded on demand with `React.lazy` + `Suspense`
+- **Global Error Boundary** — Catches unexpected runtime errors with a fallback UI
+- **Reusable API Service Layer** — Centralized service modules for all HTTP calls
+- **Custom Hooks** — Reusable data-fetching and UI logic
+- **Memoization Optimization** — `useMemo`/`useCallback` audit to reduce unnecessary re-renders
 
 ---
 
@@ -182,6 +201,10 @@ Cartify follows a sprint-based engineering process focused on building productio
 | **Auth** | @react-oauth/google, jwt-decode | Google OAuth |
 | **Icons** | Lucide React | Icon library |
 | **Notifications** | React Hot Toast | Toast alerts |
+| **Code Splitting** | React.lazy + Suspense | Route-based lazy page loading |
+| **Error Boundary** | React Error Boundary | Global error fallback UI |
+| **Custom Hooks** | React Hooks | Reusable data-fetching & UI logic |
+| **Service Layer** | Custom API service modules | Centralized, reusable API calls |
 | **Backend** | Node.js + Express 4 | REST API server |
 | **Database** | MongoDB + Mongoose 9 | NoSQL ODM |
 | **Auth** | JWT + bcryptjs | Token auth & password hashing |
@@ -498,7 +521,7 @@ npm run dev
 | Category | Detail |
 |----------|--------|
 | **Phase** | Engineering for Production |
-| **Current Progress** | ✅ Sprint 1 Complete · ✅ Sprint 2 Complete · 🚧 Sprint 3 Starting Soon |
+| **Current Progress** | ✅ Sprint 1 Complete · ✅ Sprint 2 Complete · 🚧 Sprint 3 In Progress (~25%) |
 | **Production Readiness** | ✅ Ready |
 | **Build Status** | ✅ Passing |
 
