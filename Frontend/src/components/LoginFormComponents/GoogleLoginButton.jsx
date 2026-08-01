@@ -1,6 +1,6 @@
 import { GoogleLogin } from '@react-oauth/google';
 import { jwtDecode } from "jwt-decode";
-import api from '../../api/axios';
+import { googleLogin } from '../../services/authApi';
 
 const GoogleLoginButton = ({ login, navigate, setError }) => {
   return (
@@ -10,7 +10,7 @@ const GoogleLoginButton = ({ login, navigate, setError }) => {
         onSuccess={async (credentialResponse) => {
           try {
             const decoded = jwtDecode(credentialResponse.credential);
-            const response = await api.post('/api/auth/google', {
+            const response = await googleLogin({
               name: decoded.name,
               email: decoded.email
             });

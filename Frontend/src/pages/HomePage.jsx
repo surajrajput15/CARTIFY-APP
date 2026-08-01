@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import api from '../api/axios';
+import { fetchProducts } from '../services/productsApi';
 import HeroBanner from '../components/HeroBanner';
 import ProductCard from '../components/ProductCard';
 
@@ -38,7 +38,7 @@ const HomePage = () => {
     if (selectedCategory !== 'all') params.category = selectedCategory;
     if (searchQuery) params.search = searchQuery;
 
-      api.get('/api/products', { params })
+      fetchProducts(params)
       .then((response) => {
         const d = response.data;
         if (Array.isArray(d)) {
