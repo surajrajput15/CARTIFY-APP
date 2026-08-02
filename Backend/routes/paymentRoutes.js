@@ -42,11 +42,11 @@ router.post('/create-order', protect, async (req, res) => {
             }
         }
 
-        const productIds = items.map(item => item.productId);
+        const productIdSet = [...new Set(items.map(item => item.productId))];
 
         let products;
         try {
-            products = await Product.find({ _id: { $in: productIds } });
+            products = await Product.find({ _id: { $in: productIdSet } });
         } catch (dbError) {
             console.error("Product.find() failed:", dbError.name, dbError.message);
             if (dbError.name === "CastError") {
@@ -57,9 +57,9 @@ router.post('/create-order', protect, async (req, res) => {
             throw dbError;
         }
 
-        if (products.length !== productIds.length) {
+        if (products.length !== productIdSet.length) {
             const foundIds = products.map(p => p._id.toString());
-            const missingIds = productIds.filter(id => !foundIds.includes(id));
+            const missingIds = productIdSet.filter(id => !foundIds.includes(id));
             return res.status(400).json({
                 message: "Some products do not exist",
                 missingProductIds: missingIds
