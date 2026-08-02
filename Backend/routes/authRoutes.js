@@ -248,7 +248,11 @@ router.delete('/delete/:id', protect, async (req, res) => {
 // ==========================================
 router.post('/google', async (req, res) => {
     try {
+        console.log('[DEBUG-google] req.body:', JSON.stringify(req.body));
         const { credential } = req.body;
+        console.log('[DEBUG-google] typeof credential:', typeof credential);
+        console.log('[DEBUG-google] credential head:', typeof credential === 'string' ? credential.slice(0, 30) : credential);
+        console.log('[DEBUG-google] env GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID);
 
         if (!credential) {
             return res.status(400).json({ message: "Google credential is required" });
@@ -263,11 +267,24 @@ router.post('/google', async (req, res) => {
                 idToken: credential,
                 audience: process.env.GOOGLE_CLIENT_ID,
             });
+            console.log('[DEBUG-google] verifyIdToken: SUCCESS (ticket created)');
         } catch (error) {
+            console.log('[DEBUG-google] verifyIdToken: THREW');
+            console.error('[DEBUG-google] verifyIdToken COMPLETE ERROR:', error);
+            console.error('[DEBUG-google] error.name:', error && error.name);
+            console.error('[DEBUG-google] error.message:', error && error.message);
             return res.status(401).json({ message: "Invalid Google credential" });
         }
 
         const payload = ticket.getPayload();
+        console.log('[DEBUG-google] payload present:', !!payload);
+        if (payload) {
+            console.log('[DEBUG-google] payload.email:', payload.email);
+            console.log('[DEBUG-google] payload.name:', payload.name);
+            console.log('[DEBUG-google] payload.email_verified:', payload.email_verified);
+            console.log('[DEBUG-google] payload.aud:', payload.aud);
+            console.log('[DEBUG-google] payload.iss:', payload.iss);
+        }
         if (!payload || !payload.email_verified) {
             return res.status(401).json({ message: "Google email is not verified" });
         }
