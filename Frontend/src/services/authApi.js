@@ -4,7 +4,10 @@ export const loginWithPassword = (credentials) => api.post('/api/auth/login', cr
 
 export const register = (userData) => api.post('/api/auth/register', userData);
 
-export const googleLogin = (profile) => api.post('/api/auth/google', profile);
+export const googleLogin = (profile) => {
+  console.log("[DEBUG-login] POST /api/auth/google payload:", profile);
+  return api.post('/api/auth/google', profile);
+};
 
 export const sendOtp = (payload) => api.post('/api/auth/send-otp', payload);
 

@@ -8,19 +8,21 @@ const GoogleLoginButton = ({ login, navigate, setError }) => {
       <GoogleLogin
         onSuccess={async (credentialResponse) => {
           try {
+            console.log("[DEBUG-login] Google response:", credentialResponse);
+            console.log("[DEBUG-login] Credential:", credentialResponse?.credential);
             const credential = credentialResponse?.credential;
             if (!credential) {
-              console.error("Google returned no credential (popup blocked?)", credentialResponse);
+              console.error("[DEBUG-login] NO credential — popup aborted / study result not delivered:", credentialResponse);
               setError('Google sign-in was blocked. Please try again, allow the popup, and disable ad-block.');
               return;
             }
-            // Send the original Google credential (ID Token) to the backend
-            // for server-side verification. We do NOT decode/trust it locally.
+            console.log("[DEBUG-login] Payload being sent:", { credential });
             const response = await googleLogin({ credential });
+            console.log("[DEBUG-login] googleLogin response:", response?.status, response?.data);
             login(response.data.user, response.data.token);
             navigate('/');
           } catch (err) {
-            console.error("Google Login Error:", err);
+            console.error("[DEBUG-login] Google Login Error:", err);
             setError('Google login failed. Please try again.');
           }
         }}
