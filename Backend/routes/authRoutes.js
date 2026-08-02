@@ -3,9 +3,12 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const sendEmail = require('../utils/sendEmail');
 const { protect } = require('../middleware/auth');
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // ==========================================
 // 🚀 NEW: OTP BASED LOGIN SYSTEM
@@ -20,8 +23,7 @@ router.post('/send-otp', async (req, res) => {
         // User dhundho. Agar naya user hai, toh auto-create kar do (Bina password ke)
         let user = await User.findOne({ email });
         if (!user) {
-            const userCount = await User.countDocuments();
-            user = new User({ name: 'Awesome User', email, isAdmin: userCount === 0 });
+            user = new User({ name: 'Awesome User', email });
         }
 
         // Generate 6-digit OTP (e.g. 482910)
@@ -97,8 +99,7 @@ router.post('/register', async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        const userCount = await User.countDocuments();
-        const newUser = new User({ name, email, password: hashedPassword, isAdmin: userCount === 0 });
+        const newUser = new User({ name, email, password: hashedPassword });
         await newUser.save();
 
         res.status(201).json({ message: "Account created successfully!" });
@@ -247,21 +248,46 @@ router.delete('/delete/:id', protect, async (req, res) => {
 // ==========================================
 router.post('/google', async (req, res) => {
     try {
-        const { name, email } = req.body;
-        
+        const { credential } = req.body;
+
+        if (!credential) {
+            return res.status(400).json({ message: "Google credential is required" });
+        }
+
+        // Verify the Google ID Token signature, issuer, audience, expiration,
+        // email_verified, and extract the verified payload. Never trust the
+        // client-supplied name/email.
+        let ticket;
+        try {
+            ticket = await googleClient.verifyIdToken({
+                idToken: credential,
+                audience: process.env.GOOGLE_CLIENT_ID,
+            });
+        } catch (error) {
+            return res.status(401).json({ message: "Invalid Google credential" });
+        }
+
+        const payload = ticket.getPayload();
+        if (!payload || !payload.email_verified) {
+            return res.status(401).json({ message: "Google email is not verified" });
+        }
+
+        // Only fields derived from the verified token payload are used.
+        const name = payload.name || '';
+        const email = payload.email;
+        const picture = payload.picture;
+
         // Check if user already exists
         let user = await User.findOne({ email });
 
         if (!user) {
-            const userCount = await User.countDocuments();
             const generatedPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
             const hashedPassword = await bcrypt.hash(generatedPassword, 10);
 
             user = new User({
                 name,
                 email,
-                password: hashedPassword,
-                isAdmin: userCount === 0
+                password: hashedPassword
             });
             await user.save();
         }
