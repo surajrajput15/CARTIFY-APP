@@ -8,11 +8,15 @@ const GoogleLoginButton = ({ login, navigate, setError }) => {
       <GoogleLogin
         onSuccess={async (credentialResponse) => {
           try {
+            const credential = credentialResponse?.credential;
+            if (!credential) {
+              console.error("Google returned no credential (popup blocked?)", credentialResponse);
+              setError('Google sign-in was blocked. Please try again, allow the popup, and disable ad-block.');
+              return;
+            }
             // Send the original Google credential (ID Token) to the backend
             // for server-side verification. We do NOT decode/trust it locally.
-            const response = await googleLogin({
-              credential: credentialResponse.credential
-            });
+            const response = await googleLogin({ credential });
             login(response.data.user, response.data.token);
             navigate('/');
           } catch (err) {
@@ -23,7 +27,6 @@ const GoogleLoginButton = ({ login, navigate, setError }) => {
         onError={() => {
           setError('Google login was not completed.');
         }}
-        useOneTap
         shape="pill"
         theme="outline"
       />
