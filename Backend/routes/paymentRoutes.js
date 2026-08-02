@@ -23,6 +23,7 @@ router.post('/create-order', protect, async (req, res) => {
         });
 
         const { items } = req.body;
+        console.log("create-order items:", JSON.stringify(items));
 
         if (!items || !Array.isArray(items) || items.length === 0) {
             return res.status(400).json({ message: "Items array is required with productId and quantity" });
