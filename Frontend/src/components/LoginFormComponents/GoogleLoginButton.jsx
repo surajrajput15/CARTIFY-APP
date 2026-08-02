@@ -1,5 +1,4 @@
 import { GoogleLogin } from '@react-oauth/google';
-import { jwtDecode } from "jwt-decode";
 import { googleLogin } from '../../services/authApi';
 
 const GoogleLoginButton = ({ login, navigate, setError }) => {
@@ -9,10 +8,10 @@ const GoogleLoginButton = ({ login, navigate, setError }) => {
       <GoogleLogin
         onSuccess={async (credentialResponse) => {
           try {
-            const decoded = jwtDecode(credentialResponse.credential);
+            // Send the original Google credential (ID Token) to the backend
+            // for server-side verification. We do NOT decode/trust it locally.
             const response = await googleLogin({
-              name: decoded.name,
-              email: decoded.email
+              credential: credentialResponse.credential
             });
             login(response.data.user, response.data.token);
             navigate('/');

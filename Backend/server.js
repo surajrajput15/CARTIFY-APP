@@ -12,6 +12,7 @@ const requiredBackendVars = [
   { key: 'JWT_SECRET', label: 'JWT Secret' },
   { key: 'RAZORPAY_KEY_ID', label: 'Razorpay Key ID' },
   { key: 'RAZORPAY_KEY_SECRET', label: 'Razorpay Key Secret' },
+  { key: 'GOOGLE_CLIENT_ID', label: 'Google Client ID' },
 ];
 
 const missingBackend = requiredBackendVars.filter(v => !process.env[v.key]);
