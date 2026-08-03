@@ -6,9 +6,10 @@ const orderSchema = new mongoose.Schema({
         ref: 'User', 
         required: true 
     },
-    // Cart Items ka format
+    // Cart Items ka format (server-calculated, price is authoritative from Product)
     orderItems: [
         {
+            productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
             title: { type: String, required: true },
             price: { type: Number, required: true },
             quantity: { type: Number, default: 1 }
@@ -23,19 +24,21 @@ const orderSchema = new mongoose.Schema({
         state: { type: String, required: true },
         pinCode: { type: String, required: true }
     },
-    // Razorpay Payment Details
-    paymentInfo: {
-        id: { type: String },
-        status: { type: String, default: 'Paid' }
-    },
-    // Final Amount aur Status
+    // Razorpay Payment Details (server-authoritative, never accepted from the client)
+    razorpayOrderId: { type: String, unique: true, sparse: true },
+    razorpayPaymentId: { type: String },
+    // Payment lifecycle: Pending -> Paid (only ever transitioned server-side)
+    paymentStatus: { type: String, enum: ['Pending', 'Paid'], default: 'Pending' },
+    paidAt: { type: Date },
+    // Final Amount — always recomputed server-side on creation, never accepted from client
     totalPrice: { 
         type: Number, 
         required: true 
     },
+    // Order lifecycle status (orderStatus): Pending -> Processing (Paid) -> Delivered
     status: { 
         type: String, 
-        default: 'Processing' 
+        default: 'Pending' 
     }
 }, { timestamps: true });
 

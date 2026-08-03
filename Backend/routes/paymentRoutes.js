@@ -4,29 +4,51 @@ const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const { protect } = require('../middleware/auth');
 const Product = require('../models/Product');
+const Order = require('../models/Order');
 
-// 1. CREATE PAYMENT ORDER — SECURE SERVER-SIDE PRICE CALCULATION
+const razerpayInstance = () => {
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+        throw new Error('RAZORPAY_KEYS_NOT_CONFIGURED');
+    }
+    return new Razorpay({
+        key_id: process.env.RAZORPAY_KEY_ID,
+        key_secret: process.env.RAZORPAY_KEY_SECRET,
+    });
+};
+
+const validateShippingAddress = (address) => {
+    if (!address || typeof address !== 'object') return 'Shipping address is required';
+    const required = ['fullName', 'phone', 'street', 'city', 'state', 'pinCode'];
+    const missing = required.filter((field) => !address[field]);
+    if (missing.length > 0) {
+        return `Shipping address missing: ${missing.join(', ')}`;
+    }
+    return null;
+};
+
+// 1. CREATE PAYMENT ORDER — SERVER-AUTHORITATIVE
+// Recomputes prices from MongoDB, persists a Pending Order, then returns the Razorpay order.
+// The client supplies ONLY product ids + quantities and the shipping address.
 router.post('/create-order', protect, async (req, res) => {
     try {
-        if (!process.env.RAZORPAY_KEY_ID) {
-            console.error("RAZORPAY_KEY_ID is not set in environment");
-            return res.status(500).json({ message: "Payment service is not configured (missing key)" });
-        }
-        if (!process.env.RAZORPAY_KEY_SECRET) {
-            console.error("RAZORPAY_KEY_SECRET is not set in environment");
-            return res.status(500).json({ message: "Payment service is not configured (missing secret)" });
+        let razorpay;
+        try {
+            razorpay = razerpayInstance();
+        } catch (err) {
+            console.error("RAZORPAY keys are not configured in environment");
+            return res.status(500).json({ message: "Payment service is not configured" });
         }
 
-        const razorpay = new Razorpay({
-            key_id: process.env.RAZORPAY_KEY_ID,
-            key_secret: process.env.RAZORPAY_KEY_SECRET,
-        });
-
-        const { items } = req.body;
+        const { items, shippingAddress } = req.body;
         console.log("create-order items:", JSON.stringify(items));
 
         if (!items || !Array.isArray(items) || items.length === 0) {
             return res.status(400).json({ message: "Items array is required with productId and quantity" });
+        }
+
+        const addressError = validateShippingAddress(shippingAddress);
+        if (addressError) {
+            return res.status(400).json({ message: addressError });
         }
 
         for (const item of items) {
@@ -92,6 +114,8 @@ router.post('/create-order', protect, async (req, res) => {
             });
         }
 
+        // Round to 2 decimals to guard against floating point drift
+        calculatedTotal = Math.round(calculatedTotal * 100) / 100;
         const amountInPaise = Math.round(calculatedTotal * 100);
         const receipt = "rcpt_" + crypto.randomBytes(12).toString('hex');
 
@@ -101,9 +125,9 @@ router.post('/create-order', protect, async (req, res) => {
             receipt: receipt,
         };
 
-        let order;
+        let rzpOrder;
         try {
-            order = await razorpay.orders.create(options);
+            rzpOrder = await razorpay.orders.create(options);
         } catch (razorpayError) {
             console.error("Razorpay API error:", razorpayError.statusCode, razorpayError.message);
             return res.status(502).json({
@@ -111,10 +135,33 @@ router.post('/create-order', protect, async (req, res) => {
             });
         }
 
+        // Persist a Pending Order BEFORE returning — binds razorpay_order_id, server items,
+        // server total, userId and Pending paymentStatus to Mongo.
+        const pendingOrder = new Order({
+            userId: req.user._id,
+            orderItems,
+            shippingAddress,
+            razorpayOrderId: rzpOrder.id,
+            paymentStatus: 'Pending',
+            status: 'Pending',
+            totalPrice: calculatedTotal
+        });
+
+        let savedOrder;
+        try {
+            savedOrder = await pendingOrder.save();
+        } catch (saveError) {
+            console.error("Pending order save failed:", saveError.name, saveError.message);
+            throw saveError;
+        }
+
         res.status(200).json({
-            ...order,
-            calculatedAmount: calculatedTotal,
-            items: orderItems
+            order: {
+                ...rzpOrder,
+                calculatedAmount: calculatedTotal,
+                items: orderItems
+            },
+            orderId: savedOrder._id
         });
     } catch (error) {
         console.error("Payment create-order error:", error.name, error.message);
@@ -122,25 +169,104 @@ router.post('/create-order', protect, async (req, res) => {
     }
 });
 
-// 2. VERIFY PAYMENT SIGNATURE (HMAC-based, already secure)
+// 2. VERIFY PAYMENT — SIGNATURE + SERVER-STATE TRANSITION
+//    Idempotent and replay-safe:
+//      - Re-sending the SAME valid payment returns success (the order is already Paid).
+//      - A different payment against the same order is rejected.
+//      - The Pending -> Paid transition is atomic, so concurrent verify requests
+//        cannot double-finalise an order.
+//    Only Razorpay-signed payloads are accepted; the amount is re-checked against the
+//    server-persisted total. The client never supplies a price or a payment state.
 router.post('/verify-payment', protect, async (req, res) => {
     try {
         const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
-        const sign = razorpay_order_id + "|" + razorpay_payment_id;
+        if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+            return res.status(400).json({ message: "Missing payment verification fields", success: false });
+        }
+
+        // 1) Locate the order for this Razorpay order id, scoped to the authenticated user.
+        const order = await Order.findOne({
+            razorpayOrderId: razorpay_order_id,
+            userId: req.user._id
+        });
+
+        if (!order) {
+            return res.status(400).json({
+                message: "No order found for this payment. Please check the Razorpay order id.",
+                success: false
+            });
+        }
+
+        // 2) Duplicate / replay protection — idempotent by design.
+        if (order.paymentStatus === 'Paid') {
+            if (order.razorpayPaymentId === razorpay_payment_id) {
+                // Same payment already verified → safe replay, return success.
+                return res.status(200).json({
+                    message: "Payment verified successfully",
+                    success: true,
+                    order
+                });
+            }
+            return res.status(400).json({
+                message: "This payment has already been processed for a different transaction",
+                success: false
+            });
+        }
+
+        // 3) HMAC signature check (server-side secret only).
         const expectedSign = crypto
             .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-            .update(sign.toString())
+            .update(`${razorpay_order_id}|${razorpay_payment_id}`)
             .digest("hex");
 
-        if (razorpay_signature === expectedSign) {
-            return res.status(200).json({ message: "Payment verified successfully", success: true });
-        } else {
+        if (razorpay_signature !== expectedSign) {
             return res.status(400).json({ message: "Invalid signature sent!", success: false });
         }
+
+        // 4) Amount match — confirm the Razorpay order amount equals the server-persisted total.
+        let rzpOrder;
+        try {
+            rzpOrder = await razerpayInstance().orders.fetch(razorpay_order_id);
+        } catch (rzpError) {
+            console.error("Razorpay order fetch failed:", rzpError.message);
+            return res.status(502).json({ message: "Payment gateway error. Please try again.", success: false });
+        }
+
+        if (rzpOrder.id !== razorpay_order_id || Number(rzpOrder.amount) !== Math.round(order.totalPrice * 100)) {
+            return res.status(400).json({ message: "Payment amount mismatch", success: false });
+        }
+
+        // 5) Atomic transition Pending -> Paid. Only one concurrent request can win the update,
+        //    preventing duplicate finalisation (replay / double submit).
+        const finalisedOrder = await Order.findOneAndUpdate(
+            { _id: order._id, paymentStatus: 'Pending' },
+            {
+                paymentStatus: 'Paid',
+                razorpayPaymentId: razorpay_payment_id,
+                paidAt: new Date(),
+                status: 'Processing'
+            },
+            { new: true }
+        );
+
+        if (!finalisedOrder) {
+            // Lost the race — another request already finalised this order.
+            return res.status(200).json({
+                message: "Payment verified successfully",
+                success: true,
+                order
+            });
+        }
+
+        res.status(200).json({
+            message: "Payment verified successfully",
+            success: true,
+            order: finalisedOrder
+        });
     } catch (error) {
         console.error("Payment verification error:", error);
-        res.status(500).json({ message: "Error verifying payment" });
+        res.status(500).json({ message: "Error verifying payment", success: false });
     }
 });
 

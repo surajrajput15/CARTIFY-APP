@@ -223,3 +223,134 @@ Authentication and authorization have been hardened to production-grade standard
 - Lighthouse optimization
 - Final production audit
 - Release documentation
+
+---
+
+# Day 3 & 4 — Server-Authoritative Payment Lifecycle (Final)
+
+## Objective
+
+Complete Sprint 3 by redesigning the Razorpay payment architecture so the backend is the single source of truth for prices, totals, items and payment/order state. The frontend no longer supplies any monetary or state values.
+
+## Current Flow (After)
+
+```
+Frontend (CheckoutPage)
+   │  sends ONLY { items: [{ productId, quantity }], shippingAddress }
+   ▼
+POST /api/payment/create-order   ──►  recompute prices from MongoDB
+   │                                  persist Pending Order (razorpay_order_id bound)
+   ▼
+Razorpay Checkout (client-side modal)
+   │  user pays
+   ▼
+POST /api/payment/verify-payment ──►  HMAC signature check
+   │                                  amount re-check vs server total
+   │                                  atomic Pending → Paid / Processing
+   ▼
+redirect → /profile (order history; UI unchanged)
+```
+
+There is **no separate order creation step**. The Pending Order created in `create-order` is the *same* document finalised in `verify-payment`. This removes duplicate order records by construction.
+
+---
+
+## 1. Architecture Before vs After
+
+| Aspect | Before | After |
+| :--- | :--- | :--- |
+| Price source | Client sent `orderItems` + `totalPrice` | Server recomputes prices from MongoDB via `Product.find()` |
+| Order creation | `POST /api/orders/add` created a **second** order from client data | No separate endpoint — order is created once as Pending, then finalised in place |
+| Payment status | Client-supplied `paymentInfo.status` / `status` | `paymentStatus: Pending → Paid` only ever transitioned server-side |
+| Order status | Client-supplied `status` | `status: Pending → Processing` set server-side on verification |
+| Verification trust | Signature only | Signature + pending-order existence + server-amount match |
+| Duplicate handling | Multiple order docs possible | Idempotent verify + atomic DB transition; one order per payment |
+| Verification result | Non-idempotent (error on replay) | Idempotent — same payment replay returns success |
+
+## 2. Files Modified
+
+| File | Change |
+| :--- | :--- |
+| `Backend/routes/paymentRoutes.js` | `create-order` recomputes prices and persists a Pending Order before returning the Razorpay order; `verify-payment` made idempotent, atomic, replay-safe and signature/amount-checked |
+| `Backend/routes/orderRoutes.js` | Removed obsolete client-trusting `/add` and `/create` endpoints; kept `GET /myorders/:userId` |
+| `Backend/models/Order.js` | Removed legacy `paymentInfo`; added `razorpayOrderId` (unique), `razorpayPaymentId`, `paymentStatus` enum, `paidAt`, `orderItems.productId`; `status` defaults to `Pending` |
+| `Frontend/src/hooks/useRazorpayPayment.js` | Sends only `productId` + `quantity` + `shippingAddress`; verifies payment; no separate order creation; clears cart and redirects on success |
+| `Frontend/src/services/ordersApi.js` | `createPaymentOrder(items, shippingAddress)`; removed unused `createOrder` |
+| `Backend/README.md` | API docs updated to the new server-authoritative flow |
+
+## 3. Database Changes
+
+- **No new collection / model** — the existing `Order` model now carries the full lifecycle.
+- **Order document lifecycle** (single record, no duplicates):
+  1. `create-order` → `paymentStatus: "Pending"`, `status: "Pending"`, server `totalPrice`, server `orderItems`, `shippingAddress`, `razorpayOrderId`.
+  2. `verify-payment` → `paymentStatus: "Paid"`, `razorpayPaymentId`, `paidAt`, `status: "Processing"`.
+- **New fields**: `razorpayOrderId` (`unique`, `sparse`), `razorpayPaymentId`, `paymentStatus` (`enum Pending/Paid`), `paidAt`, `orderItems[].productId`.
+- **Removed**: legacy `paymentInfo` object.
+- Indexes: `razorpayOrderId` unique index (sparse) prevents two orders bound to the same Razorpay order.
+
+## 4. Security Improvements
+
+- **Server-authoritative pricing** — client `totalPrice` / item prices are ignored; prices are re-read from MongoDB at checkout.
+- **HMAC signature verification** — only Razorpay-signed `razorpay_order_id|razorpay_payment_id` payloads are accepted (secret never leaves the server).
+- **Amount re-check** — server compares Razorpay order amount against the persisted server total; forged amounts are rejected.
+- **Idempotent verification** — replaying the same valid payment returns success without re-processing; a different payment against the same order is rejected.
+- **Atomic transition** — `findOneAndUpdate({ _id, paymentStatus: 'Pending' })` means concurrent verify requests cannot double-finalise an order.
+- **User scoping** — every lookup filters by `userId` from the verified JWT; users cannot verify/read another user's orders.
+- **No client-supplied state** — payment status, order status and totals are never accepted from the client.
+- **Rate limiting** — `express-rate-limit` on `/api/auth` and general API remains active.
+
+## 5. API Flow Diagram
+
+```
+[Client]                             [Backend]                          [MongoDB]
+   │  POST /api/payment/create-order
+   │  { items:[{productId,quantity}], shippingAddress }
+   │──────────────────────────────────────►  protect(JWT)
+   │                                        Product.find(ids) ───────────► recompute total
+   │                                        Razorpay.orders.create(amount)
+   │                                        save Order (Pending) ─────────► new doc
+   │◄────────────────────────────────────── { order: rzpOrder, orderId }
+   │  Razorpay Checkout modal (client pays)
+   │  POST /api/payment/verify-payment
+   │  { razorpay_order_id, razorpay_payment_id, razorpay_signature }
+   │──────────────────────────────────────►  protect(JWT)
+   │                                        findOrder(razorpayOrderId, userId)
+   │                                        idempotency guard (already Paid?)
+   │                                        HMAC(signature) === expected?
+   │                                        fetch Razorpay order → amount match
+   │                                        findOneAndUpdate Pending → Paid ──► update
+   │◄────────────────────────────────────── { success: true, order }
+   │  clearCart(); navigate('/profile')
+```
+
+## 6. Testing Checklist
+
+| Scenario | Expectation |
+| :--- | :--- |
+| Normal payment | Order created Pending → verified to Paid/Processing; appears in `/profile` |
+| Payment failure / cancelled modal | No verify call; order stays Pending (not Paid) |
+| Duplicate verify (same payload replayed) | Returns `success: true` idempotently; no double-processing |
+| Duplicate order creation | Impossible — only one Order doc per Razorpay order id |
+| Forged payload / invalid signature | `400 Invalid signature` |
+| Modified frontend price | Ignored — server recomputes from MongoDB; Razorpay amount matches server total |
+| Replay with different payment id on same order | `400 already processed` |
+| Missing Razorpay order id | `400` on verify |
+| Order of another user | `400/403` via `userId` scoping |
+| `POST /api/orders/add` / `/create` | Removed — 404 |
+| `npm run build` (Frontend) | ✅ Passed |
+| `npm run lint` (Frontend) | ✅ No new issues (5 pre-existing errors in untouched files) |
+| Backend `node --check` on all modified files | ✅ Passed |
+
+## 7. Sprint 3 Completion Summary
+
+- ✅ Architecture refactor, custom hooks, shared UI, lazy loading (Day 1)
+- ✅ Google OAuth server-side verification + admin hardening (Day 2)
+- ✅ Server-authoritative Razorpay lifecycle (Day 3 & 4):
+  - Pending Order persisted before returning Razorpay order
+  - Idempotent, atomic, replay-safe payment verification
+  - Client-trust removed (no prices, totals, or status from the frontend)
+  - Duplicate order records eliminated
+  - Legacy `paymentInfo`, `/orders/add`, `/orders/create` and unused frontend code removed
+  - Production build passes; no new lint issues
+
+**Sprint 3 Status: Complete (100%)**

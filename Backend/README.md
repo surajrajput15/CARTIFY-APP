@@ -68,14 +68,15 @@ graph TD
 ### 🛒 Orders (`/api/orders`)
 | HTTP Method | Route | Description | Request Body |
 | :--- | :--- | :--- | :--- |
-| **POST** | `/add` | Place a new purchase order | `{ "userId": "id", "orderItems": [], "shippingAddress": {}, "totalPrice": 1200, "paymentInfo": {} }` |
 | **GET** | `/myorders/:userId` | Retrieve order history for a specific user | *None* |
+
+> **Note:** Order records are created entirely server-side during the payment flow. There is no client-facing order-creation endpoint — the client never supplies prices, totals, items or payment status.
 
 ### 💳 Payments (`/api/payment`)
 | HTTP Method | Route | Description | Request Body |
 | :--- | :--- | :--- | :--- |
-| **POST** | `/create-order` | Create a new Razorpay order ID | `{ "amount": 1299 }` |
-| **POST** | `/verify-payment` | Verify Razorpay secure signature | `{ "razorpay_order_id": "id", "razorpay_payment_id": "pay_id", "razorpay_signature": "sig" }` |
+| **POST** | `/create-order` | Recalculates prices from MongoDB, persists a **Pending order**, then returns the Razorpay order | `{ "items": [{ "productId": "id", "quantity": 2 }], "shippingAddress": { "fullName": "Name", "phone": "123", "street": "st", "city": "city", "state": "state", "pinCode": "111" } }` |
+| **POST** | `/verify-payment` | Verifies Razorpay HMAC signature, re-checks amount, finalises the stored order (idempotent & replay-safe) | `{ "razorpay_order_id": "id", "razorpay_payment_id": "pay_id", "razorpay_signature": "sig" }` |
 
 ---
 
