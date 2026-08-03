@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { createPaymentOrder, verifyPayment, createOrder } from '../services/ordersApi';
+import { createPaymentOrder, verifyPayment } from '../services/ordersApi';
 import { RAZORPAY_KEY } from '../config';
 
 const RAZORPAY_SCRIPT_URL = 'https://checkout.razorpay.com/v1/checkout.js';
@@ -65,12 +65,15 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
     }
 
     try {
-      const { data: order } = await createPaymentOrder(
+      const { data } = await createPaymentOrder(
         cart.map(item => ({
           productId: item._id || item.id,
           quantity: Math.floor(Number(item.quantity)) || 1
-        }))
+        })),
+        selectedAddress
       );
+
+      const order = data.order;
 
       const options = {
         key: RAZORPAY_KEY,
@@ -88,17 +91,11 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
             });
 
             if (verifyRes.data.success) {
-              await createOrder({
-                orderItems: cart,
-                shippingAddress: selectedAddress,
-                totalPrice: order.calculatedAmount,
-                paymentInfo: { id: response.razorpay_payment_id, status: 'Paid' },
-                status: 'Processing'
-              });
-
               toast.success("Payment Successful! 🎉 Order Placed.");
               clearCart();
               navigate('/profile');
+            } else {
+              toast.error(verifyRes.data.message || "Payment could not be verified");
             }
           } catch (err) {
             console.error("Verification Error:", err.response?.data || err.message);
