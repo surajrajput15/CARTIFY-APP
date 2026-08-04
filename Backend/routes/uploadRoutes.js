@@ -37,7 +37,8 @@ router.post('/', protect, admin, (req, res) => {
     if (!req.file) {
       return res.status(400).json({ message: 'Please select an image' });
     }
-    const imageUrl = `/uploads/${req.file.filename}`;
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const imageUrl = `${baseUrl}/uploads/${req.file.filename}`;
     res.status(200).json({ message: 'Image uploaded successfully', image: imageUrl });
   });
 });

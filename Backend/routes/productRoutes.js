@@ -132,19 +132,25 @@ router.post('/add', protect, admin, async (req, res) => {
 });
 
 // 3. POST API: Ek saath bahut saare products dalne ke liye (Admin only)
-router.post('/seed', protect, admin, async (req, res) => {
+router.post('/seed', protect, admin, async (req, res, next) => {
     try {
+        if (!Array.isArray(req.body) || req.body.length === 0) {
+            return res.status(400).json({ message: "Please provide an array of products to seed" });
+        }
         // insertMany() function array ko ek saath database me dalta hai
         const products = await Product.insertMany(req.body); 
         res.status(201).json({ message: "Dukaan full ho gayi! Saare products add ho gaye! 🛒🎉", count: products.length });
     } catch (error) {
+        if (error.name === 'ValidationError' || error.name === 'CastError') {
+            return next(error);
+        }
         console.error("❌ Products seed error:", error);
         res.status(500).json({ message: "Failed to seed products" });
     }
 });
 
 // 4. GET API: Kisi ek specific product ko uski ID se fetch karne ke liye
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req, res, next) => {
     try {
         const product = await Product.findById(req.params.id); 
         if (!product) {
@@ -152,6 +158,9 @@ router.get('/:id', async (req, res) => {
         }
         res.status(200).json(product);
     } catch (error) {
+        if (error.name === 'CastError') {
+            return next(error);
+        }
         console.error("❌ Product fetch by ID error:", error);
         res.status(500).json({ message: "Failed to fetch product" });
     }
@@ -169,11 +178,14 @@ router.delete('/clear', protect, admin, async (req, res) => {
 });
 
 // 6. DELETE API: Single product delete (Admin only)
-router.delete('/:id', protect, admin, async (req, res) => {
+router.delete('/:id', protect, admin, async (req, res, next) => {
     try {
         await Product.findByIdAndDelete(req.params.id);
         res.status(200).json({ message: "Product delete ho gaya! 🗑️" });
     } catch (error) {
+        if (error.name === 'CastError') {
+            return next(error);
+        }
         console.error("❌ Product delete error:", error);
         res.status(500).json({ message: "Failed to delete product" });
     }

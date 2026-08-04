@@ -29,7 +29,7 @@ const validateShippingAddress = (address) => {
 // 1. CREATE PAYMENT ORDER — SERVER-AUTHORITATIVE
 // Recomputes prices from MongoDB, persists a Pending Order, then returns the Razorpay order.
 // The client supplies ONLY product ids + quantities and the shipping address.
-router.post('/create-order', protect, async (req, res) => {
+router.post('/create-order', protect, async (req, res, next) => {
     try {
         let razorpay;
         try {
@@ -40,7 +40,6 @@ router.post('/create-order', protect, async (req, res) => {
         }
 
         const { items, shippingAddress } = req.body;
-        console.log("create-order items:", JSON.stringify(items));
 
         if (!items || !Array.isArray(items) || items.length === 0) {
             return res.status(400).json({ message: "Items array is required with productId and quantity" });
@@ -164,6 +163,9 @@ router.post('/create-order', protect, async (req, res) => {
             orderId: savedOrder._id
         });
     } catch (error) {
+        if (error.name === 'ValidationError' || error.name === 'CastError') {
+            return next(error);
+        }
         console.error("Payment create-order error:", error.name, error.message);
         res.status(500).json({ message: "Error creating Razorpay order" });
     }

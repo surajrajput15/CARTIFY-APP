@@ -2,6 +2,7 @@ import { ShoppingCart, Star } from 'lucide-react';
 import { useCart } from '../context/cartContext';
 import { Link } from 'react-router-dom';
 import { getStockStatus } from '../utils/stockStatus';
+import { resolveImageUrl } from '../utils/imageUrl';
 
 const ProductCard = ({ product }) => {
   const { addToCart } = useCart();
@@ -20,7 +21,7 @@ const ProductCard = ({ product }) => {
           {product.category}
         </span>
         <img 
-          src={product.image} 
+          src={resolveImageUrl(product.image)} 
           alt={product.title} 
           loading="lazy"
           className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500 ease-out"

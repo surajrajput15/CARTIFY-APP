@@ -54,12 +54,6 @@ const generalLimiter = rateLimit({
 
 app.use(generalLimiter);
 
-// 🔍 DIAGNOSTIC LOGGING - har request Render Logs mein dikhega
-app.use((req, res, next) => {
-  console.log(`📥 Incoming: ${req.method} ${req.originalUrl}`);
-  next();
-});
-
 // Middleware
 app.use(cors({
   origin: function (origin, callback) {
@@ -112,9 +106,8 @@ app.get('/', (req, res) => {
 // Favicon route — browser har jagah favicon maangta hai, 404 na aaye isliye
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 
-// 🔍 DIAGNOSTIC 404 HANDLER - agar koi route match nahi hua to ye chalega
+// 404 handler - no route matched
 app.use((req, res) => {
-  console.log(`❌ No route matched for: ${req.method} ${req.originalUrl}`);
   res.status(404).json({ message: "Route not found" });
 });
 

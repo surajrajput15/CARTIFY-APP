@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/cartContext';
 import { ShoppingCart, Star, ArrowLeft, RefreshCw, AlertTriangle, Minus, Plus } from 'lucide-react';
 import { getStockStatus } from '../utils/stockStatus';
+import { resolveImageUrl } from '../utils/imageUrl';
 import StockBadge from '../components/StockBadge';
 import toast from 'react-hot-toast';
 import { fetchProductById, fetchProducts } from '../services/productsApi';
@@ -132,7 +133,7 @@ const ProductDetailsPage = () => {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col md:flex-row">
         <div className="md:w-1/2 p-8 bg-gray-50 flex justify-center items-center">
           <img 
-            src={product.image} 
+            src={resolveImageUrl(product.image)} 
             alt={product.title} 
             loading="lazy"
             className="max-h-[400px] object-contain hover:scale-105 transition-transform duration-300"

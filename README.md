@@ -2,7 +2,7 @@
 
 # 🛒 Cartify
 
-### A Premium Full-Stack E-Commerce Platform — React + Node.js + MongoDB
+### A Full-Stack E-Commerce Platform — React + Node.js + MongoDB
 
 [![React](https://img.shields.io/badge/React-19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
@@ -24,7 +24,7 @@
 
 | Status | Phase |
 |--------|-------|
-| 🟢 Production Ready | Phase 3 — Engineering for Production |
+| 🟡 Live in Production (Pre-1.0) | Phase 3 — Engineering for Production |
 
 ### Sprint Progress
 
@@ -32,7 +32,7 @@
 |--------|--------|
 | Sprint 1 | ✅ Complete |
 | Sprint 2 | ✅ Complete |
-| Sprint 3 | 🚧 In Progress (~25%) |
+| Sprint 3 | ✅ Complete |
 | Sprint 4 | 🚧 Coming Soon |
 
 ---
@@ -63,14 +63,14 @@
 
 ## 📖 About The Project
 
-**Cartify** is a **production-ready**, full-stack e-commerce platform built with React, Node.js, Express, and MongoDB. It delivers a secure, performant, and accessible shopping experience with seamless Razorpay payment integration.
+**Cartify** is a full-stack e-commerce platform built with React, Node.js, Express, and MongoDB. It implements password, Google OAuth, and OTP-based authentication, Razorpay payments with server-side verification, and is deployed on Vercel (frontend) and Render (backend).
 
 ### Key Highlights
 
 - **Secure Authentication** — Multi-method auth: password login, Google OAuth, and OTP-based passwordless login
 - **Payment Verification** — Server-side price calculation with HMAC SHA256 signature validation via Razorpay
 - **Role-based Authorization** — Admin and user route separation with JWT-protected middleware
-- **Performance Optimization** — Lazy loaded images, responsive layout, skeleton loading, and reduced motion support
+- **Performance Optimization** — Lazy-loaded pages and images, responsive layout, and reduced motion support
 - **Accessibility** — ARIA labels, keyboard navigation, screen reader support, and accessible forms
 - **SEO** — Meta tags, semantic HTML structure, and optimized page load
 - **Production Deployment** — Frontend on Vercel, backend on Render, database on MongoDB Atlas
@@ -88,7 +88,6 @@
 - **Shared custom hooks** — Data-fetching and side-effect logic reused across pages
 - **Shared reusable UI components** — Consistent, maintainable building blocks
 - **Performance optimizations** — Memoization audit and reduced unnecessary re-renders
-- **Improved maintainability** — Smaller components and centralized business logic
 
 ---
 
@@ -98,10 +97,15 @@ Cartify follows a sprint-based engineering process focused on building productio
 
 | Document | Description |
 |----------|-------------|
-| [Phase 3 — Engineering for Production](docs/PHASE-03-ENGINEERING-FOR-PRODUCTION.md) | Engineering approach, architecture decisions, and production standards |
-| [Production Readiness Audit](docs/PRODUCTION-READINESS-AUDIT.md) | Security, performance, and accessibility audit results |
-| [Sprint 1 — Security Foundation](docs/SPRINT-01-COMPLETE.md) | Completed security hardening and authentication improvements |
-| [Sprint 2 — Production Polish & UX](docs/SPRINT-02-COMPLETE.md) | Completed UX enhancements and production polish |
+| [Phase 3 — Engineering for Production](Docs/PHASE-03-ENGINEERING-FOR-PRODUCTION.md) | Engineering approach, architecture decisions, and production standards |
+| [Phase 3 Audit](Docs/PHASE-03-AUDIT.md) | Security, performance, and accessibility audit results |
+| [Security Notes](Docs/SECURITY.md) | Security hardening decisions and practices |
+| [Known Bugs](Docs/BUGS.md) | Confirmed, tracked bugs |
+| [Roadmap](Docs/ROADMAP.md) | Planned feature and engineering work |
+| [Changelog](Docs/CHANGELOG.md) | Version history |
+| [Sprint 1 — Security Foundation](Docs/SPRINT-01-COMPLETE.md) | Completed security hardening and authentication improvements |
+| [Sprint 2 — Production Polish & UX](Docs/SPRINT-02-COMPLETE.md) | Completed UX enhancements and production polish |
+| [Sprint 3 — Performance & Architecture](Docs/SPRINT-03-COMPLETE.md) | Completed performance and architecture improvements |
 
 ---
 
@@ -126,9 +130,9 @@ Cartify follows a sprint-based engineering process focused on building productio
 ### 🔐 Authentication (3 Ways)
 | Method | Description |
 |--------|-------------|
-| 📧 **OTP Login** | Passwordless email OTP via Brevo API — 6-digit code, 10-min expiry |
+| 📧 **OTP Login** | Passwordless email OTP via Brevo API (Gmail SMTP fallback) — 6-digit code, 10-min expiry |
 | 🔑 **Password Auth** | Traditional email/password with bcrypt hashing & JWT |
-| 🅶 **Google OAuth** | One-click login with Google account |
+| 🅶 **Google OAuth** | One-click login with Google account (server-side ID token verification) |
 
 ### 🛍️ Shopping Experience
 - **Product Catalog** — Grid view with category filter, search, pagination (12/page)
@@ -140,7 +144,6 @@ Cartify follows a sprint-based engineering process focused on building productio
 - **Profile Management** — Edit name, delete account
 - **Order History** — View all past orders with status
 - **Address Book** — Full CRUD for delivery addresses
-- **Account Settings** — Delete account permanently
 
 ### 🛠️ Admin Panel
 - **Product Management** — Add, view, delete, update products
@@ -160,11 +163,11 @@ Cartify follows a sprint-based engineering process focused on building productio
 
 ### 🚀 Production Engineering
 - **Server-side payment calculation** — All pricing computed server-side to prevent tampering
-- **Secure JWT authentication** — Token-based auth with httpOnly practices
+- **Secure JWT authentication** — Stateless token auth via the Authorization header (Bearer token)
 - **Role-based Admin Authorization** — Separate admin routes with middleware protection
 - **Helmet security middleware** — HTTP header hardening against common attacks
 - **Express Rate Limiting** — Prevents brute-force and abuse
-- **Input Validation** — Server-side validation for all API inputs
+- **Input Validation** — Server-side validation for API inputs
 - **Production Error Handling** — Structured error responses with proper status codes
 - **Responsive UI** — Mobile-first design across all pages
 - **Accessibility Improvements** — ARIA labels, semantic HTML, keyboard navigation
@@ -174,8 +177,8 @@ Cartify follows a sprint-based engineering process focused on building productio
 - **Helmet** — HTTP header hardening against common web vulnerabilities
 - **Rate Limiting** — Prevents brute-force and DDoS abuse on API endpoints
 - **Server-side Price Validation** — All pricing computed server-side to prevent tampering
-- **JWT Authentication** — Stateless, secure token-based auth with httpOnly practices
-- **Google OAuth** — One-click social login integration
+- **JWT Authentication** — Stateless, secure token-based auth (Bearer header, not httpOnly cookies)
+- **Google OAuth** — One-click social login with server-side ID token verification
 - **OTP Login** — Passwordless email-based authentication
 - **Role-based Authorization** — Admin and user route separation with middleware
 - **Environment Validation** — Startup checks for required configuration variables
@@ -198,7 +201,7 @@ Cartify follows a sprint-based engineering process focused on building productio
 | **Styling** | Tailwind CSS 4 | Utility-first CSS |
 | **Routing** | React Router DOM 7 | Client-side routing |
 | **HTTP Client** | Axios 1 (with JWT interceptor) | API calls |
-| **Auth** | @react-oauth/google, jwt-decode | Google OAuth |
+| **Auth** | @react-oauth/google | Google OAuth |
 | **Icons** | Lucide React | Icon library |
 | **Notifications** | React Hot Toast | Toast alerts |
 | **Code Splitting** | React.lazy + Suspense | Route-based lazy page loading |
@@ -242,7 +245,7 @@ Cartify implements multiple layers of security to protect users and data:
 - **Responsive Layout** — Mobile-first design adapts across all screen sizes
 - **Reduced Motion Support** — Respects user `prefers-reduced-motion` settings
 - **Optimized Bundle** — Vite-powered build with tree-shaking and code splitting
-- **Skeleton Loading** — Placeholder UI during data fetching for perceived performance
+- **Code Splitting** — Route-based `React.lazy` + `Suspense` loading
 
 ---
 
@@ -262,25 +265,25 @@ Cartify implements multiple layers of security to protect users and data:
 |------|--------|
 | Production Build Passing | ✅ |
 | Responsive Design | ✅ |
-| Authentication | ✅ |
+| Authentication | ⚠️ JWT + OTP work; Google OAuth requires `GOOGLE_CLIENT_ID` set on the backend |
 | Authorization | ✅ |
 | Payment Integration | ✅ |
 | Error Handling | ✅ |
-| SEO | ✅ |
-| Accessibility | ✅ |
+| SEO | ⚠️ robots.txt is not served |
+| Accessibility | ⚠️ Known contrast issues |
 | Environment Validation | ✅ |
-| Secure API | ✅ |
+| Secure API | ⚠️ JWT stored in localStorage (XSS-exposed) |
+
+See [Known Bugs](Docs/BUGS.md) for the tracked defect list.
 
 ---
 
 ## 🗺 Roadmap
 
-### Sprint 3 — Performance & Architecture
-- Architecture Improvements
-- Code Splitting
-- Performance Optimization
-- Error Boundary Implementation
-- Caching Strategy
+### Completed
+- Sprint 1 — Security Foundation
+- Sprint 2 — Production Polish & UX
+- Sprint 3 — Performance & Architecture
 
 ### Sprint 4 — Final Optimization & Testing
 - Testing Suite
@@ -294,34 +297,44 @@ Cartify implements multiple layers of security to protect users and data:
 
 ```
 CARTIFY-APP/
-├── docs/                    # Engineering documentation
+├── Docs/                    # Engineering documentation
 │   ├── PHASE-03-ENGINEERING-FOR-PRODUCTION.md
-│   ├── PRODUCTION-READINESS-AUDIT.md
+│   ├── PHASE-03-AUDIT.md
+│   ├── SECURITY.md
+│   ├── BUGS.md
+│   ├── ROADMAP.md
+│   ├── CHANGELOG.md
 │   ├── SPRINT-01-COMPLETE.md
-│   └── SPRINT-02-COMPLETE.md
+│   ├── SPRINT-02-COMPLETE.md
+│   └── SPRINT-03-COMPLETE.md
 │
 ├── Frontend/                # React + Vite frontend
 │   ├── public/
 │   ├── screenshots/         # App screenshots
 │   ├── src/
-│   │   ├── api/             # Axios config & interceptors
-│   │   ├── components/      # Navbar, HeroBanner, ProductCard
+│   │   ├── api/             # Axios config & interceptor
+│   │   ├── assets/
+│   │   ├── components/      # Navbar, HeroBanner, ProductCard, admin/, checkout/, profile/
 │   │   ├── context/         # AuthContext, CartContext
-│   │   ├── pages/           # 7 pages (Home, Cart, Login, Profile, etc.)
-│   │   ├── App.jsx          # Router setup
+│   │   ├── data/            # Seed data
+│   │   ├── hooks/           # Reusable data-fetching hooks
+│   │   ├── pages/           # 8 pages (Home, Cart, Login, Profile, etc.)
+│   │   ├── services/        # API service modules
+│   │   ├── utils/           # Shared helper functions
+│   │   ├── App.jsx          # Router setup (code-split)
 │   │   ├── main.jsx         # Entry point
-│   │   └── config.js        # API URL & Razorpay key
+│   │   └── config.js        # API URL, Razorpay & Google client IDs
 │   ├── index.html
 │   ├── vite.config.js
 │   ├── tailwind.config.js
 │   └── vercel.json
 │
 ├── Backend/                 # Node.js + Express backend
-│   ├── middleware/           # Auth middleware (JWT protect, admin)
+│   ├── middleware/          # Auth middleware (JWT protect, admin)
 │   ├── models/              # Mongoose schemas
 │   ├── routes/              # 6 route files
-│   ├── utils/               # Email utility
 │   ├── scripts/             # Admin setup script
+│   ├── utils/               # Email utility
 │   ├── server.js            # Express entry point
 │   ├── seedProducts.js      # Product seeder
 │   └── .env.example
@@ -394,6 +407,7 @@ Required environment variables:
 | `JWT_SECRET` | Secret key for JWT signing |
 | `RAZORPAY_KEY_ID` | Razorpay test key ID |
 | `RAZORPAY_KEY_SECRET` | Razorpay test key secret |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID (must match the frontend's `VITE_GOOGLE_CLIENT_ID`) |
 | `BREVO_API_KEY` | Brevo transactional email API key |
 
 ### 3️⃣ Configure Frontend
@@ -402,11 +416,12 @@ Required environment variables:
 cd Frontend
 ```
 
-Update `src/config.js` or create `.env`:
+Create `.env`:
 
 ```env
 VITE_API_URL=http://localhost:5000
 VITE_RAZORPAY_KEY=rzp_test_your_key
+VITE_GOOGLE_CLIENT_ID=your_google_client_id
 ```
 
 ### 4️⃣ Seed Database (Optional)
@@ -459,15 +474,15 @@ npm run dev
 ### Orders (`/api/orders`)
 | Method | Route | Auth | Description |
 |--------|-------|------|-------------|
-| POST | `/create` | JWT | Create new order |
-| POST | `/add` | JWT | Save order after payment |
-| GET | `/myorders/:userId` | JWT | User order history |
+| GET | `/myorders/:userId` | JWT | User order history (own orders only) |
+
+> Order records are created server-side during the payment flow (see `/api/payment` below); the client never submits prices, totals, or order status.
 
 ### Payments (`/api/payment`)
 | Method | Route | Auth | Description |
 |--------|-------|------|-------------|
-| POST | `/create-order` | JWT | Create Razorpay order |
-| POST | `/verify-payment` | JWT | Verify payment signature |
+| POST | `/create-order` | JWT | Create Razorpay order (server-computed total, persists a Pending order) |
+| POST | `/verify-payment` | JWT | Verify payment signature & finalise the order to Paid |
 
 ### Addresses (`/api/addresses`)
 | Method | Route | Auth | Description |
@@ -492,7 +507,7 @@ npm run dev
 | **Live URL** | [https://cartify-hub.vercel.app](https://cartify-hub.vercel.app) |
 | **Root Directory** | `Frontend` |
 | **Framework Preset** | Vite |
-| **Environment Variables** | `VITE_API_URL`, `VITE_RAZORPAY_KEY` |
+| **Environment Variables** | `VITE_API_URL`, `VITE_RAZORPAY_KEY`, `VITE_GOOGLE_CLIENT_ID` |
 
 ### Backend — Render
 
@@ -511,7 +526,7 @@ npm run dev
 | **Backend** | ✅ Live on Render |
 | **Database** | ✅ MongoDB Atlas |
 | **Payment** | ✅ Razorpay Test Mode |
-| **Authentication** | ✅ JWT + Google OAuth + OTP |
+| **Authentication** | ⚠️ JWT + OTP live; Google OAuth requires `GOOGLE_CLIENT_ID` set on Render |
 | **Build** | ✅ Production Build Passing |
 
 ---
@@ -521,8 +536,8 @@ npm run dev
 | Category | Detail |
 |----------|--------|
 | **Phase** | Engineering for Production |
-| **Current Progress** | ✅ Sprint 1 Complete · ✅ Sprint 2 Complete · 🚧 Sprint 3 In Progress (~25%) |
-| **Production Readiness** | ✅ Ready |
+| **Current Progress** | ✅ Sprint 1 Complete · ✅ Sprint 2 Complete · ✅ Sprint 3 Complete · 🚧 Sprint 4 Coming Soon |
+| **Production Readiness** | ⚠️ Pre-1.0 — known issues tracked in [Docs/BUGS.md](Docs/BUGS.md) |
 | **Build Status** | ✅ Passing |
 
 ---
