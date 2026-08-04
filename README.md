@@ -20,28 +20,9 @@
 
 </div>
 
-## 🟢 Project Status
-
-| Status | Phase |
-|--------|-------|
-| 🟡 Live in Production (Pre-1.0) | Phase 3 — Engineering for Production |
-
-### Sprint Progress
-
-| Sprint | Status |
-|--------|--------|
-| Sprint 1 | ✅ Complete |
-| Sprint 2 | ✅ Complete |
-| Sprint 3 | ✅ Complete |
-| Sprint 4 | 🚧 Coming Soon |
-
----
-
 ## 📋 Table of Contents
 
-- [🟢 Project Status](#-project-status)
 - [📖 About The Project](#-about-the-project)
-- [🚀 Latest Improvements](#-latest-improvements)
 - [📚 Engineering Documentation](#-engineering-documentation)
 - [📸 Screenshots](#-screenshots)
 - [✨ Features](#-features)
@@ -50,13 +31,11 @@
 - [⚡ Performance](#-performance)
 - [♿ Accessibility](#-accessibility)
 - [🚀 Production Readiness](#-production-readiness)
-- [🗺 Roadmap](#-roadmap)
 - [📁 Monorepo Structure](#-monorepo-structure)
 - [⚡ Architecture](#-architecture)
 - [🚀 Getting Started](#-getting-started)
 - [🔌 API Endpoints](#-api-endpoints)
 - [🌍 Deployment](#-deployment)
-- [🏆 Current Project Status](#-current-project-status)
 - [📬 Contact](#-contact)
 
 ---
@@ -76,18 +55,6 @@
 - **Production Deployment** — Frontend on Vercel, backend on Render, database on MongoDB Atlas
 
 > 🧑‍💻 Built by **Suraj Bhan Pratap Singh** as a portfolio project to demonstrate full-stack development, authentication flows, payment gateway integration, and production deployment on Vercel + Render.
-
----
-
-## 🚀 Latest Improvements
-
-- **Production-ready architecture** — Clean separation of concerns across pages, hooks, services, and components
-- **Route-based code splitting** — Pages loaded on demand with `React.lazy` + `Suspense` for faster initial load
-- **Global Error Boundary** — Catches runtime errors and renders a friendly fallback UI
-- **Reusable API Service Layer** — All HTTP logic extracted into reusable service modules
-- **Shared custom hooks** — Data-fetching and side-effect logic reused across pages
-- **Shared reusable UI components** — Consistent, maintainable building blocks
-- **Performance optimizations** — Memoization audit and reduced unnecessary re-renders
 
 ---
 
@@ -275,21 +242,6 @@ Cartify implements multiple layers of security to protect users and data:
 | Secure API | ⚠️ JWT stored in localStorage (XSS-exposed) |
 
 See [Known Bugs](Docs/BUGS.md) for the tracked defect list.
-
----
-
-## 🗺 Roadmap
-
-### Completed
-- Sprint 1 — Security Foundation
-- Sprint 2 — Production Polish & UX
-- Sprint 3 — Performance & Architecture
-
-### Sprint 4 — Final Optimization & Testing
-- Testing Suite
-- CI/CD Pipeline
-- Monitoring & Logging
-- Analytics Integration
 
 ---
 
@@ -528,17 +480,6 @@ npm run dev
 | **Payment** | ✅ Razorpay Test Mode |
 | **Authentication** | ⚠️ JWT + OTP live; Google OAuth requires `GOOGLE_CLIENT_ID` set on Render |
 | **Build** | ✅ Production Build Passing |
-
----
-
-## 🏆 Current Project Status
-
-| Category | Detail |
-|----------|--------|
-| **Phase** | Engineering for Production |
-| **Current Progress** | ✅ Sprint 1 Complete · ✅ Sprint 2 Complete · ✅ Sprint 3 Complete · 🚧 Sprint 4 Coming Soon |
-| **Production Readiness** | ⚠️ Pre-1.0 — known issues tracked in [Docs/BUGS.md](Docs/BUGS.md) |
-| **Build Status** | ✅ Passing |
 
 ---
 
