@@ -4,3 +4,8 @@ dist/
 *.log
 .DS_Store
 nul
+
+# QA test artifacts (keep test scripts, ignore generated output)
+qa/node_modules/
+qa/*.png
+qa/lh-prod.json

@@ -4,12 +4,15 @@ const Address = require('../models/Address');
 const { protect } = require('../middleware/auth');
 
 // 1. ADD NEW ADDRESS
-router.post('/add', protect, async (req, res) => {
+router.post('/add', protect, async (req, res, next) => {
     try {
         const newAddress = new Address({ ...req.body, userId: req.user._id });
         const savedAddress = await newAddress.save();
         res.status(201).json(savedAddress);
     } catch (error) {
+        if (error.name === 'ValidationError' || error.name === 'CastError') {
+            return next(error);
+        }
         console.error("❌ Address save error:", error);
         res.status(500).json({ message: "Error saving address" });
     }
@@ -30,7 +33,7 @@ router.get('/:userId', protect, async (req, res) => {
 });
 
 // 3. DELETE ADDRESS
-router.delete('/:id', protect, async (req, res) => {
+router.delete('/:id', protect, async (req, res, next) => {
     try {
         const address = await Address.findById(req.params.id);
         if (!address) return res.status(404).json({ message: "Address not found" });
@@ -40,6 +43,9 @@ router.delete('/:id', protect, async (req, res) => {
         await Address.findByIdAndDelete(req.params.id);
         res.status(200).json({ message: "Address deleted successfully" });
     } catch (error) {
+        if (error.name === 'CastError') {
+            return next(error);
+        }
         console.error("❌ Address delete error:", error);
         res.status(500).json({ message: "Error deleting address" });
     }

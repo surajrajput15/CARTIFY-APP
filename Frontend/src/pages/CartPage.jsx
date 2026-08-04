@@ -2,6 +2,7 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../context/cartContext';
+import { resolveImageUrl } from '../utils/imageUrl';
 import { Trash2, Plus, Minus } from 'lucide-react';
 
 const CartPage = () => {
@@ -44,7 +45,7 @@ const CartPage = () => {
         <div className="lg:w-2/3 space-y-4">
           {cart.map((item) => (
             <div key={item._id || item.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row items-center gap-4">
-              <img src={item.image} alt={item.title} loading="lazy" className="w-24 h-24 object-cover rounded-md border" />
+              <img src={resolveImageUrl(item.image)} alt={item.title} loading="lazy" className="w-24 h-24 object-cover rounded-md border" />
               
               <div className="flex-1 text-center sm:text-left">
                 <h3 className="font-semibold text-gray-800 text-lg">{item.title}</h3>

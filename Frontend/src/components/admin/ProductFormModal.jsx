@@ -1,4 +1,5 @@
 import { Loader2 } from 'lucide-react';
+import { resolveImageUrl } from '../../utils/imageUrl';
 
 const CATEGORIES = ['electronics', 'clothing', 'footwear', 'accessories', 'furniture', 'beauty'];
 
@@ -16,7 +17,7 @@ const ProductFormModal = ({ form, setForm, saving, isEditing, onImageUpload, onS
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Product Image</label>
           <input type="file" accept="image/*" onChange={onImageUpload} className="w-full px-4 py-3 rounded-xl border border-gray-200" />
-          {form.image && <img src={form.image.startsWith('/uploads') ? `https://cartify-api-10g3.onrender.com${form.image}` : form.image} alt="preview" className="mt-2 h-24 object-contain rounded-lg border" />}
+          {form.image && <img src={resolveImageUrl(form.image)} alt="preview" className="mt-2 h-24 object-contain rounded-lg border" />}
         </div>
         <div className="flex gap-4">
           <input type="number" step="0.1" placeholder="Rating (0-5)" value={form.rating.rate} onChange={(e) => setForm({...form, rating: {...form.rating, rate: e.target.value}})} className="w-1/2 px-4 py-3 rounded-xl border border-gray-200 focus:ring-teal-500 focus:border-teal-500" />

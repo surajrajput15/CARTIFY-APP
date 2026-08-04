@@ -92,6 +92,9 @@ router.post('/register', async (req, res) => {
     try {
         const { name, email, password } = req.body;
         if (!name || !email || !password) return res.status(400).json({ message: "Please fill in all fields." });
+        if (typeof name !== 'string' || typeof email !== 'string' || typeof password !== 'string') {
+            return res.status(400).json({ message: "Please fill in all fields." });
+        }
 
         const userExists = await User.findOne({ email });
         if (userExists) return res.status(400).json({ message: "User already exists." });
@@ -112,6 +115,7 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
+        if (!email || !password) return res.status(400).json({ message: "Please enter email and password." });
         const user = await User.findOne({ email });
         
         if (!user || !user.password) {
@@ -173,6 +177,10 @@ router.post('/forgot-password', async (req, res) => {
 router.post('/reset-password', async (req, res) => {
     try {
         const { email, otp, newPassword } = req.body;
+
+        if (!email || !otp || !newPassword) {
+            return res.status(400).json({ message: "Email, OTP and new password are required." });
+        }
 
         const user = await User.findOne({ email });
         if (!user) return res.status(404).json({ message: "User not found." });

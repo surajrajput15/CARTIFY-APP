@@ -1,5 +1,6 @@
 import { Edit3, Trash2 } from 'lucide-react';
 import { getStockStatus } from '../../utils/stockStatus';
+import { resolveImageUrl } from '../../utils/imageUrl';
 import StockBadge from '../StockBadge';
 
 const ProductTable = ({ products, onEdit, onDelete }) => (
@@ -23,7 +24,7 @@ const ProductTable = ({ products, onEdit, onDelete }) => (
             return (
               <tr key={p._id} className="hover:bg-gray-50 transition-colors">
                 <td className="p-4">
-                  <img src={p.image} alt={p.title} loading="lazy" className="h-12 w-12 object-contain rounded-lg bg-gray-50" />
+                  <img src={resolveImageUrl(p.image)} alt={p.title} loading="lazy" className="h-12 w-12 object-contain rounded-lg bg-gray-50" />
                 </td>
                 <td className="p-4 font-medium text-gray-800 max-w-xs truncate">{p.title}</td>
                 <td className="p-4 capitalize text-gray-600">{p.category}</td>
