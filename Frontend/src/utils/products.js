@@ -4,6 +4,7 @@ export const EMPTY_PRODUCT_FORM = {
   description: '',
   category: 'electronics',
   image: '',
+  countInStock: 20,
   rating: { rate: 0, count: 0 }
 };
 

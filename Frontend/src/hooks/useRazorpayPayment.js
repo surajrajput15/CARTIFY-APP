@@ -75,6 +75,11 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
 
       const order = data.order;
 
+      // Guards the modal-ondismiss handler so it only reports a user-initiated
+      // cancellation. Without this, the modal ALSO dismisses after a successful
+      // payment or a payment.failed event, producing a confusing duplicate toast.
+      let paymentResultHandled = false;
+
       const options = {
         key: RAZORPAY_KEY,
         amount: order.amount,
@@ -83,6 +88,7 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
         description: "Secure Checkout",
         order_id: order.id,
         handler: async function (response) {
+          paymentResultHandled = true;
           try {
             const verifyRes = await verifyPayment({
               razorpay_order_id: response.razorpay_order_id,
@@ -102,6 +108,12 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
             toast.error(err.response?.data?.message || "Payment verification failed");
           }
         },
+        modal: {
+          ondismiss: function () {
+            if (paymentResultHandled) return;
+            toast.error("Payment cancelled. You can retry whenever you're ready.");
+          },
+        },
         prefill: {
           name: user.name,
           email: user.email,
@@ -113,6 +125,13 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
       };
 
       const paymentObject = new window.Razorpay(options);
+      paymentObject.on('payment.failed', function (response) {
+        paymentResultHandled = true;
+        const failureReason = response?.error?.description
+          ? `Payment failed: ${response.error.description}`
+          : 'Payment failed. Please try again.';
+        toast.error(failureReason);
+      });
       paymentObject.open();
 
     } catch (error) {

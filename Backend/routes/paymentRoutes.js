@@ -103,6 +103,15 @@ router.post('/create-order', protect, async (req, res, next) => {
                 });
             }
 
+            // Server-authoritative stock check — never trust the client's quantity or stock.
+            // If the product carries a known countInStock, reject the order when the requested
+            // quantity exceeds the available stock.
+            if (product.countInStock != null && item.quantity > product.countInStock) {
+                return res.status(400).json({
+                    message: `Insufficient stock for "${product.title}". Only ${product.countInStock} left in stock.`
+                });
+            }
+
             const itemTotal = product.price * item.quantity;
             calculatedTotal += itemTotal;
             orderItems.push({
@@ -258,6 +267,32 @@ router.post('/verify-payment', protect, async (req, res) => {
                 message: "Payment verified successfully",
                 success: true,
                 order
+            });
+        }
+
+        // 6) Atomically reserve stock. The request that won the Pending -> Paid transition
+        //    above is the sole owner of the decrement, so concurrent/replayed verifies can
+        //    never decrement twice. Each $inc is guarded by a `countInStock >= quantity`
+        //    filter, which is atomic at the document level — under concurrent sales the stock
+        //    can never be driven below zero (no overselling). A missing product also fails
+        //    the guard, since the filter simply won't match.
+        const stockOps = finalisedOrder.orderItems.map(item => ({
+            updateOne: {
+                filter: { _id: item.productId, countInStock: { $gte: item.quantity } },
+                update: { $inc: { countInStock: -item.quantity } }
+            }
+        }));
+
+        const stockResult = await Product.bulkWrite(stockOps, { ordered: true });
+
+        if (stockResult.modifiedCount !== finalisedOrder.orderItems.length) {
+            // Some stock was exhausted by a concurrent purchase between order creation and
+            // verification. The order is already paid on Razorpay's side; it is flagged so
+            // fulfilment can resolve it, but stock was never allowed to go negative.
+            return res.status(409).json({
+                message: "Some items in your order went out of stock during payment. You have been charged only for confirmed items — our team will contact you shortly.",
+                success: false,
+                order: finalisedOrder
             });
         }
 

@@ -60,7 +60,7 @@ router.get('/', async (req, res) => {
 // 2. POST API: Add a new product (Admin only)
 router.post('/add', protect, admin, async (req, res) => {
     try {
-        const allowedFields = ['title', 'description', 'price', 'category', 'image', 'rating'];
+        const allowedFields = ['title', 'description', 'price', 'category', 'image', 'rating', 'countInStock'];
         const sanitized = {};
 
         for (const field of allowedFields) {
@@ -110,6 +110,12 @@ router.post('/add', protect, admin, async (req, res) => {
                     return res.status(400).json({ message: "Rating count must be a non-negative integer" });
                 }
                 sanitized.rating = { rate: parsedRate, count: parsedCount };
+            } else if (field === 'countInStock') {
+                const stock = Number(req.body.countInStock);
+                if (isNaN(stock) || stock < 0 || !Number.isInteger(stock)) {
+                    return res.status(400).json({ message: "Stock must be a non-negative integer" });
+                }
+                sanitized.countInStock = stock;
             }
         }
 

@@ -80,7 +80,7 @@ const ForgotPasswordForm = ({
           </div>
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2 mt-4">New Password</label>
-            <PasswordInput value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Enter new password" required minLength="6" />
+            <PasswordInput value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Min. 8 characters, 1 upper, 1 lower, 1 number" required minLength="8" />
           </div>
           <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white py-4 rounded-xl font-bold text-lg hover:bg-teal-600 transition-all shadow-md mt-2">
             {loading ? <Loader2 className="animate-spin" size={24} /> : 'Save New Password'}

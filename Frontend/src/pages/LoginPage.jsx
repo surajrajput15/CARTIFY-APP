@@ -11,6 +11,14 @@ const LoginPage = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  const validatePassword = (value) => {
+    if (value.length < 8) return 'Password must be at least 8 characters long';
+    if (!/[A-Z]/.test(value)) return 'Password must contain at least one uppercase letter';
+    if (!/[a-z]/.test(value)) return 'Password must contain at least one lowercase letter';
+    if (!/[0-9]/.test(value)) return 'Password must contain at least one number';
+    return null;
+  };
+
   const [loginMethod, setLoginMethod] = useState('otp');
   const [isRegistering, setIsRegistering] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
@@ -44,7 +52,8 @@ const LoginPage = () => {
     e.preventDefault();
     const otpValue = otp.join('');
     if (otpValue.length < 6) return setError('Please enter all 6 digits.');
-    if (newPassword.length < 6) return setError('Password must be at least 6 characters.');
+    const passwordError = validatePassword(newPassword);
+    if (passwordError) return setError(passwordError);
 
     setError(''); setLoading(true);
     try {
@@ -97,6 +106,11 @@ const LoginPage = () => {
     setError(''); setSuccessMsg(''); setLoading(true);
     try {
       if (isRegistering) {
+        const passwordError = validatePassword(password);
+        if (passwordError) {
+          setError(passwordError);
+          return;
+        }
         await register({ name, email, password });
         setSuccessMsg('Account created successfully! Please log in.');
         setIsRegistering(false);
