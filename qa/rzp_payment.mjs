@@ -1,10 +1,10 @@
 import { chromium } from 'playwright-core';
 import { createRequire } from 'module';
+import path from 'path';
 const require = createRequire(import.meta.url);
-const mongoose = require('C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/Backend/node_modules/mongoose');
-const dotenv = require('C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/Backend/node_modules/dotenv');
-dotenv.config({ path: 'C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/Backend/.env' });
-const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+const { CHROME, qaDir, loadBackendEnv, getMongoose, assertLocalDb } = require('./qa-utils.cjs');
+loadBackendEnv();
+const mongoose = getMongoose();
 const BASE = 'http://localhost:5174';
 const API = 'http://localhost:5000';
 const results = [];
@@ -81,7 +81,7 @@ const run = async () => {
       info('FRAME', `${f.url().slice(0, 80)} :: ${JSON.stringify(ins)}`);
     }
     bad('Razorpay card form', 'card number input not found anywhere');
-    await page.screenshot({ path: 'C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/qa/rzp-nocard.png' });
+    await page.screenshot({ path: path.join(qaDir, 'rzp-nocard.png') });
   } else {
     info('RAZORPAY', `card fields in frame ${holder.url().slice(0, 90)}`);
     await holder.locator('input[placeholder*="Card number" i]').fill('4111111111111111');
@@ -109,15 +109,16 @@ const run = async () => {
       }, 40, 1000);
       const cartCleared = await page.evaluate(() => { const c = localStorage.getItem('cart'); return c === null || c === '[]'; });
       info('RAZORPAY', `after payment url=${page.url()} cartCleared=${cartCleared}`);
-      await page.screenshot({ path: 'C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/qa/rzp-after.png' });
+      await page.screenshot({ path: path.join(qaDir, 'rzp-after.png') });
     } else {
       bad('Razorpay PAY', 'PAY button not found');
-      await page.screenshot({ path: 'C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/qa/rzp-nopay.png' });
+      await page.screenshot({ path: path.join(qaDir, 'rzp-nopay.png') });
     }
   }
 
+  assertLocalDb();
   await mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 8000 });
-  const orders = await mongoose.connection.db.collection('orders').find({ userId: new (require('C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/Backend/node_modules/mongoose')).Types.ObjectId(lr.user.id) }).toArray();
+  const orders = await mongoose.connection.db.collection('orders').find({ userId: new mongoose.Types.ObjectId(lr.user.id) }).toArray();
   await mongoose.connection.close();
   info('ORDERS-DB', JSON.stringify(orders.map(o => ({ paymentStatus: o.paymentStatus, razorpayPaymentId: !!o.razorpayPaymentId, status: o.status, total: o.totalPrice }))));
   ok(orders.some(o => o.paymentStatus === 'Paid') ? 'PAYMENT COMPLETED -> order Paid in DB' : 'payment did not complete');

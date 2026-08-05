@@ -1,12 +1,12 @@
 // Cartify E2E QA part 2 (fixed) — OTP happy path (isolated), checkout+Razorpay, mobile, images
 import { chromium } from 'playwright-core';
 import { createRequire } from 'module';
+import path from 'path';
 const require = createRequire(import.meta.url);
-const mongoose = require('C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/Backend/node_modules/mongoose');
-const dotenv = require('C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/Backend/node_modules/dotenv');
-dotenv.config({ path: 'C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/Backend/.env' });
+const { CHROME, qaDir, loadBackendEnv, getMongoose, assertLocalDb } = require('./qa-utils.cjs');
+loadBackendEnv();
+const mongoose = getMongoose();
 
-const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const BASE = 'http://localhost:5174';
 const API = 'http://localhost:5000';
 const results = [];
@@ -30,6 +30,7 @@ const run = async () => {
   const otpEmail = `otp2${TS}@test.com`;
   await api('POST', '/api/auth/send-otp', { email: otpEmail });
   await new Promise(r => setTimeout(r, 2500));
+  assertLocalDb();
   await mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 8000 });
   const otp = (await mongoose.connection.db.collection('users').findOne({ email: otpEmail }))?.otp;
   await mongoose.connection.close();
@@ -126,7 +127,7 @@ const run = async () => {
     } catch (e) {
       info('RAZORPAY', `interaction error: ${e.message.split('\n')[0]}`);
     }
-    await page.screenshot({ path: 'C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/qa/razorpay-modal.png' });
+    await page.screenshot({ path: path.join(qaDir, 'razorpay-modal.png') });
   } else {
     bad('Razorpay modal', 'checkout modal did not open (no checkout.razorpay.com frame)');
   }
@@ -137,9 +138,10 @@ const run = async () => {
   await page.waitForTimeout(2500);
   const ordersText = await page.locator('main').textContent().catch(() => '');
   info('ORDERS-UI', `orders tab: ${ordersText.replace(/\s+/g, ' ').slice(0, 150)}`);
+  assertLocalDb();
   await mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 8000 });
   const uid = lr.json?.user?.id;
-  const orders = await mongoose.connection.db.collection('orders').find({ userId: new (require('C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/Backend/node_modules/mongoose')).Types.ObjectId(uid) }).toArray();
+  const orders = await mongoose.connection.db.collection('orders').find({ userId: new mongoose.Types.ObjectId(uid) }).toArray();
   await mongoose.connection.close();
   info('ORDERS-DB', JSON.stringify(orders.map(o => ({ paymentStatus: o.paymentStatus, razorpayPaymentId: !!o.razorpayPaymentId, total: o.totalPrice }))));
   ok(orders.length > 0 ? 'order created in DB after checkout' : 'NO order in DB after checkout');

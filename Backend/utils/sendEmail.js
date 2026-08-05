@@ -5,7 +5,7 @@ const sendEmail = async (options) => {
     // If Brevo API Key is present, send email via HTTP API (bypasses Render SMTP port blocking)
     if (process.env.BREVO_API_KEY) {
         const data = JSON.stringify({
-            sender: { name: 'Cartify Premium', email: 'surajdona2005@gmail.com' },
+            sender: { name: 'Cartify Premium', email: process.env.EMAIL_FROM || process.env.EMAIL_USER },
             to: [{ email: options.email }],
             subject: options.subject,
             textContent: options.message

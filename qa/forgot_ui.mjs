@@ -1,10 +1,9 @@
 import { chromium } from 'playwright-core';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const mongoose = require('C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/Backend/node_modules/mongoose');
-const dotenv = require('C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/Backend/node_modules/dotenv');
-dotenv.config({ path: 'C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/Backend/.env' });
-const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+const { CHROME, loadBackendEnv, getMongoose, assertLocalDb } = require('./qa-utils.cjs');
+loadBackendEnv();
+const mongoose = getMongoose();
 const BASE = 'http://localhost:5174';
 const API = 'http://localhost:5000';
 const results = [];
@@ -36,6 +35,7 @@ const run = async () => {
   await page.getByRole('button', { name: 'Send Reset OTP' }).click();
   await page.waitForTimeout(2500);
 
+  assertLocalDb();
   await mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 8000 });
   const otp = (await mongoose.connection.db.collection('users').findOne({ email }))?.otp;
   await mongoose.connection.close();

@@ -1,10 +1,9 @@
 import { chromium } from 'playwright-core';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const mongoose = require('C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/Backend/node_modules/mongoose');
-const dotenv = require('C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/Backend/node_modules/dotenv');
-dotenv.config({ path: 'C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/Backend/.env' });
-const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+const { CHROME, loadBackendEnv, getMongoose, assertLocalDb } = require('./qa-utils.cjs');
+loadBackendEnv();
+const mongoose = getMongoose();
 const BASE = 'http://localhost:5174';
 const API = 'http://localhost:5000';
 
@@ -14,6 +13,7 @@ const run = async () => {
   const email = `admin2${TS}@test.com`;
   await fetch(API + '/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Admin QA2', email, password: 'adminPass1' }) });
   const lr = await fetch(API + '/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: 'adminPass1' }) }).then(r => r.json());
+  assertLocalDb();
   await mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 8000 });
   await mongoose.connection.db.collection('users').updateOne({ email }, { $set: { isAdmin: true } });
   await mongoose.connection.close();
@@ -34,6 +34,7 @@ const run = async () => {
     await page.waitForTimeout(600);
     await page.getByRole('button', { name: 'Confirm', exact: true }).click();
     await page.waitForTimeout(2500);
+    assertLocalDb();
     await mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 8000 });
     const left = await mongoose.connection.db.collection('products').countDocuments({ title: /QA Admin UI/ });
     const total = await mongoose.connection.db.collection('products').countDocuments();

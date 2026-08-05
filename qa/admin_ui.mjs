@@ -1,10 +1,9 @@
 import { chromium } from 'playwright-core';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const mongoose = require('C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/Backend/node_modules/mongoose');
-const dotenv = require('C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/Backend/node_modules/dotenv');
-dotenv.config({ path: 'C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/Backend/.env' });
-const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+const { CHROME, qaDir, loadBackendEnv, getMongoose, assertLocalDb } = require('./qa-utils.cjs');
+loadBackendEnv();
+const mongoose = getMongoose();
 const BASE = 'http://localhost:5174';
 const API = 'http://localhost:5000';
 const results = [];
@@ -14,6 +13,7 @@ const bad = (n, d) => { results.push(`[FAIL] ${n} :: ${d}`); fail++; };
 const info = (n, d) => results.push(`[INFO] ${n} :: ${d}`);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const fs = require('fs');
+const path = require('path');
 
 const run = async () => {
   const TS = Date.now();
@@ -22,13 +22,14 @@ const run = async () => {
   await fetch(API + '/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Admin QA', email, password: 'adminPass1' }) });
   const lr = await fetch(API + '/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: 'adminPass1' }) }).then(r => r.json());
   // promote to admin
+  assertLocalDb();
   await mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 8000 });
   await mongoose.connection.db.collection('users').updateOne({ email }, { $set: { isAdmin: true } });
   await mongoose.connection.close();
 
   // tiny png for upload
   const pngBuf = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64');
-  fs.writeFileSync('C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/qa/qa-image.png', pngBuf);
+  fs.writeFileSync(path.join(qaDir, 'qa-image.png'), pngBuf);
 
   const browser = await chromium.launch({ executablePath: CHROME, headless: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -69,7 +70,7 @@ const run = async () => {
   await page.locator('input[placeholder="Product Title"]').fill(`QA Admin UI ${TS}`);
   await page.locator('input[placeholder="Price (₹)"]').fill('499');
   await page.locator('textarea[placeholder="Description"]').fill('QA product created via admin UI test');
-  await page.locator('input[type="file"]').setInputFiles('C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/qa/qa-image.png');
+  await page.locator('input[type="file"]').setInputFiles(path.join(qaDir, 'qa-image.png'));
   await page.waitForTimeout(2500);
   // check preview img src
   const previewSrc = await page.locator('img[alt="preview"]').getAttribute('src').catch(() => null);
