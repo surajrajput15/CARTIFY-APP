@@ -270,22 +270,41 @@ router.post('/verify-payment', protect, async (req, res) => {
             });
         }
 
-        // 6) Atomically reserve stock. The request that won the Pending -> Paid transition
-        //    above is the sole owner of the decrement, so concurrent/replayed verifies can
-        //    never decrement twice. Each $inc is guarded by a `countInStock >= quantity`
-        //    filter, which is atomic at the document level — under concurrent sales the stock
-        //    can never be driven below zero (no overselling). A missing product also fails
-        //    the guard, since the filter simply won't match.
-        const stockOps = finalisedOrder.orderItems.map(item => ({
-            updateOne: {
-                filter: { _id: item.productId, countInStock: { $gte: item.quantity } },
-                update: { $inc: { countInStock: -item.quantity } }
-            }
-        }));
+        // 6) Atomically reserve stock for products that actually track inventory.
+        //    The create-order guard only rejects when `countInStock != null`, so a
+        //    product with an UNKNOWN stock (null / missing) is accepted at creation.
+        //    We mirror that here: only decrement and enforce the no-oversell guard for
+        //    items whose product has a numeric countInStock. Treating a null stock as
+        //    "sold out" made every such order fail verification with a false 409, which
+        //    never decremented anything and repeated on every retry. The request that won
+        //    the Pending -> Paid transition above is the sole owner of each decrement, so
+        //    concurrent/replayed verifies can never decrement twice, and the
+        //    `countInStock >= quantity` filter keeps tracked stock from ever going negative.
+        const productIds = finalisedOrder.orderItems.map(item => item.productId);
+        const stockProducts = await Product.find({ _id: { $in: productIds } });
+        const stockByProductId = new Map(
+            stockProducts.map(p => [p._id.toString(), p.countInStock])
+        );
+
+        const hasTrackedStock = (item) => {
+            const stock = stockByProductId.get(item.productId.toString());
+            return stock != null;
+        };
+
+        const stockOps = finalisedOrder.orderItems
+            .filter(hasTrackedStock)
+            .map(item => ({
+                updateOne: {
+                    filter: { _id: item.productId, countInStock: { $gte: item.quantity } },
+                    update: { $inc: { countInStock: -item.quantity } }
+                }
+            }));
 
         const stockResult = await Product.bulkWrite(stockOps, { ordered: true });
 
-        if (stockResult.modifiedCount !== finalisedOrder.orderItems.length) {
+        const trackedCount = finalisedOrder.orderItems.filter(hasTrackedStock).length;
+
+        if (stockResult.modifiedCount !== trackedCount) {
             // Some stock was exhausted by a concurrent purchase between order creation and
             // verification. The order is already paid on Razorpay's side; it is flagged so
             // fulfilment can resolve it, but stock was never allowed to go negative.
