@@ -10,6 +10,7 @@ const ProductFormModal = ({ form, setForm, saving, isEditing, onImageUpload, onS
       <form onSubmit={onSubmit} className="space-y-4">
         <input type="text" placeholder="Product Title" required value={form.title} onChange={(e) => setForm({...form, title: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-teal-500 focus:border-teal-500" />
         <input type="number" step="0.01" placeholder="Price (₹)" required value={form.price} onChange={(e) => setForm({...form, price: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-teal-500 focus:border-teal-500" />
+        <input type="number" min="0" step="1" placeholder="Stock Quantity" required value={form.countInStock} onChange={(e) => setForm({...form, countInStock: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-teal-500 focus:border-teal-500" />
         <textarea placeholder="Description" required value={form.description} onChange={(e) => setForm({...form, description: e.target.value})} rows={3} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-teal-500 focus:border-teal-500" />
         <select value={form.category} onChange={(e) => setForm({...form, category: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-teal-500 focus:border-teal-500">
           {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}

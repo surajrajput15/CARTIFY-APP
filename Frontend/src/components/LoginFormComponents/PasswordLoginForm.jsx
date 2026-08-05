@@ -46,7 +46,7 @@ const PasswordLoginForm = ({
             </button>
           )}
         </div>
-        <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min. 6 characters" required minLength="6" />
+        <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min. 8 characters" required minLength="8" />
         {isRegistering && <PasswordStrengthMeter password={password} />}
       </div>
 

@@ -79,6 +79,7 @@ const AdminPage = () => {
       description: product.description || '',
       category: product.category || 'electronics',
       image: product.image || '',
+      countInStock: product.countInStock ?? 20,
       rating: { rate: product.rating?.rate || 0, count: product.rating?.count || 0 }
     });
     setShowForm(true);

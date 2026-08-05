@@ -10,6 +10,23 @@ const { protect } = require('../middleware/auth');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+// Shared password policy: min 8 chars, at least one upper, lower and digit.
+const validatePassword = (password) => {
+  if (typeof password !== 'string' || password.length < 8) {
+    return 'Password must be at least 8 characters long';
+  }
+  if (!/[A-Z]/.test(password)) {
+    return 'Password must contain at least one uppercase letter';
+  }
+  if (!/[a-z]/.test(password)) {
+    return 'Password must contain at least one lowercase letter';
+  }
+  if (!/[0-9]/.test(password)) {
+    return 'Password must contain at least one number';
+  }
+  return null;
+};
+
 // ==========================================
 // 🚀 NEW: OTP BASED LOGIN SYSTEM
 // ==========================================
@@ -94,6 +111,11 @@ router.post('/register', async (req, res) => {
         if (!name || !email || !password) return res.status(400).json({ message: "Please fill in all fields." });
         if (typeof name !== 'string' || typeof email !== 'string' || typeof password !== 'string') {
             return res.status(400).json({ message: "Please fill in all fields." });
+        }
+
+        const passwordError = validatePassword(password);
+        if (passwordError) {
+            return res.status(400).json({ message: passwordError });
         }
 
         const userExists = await User.findOne({ email });
@@ -190,8 +212,9 @@ router.post('/reset-password', async (req, res) => {
             return res.status(400).json({ message: "Invalid or Expired OTP." });
         }
 
-        if (newPassword.length < 6) {
-            return res.status(400).json({ message: "Password must be at least 6 characters." });
+        const passwordError = validatePassword(newPassword);
+        if (passwordError) {
+            return res.status(400).json({ message: passwordError });
         }
 
         // Hash the new password

@@ -21,6 +21,21 @@ if (missingBackend.length > 0) {
   process.exit(1);
 }
 
+// Email configuration — required for OTP login and password reset. Either the Brevo
+// HTTP API key, or the Gmail SMTP fallback (EMAIL_USER + EMAIL_PASS) must be present.
+// On Render the SMTP fallback cannot work (outbound SMTP is blocked), so without a
+// configured email path core auth flows silently break — fail fast instead.
+const hasBrevoApiKey = !!process.env.BREVO_API_KEY;
+const hasSmtpFallback = !!process.env.EMAIL_USER && !!process.env.EMAIL_PASS;
+
+if (!hasBrevoApiKey && !hasSmtpFallback) {
+  console.error(
+    'Missing email configuration. Set BREVO_API_KEY, or the Gmail SMTP fallback ' +
+    '(EMAIL_USER + EMAIL_PASS), otherwise OTP login and password reset will be unavailable.'
+  );
+  process.exit(1);
+}
+
 console.log('Environment variables validated successfully');
 
 // Import Routes
@@ -95,8 +110,33 @@ app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/addresses', addressRoutes); // 👈 Connected Address API
 app.use('/api/payment', paymentRoutes); // 👈 Connected Payment API
-app.use('/api/upload', uploadRoutes); // 👈 Image Upload
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // 👈 Serve images
+app.use('/api/upload', uploadRoutes.router); // 👈 Image Upload
+
+// Serve uploaded images with a strict allowlist of safe content types. Files
+// are stored with a detected-format extension only, but this layer hardens
+// against serving any stray/non-image payload and disables content sniffing.
+const IMAGE_CONTENT_TYPES = {
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.webp': 'image/webp',
+};
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+  dotfiles: 'deny',
+  index: false,
+  setHeaders: (res, filePath) => {
+    const ext = path.extname(filePath).toLowerCase();
+    const contentType = IMAGE_CONTENT_TYPES[ext];
+    if (contentType) {
+      res.set('Content-Type', contentType);
+      res.set('Content-Disposition', 'inline');
+    } else {
+      res.set('Content-Type', 'application/octet-stream');
+      res.set('Content-Disposition', 'attachment');
+    }
+    res.set('X-Content-Type-Options', 'nosniff');
+  }
+})); // 👈 Serve images
 
 // Test Route
 app.get('/', (req, res) => {

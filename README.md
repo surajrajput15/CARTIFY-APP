@@ -129,34 +129,24 @@ Cartify follows a sprint-based engineering process focused on building productio
 - **Toast Notifications** — Real-time feedback with react-hot-toast
 
 ### 🚀 Production Engineering
-- **Server-side payment calculation** — All pricing computed server-side to prevent tampering
-- **Secure JWT authentication** — Stateless token auth via the Authorization header (Bearer token)
-- **Role-based Admin Authorization** — Separate admin routes with middleware protection
-- **Helmet security middleware** — HTTP header hardening against common attacks
-- **Express Rate Limiting** — Prevents brute-force and abuse
-- **Input Validation** — Server-side validation for API inputs
-- **Production Error Handling** — Structured error responses with proper status codes
-- **Responsive UI** — Mobile-first design across all pages
-- **Accessibility Improvements** — ARIA labels, semantic HTML, keyboard navigation
-- **SEO Optimization** — Meta tags, semantic structure, fast loading
-
-### 🏗 Engineering Features
-- **Helmet** — HTTP header hardening against common web vulnerabilities
-- **Rate Limiting** — Prevents brute-force and DDoS abuse on API endpoints
 - **Server-side Price Validation** — All pricing computed server-side to prevent tampering
 - **JWT Authentication** — Stateless, secure token-based auth (Bearer header, not httpOnly cookies)
+- **Role-based Authorization** — Admin and user route separation with middleware
 - **Google OAuth** — One-click social login with server-side ID token verification
 - **OTP Login** — Passwordless email-based authentication
-- **Role-based Authorization** — Admin and user route separation with middleware
+- **Helmet** — HTTP header hardening against common web vulnerabilities
+- **Rate Limiting** — Prevents brute-force and DDoS abuse on API endpoints
+- **Input Validation** — Server-side validation for API inputs
 - **Environment Validation** — Startup checks for required configuration variables
 - **Production Error Handling** — Structured error responses with proper status codes
-- **Accessibility Improvements** — ARIA labels, semantic HTML, keyboard navigation
-- **SEO Improvements** — Meta tags, semantic structure, optimized loading
 - **Route-based Code Splitting** — Pages loaded on demand with `React.lazy` + `Suspense`
 - **Global Error Boundary** — Catches unexpected runtime errors with a fallback UI
 - **Reusable API Service Layer** — Centralized service modules for all HTTP calls
 - **Custom Hooks** — Reusable data-fetching and UI logic
 - **Memoization Optimization** — `useMemo`/`useCallback` audit to reduce unnecessary re-renders
+- **Responsive UI** — Mobile-first design across all pages
+- **Accessibility** — ARIA labels, semantic HTML, keyboard navigation
+- **SEO** — Meta tags, semantic structure, optimized loading
 
 ---
 
@@ -198,10 +188,14 @@ Cartify implements multiple layers of security to protect users and data:
 - **bcrypt Password Hashing** — Salted password storage with configurable rounds
 - **Helmet** — HTTP response header hardening against XSS, clickjacking, and other attacks
 - **Rate Limiting** — Auth endpoint (5 req/min) and general API (100 req/min) rate limits
-- **Server-side Payment Validation** — All pricing computed server-side to prevent client tampering
+- **Google OAuth Verification** — Server-side ID token verification (audience checked) before login
+- **Server-authoritative Payments** — All pricing computed server-side to prevent client tampering
 - **HMAC Razorpay Verification** — SHA256 signature verification for payment authenticity
 - **ReDoS Protection** — Regex input sanitization to prevent Regular Expression DoS attacks
+- **Input Validation** — Server-side field validation and sanitization before persistence
 - **Role-based Access Control** — Admin and user route separation with middleware guards
+- **CORS Allowlist** — Cross-origin requests restricted to allowed origins and Vercel previews
+- **Body Size Limit** — JSON payloads capped at 10kb to bound request size
 - **Environment Validation** — Startup checks ensuring all required config variables are set
 
 ---
@@ -351,7 +345,7 @@ cd Backend
 cp .env.example .env   # Fill in your credentials
 ```
 
-Required environment variables:
+Set these in your `.env` (variables sample in `.env.example`):
 
 | Variable | Description |
 |----------|-------------|
@@ -361,6 +355,8 @@ Required environment variables:
 | `RAZORPAY_KEY_SECRET` | Razorpay test key secret |
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID (must match the frontend's `VITE_GOOGLE_CLIENT_ID`) |
 | `BREVO_API_KEY` | Brevo transactional email API key |
+| `EMAIL_USER` | Gmail address (SMTP fallback when `BREVO_API_KEY` is unset) |
+| `EMAIL_PASS` | Gmail app password (SMTP fallback when `BREVO_API_KEY` is unset) |
 
 ### 3️⃣ Configure Frontend
 
