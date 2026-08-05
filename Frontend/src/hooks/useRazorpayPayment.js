@@ -55,6 +55,15 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
       return;
     }
 
+    // Razorpay key is required before any payment is attempted. There is no fallback
+    // key (a test key would silently never process a real payment). Fails loudly here
+    // with a clear user-facing message instead of opening a broken checkout modal.
+    if (!RAZORPAY_KEY) {
+      toast.error('Payment is not configured. Please contact support to enable checkout.');
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
 
     const res = await loadRazorpayScript();
