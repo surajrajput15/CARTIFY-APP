@@ -103,15 +103,11 @@ router.post('/create-order', protect, async (req, res, next) => {
                 });
             }
 
-            // Server-authoritative stock check — never trust the client's quantity or stock.
-            // If the product carries a known countInStock, reject the order when the requested
-            // quantity exceeds the available stock.
-            if (product.countInStock != null && item.quantity > product.countInStock) {
-                return res.status(400).json({
-                    message: `Insufficient stock for "${product.title}". Only ${product.countInStock} left in stock.`
-                });
-            }
-
+            // Stock is NOT enforced here. Stock is reserved only at verify-payment time via
+            // an atomic $inc guarded by `countInStock >= quantity`, so an oversell always
+            // surfaces as the 409 there and stock can never go negative. Enforcing stock here
+            // would reject on the client's requested quantity while stock may still change
+            // between order creation and payment, and it can never match the verify-time 409.
             const itemTotal = product.price * item.quantity;
             calculatedTotal += itemTotal;
             orderItems.push({
@@ -270,18 +266,21 @@ router.post('/verify-payment', protect, async (req, res) => {
             });
         }
 
-        // 6) Atomically reserve stock for products that actually track inventory.
-        //    The create-order guard only rejects when `countInStock != null`, so a
-        //    product with an UNKNOWN stock (null / missing) is accepted at creation.
-        //    We mirror that here: only decrement and enforce the no-oversell guard for
-        //    items whose product has a numeric countInStock. Treating a null stock as
-        //    "sold out" made every such order fail verification with a false 409, which
-        //    never decremented anything and repeated on every retry. The request that won
-        //    the Pending -> Paid transition above is the sole owner of each decrement, so
+        // 6) Atomically reserve stock — stock is enforced EXCLUSIVELY here, at payment
+        //    verification, never at order creation. Only products that carry a numeric
+        //    countInStock are tracked. A legacy product with UNKNOWN stock (null / missing
+        //    field) is never decremented and never treated as "sold out", which previously
+        //    caused a false 409 on every successful purchase. The atomic Pending -> Paid
+        //    transition above makes the winning request the sole owner of each decrement, so
         //    concurrent/replayed verifies can never decrement twice, and the
         //    `countInStock >= quantity` filter keeps tracked stock from ever going negative.
         const productIds = finalisedOrder.orderItems.map(item => item.productId);
-        const stockProducts = await Product.find({ _id: { $in: productIds } });
+        // .lean() skips Mongoose's schema-default hydration. A product whose raw document
+        // genuinely has no countInStock field stays `undefined` here, so it is correctly NOT
+        // treated as tracked stock. Before this change, hydration applied the schema default
+        // of 20, so every such item counted as "tracked" while the DB-level $gte filter could
+        // never match its raw doc — producing a false out-of-stock 409 on every success.
+        const stockProducts = await Product.find({ _id: { $in: productIds } }).lean();
         const stockByProductId = new Map(
             stockProducts.map(p => [p._id.toString(), p.countInStock])
         );
@@ -291,20 +290,28 @@ router.post('/verify-payment', protect, async (req, res) => {
             return stock != null;
         };
 
-        const stockOps = finalisedOrder.orderItems
-            .filter(hasTrackedStock)
-            .map(item => ({
+        const stockOps = [];
+        for (const item of finalisedOrder.orderItems) {
+            if (!hasTrackedStock(item)) continue;
+            stockOps.push({
                 updateOne: {
                     filter: { _id: item.productId, countInStock: { $gte: item.quantity } },
                     update: { $inc: { countInStock: -item.quantity } }
                 }
-            }));
+            });
+        }
 
-        const stockResult = await Product.bulkWrite(stockOps, { ordered: true });
+        // matchedCount (not modifiedCount) is authoritative here: it tells us how many of the
+        // no-oversell filters actually matched the raw documents. For $inc both are equal, but
+        // matchedCount is the correct signal that the reservation succeeded.
+        let stockResult = { matchedCount: 0, modifiedCount: 0 };
+        if (stockOps.length > 0) {
+            stockResult = await Product.bulkWrite(stockOps, { ordered: true });
+        }
 
-        const trackedCount = finalisedOrder.orderItems.filter(hasTrackedStock).length;
+        const stockReserved = stockResult.matchedCount === stockOps.length;
 
-        if (stockResult.modifiedCount !== trackedCount) {
+        if (!stockReserved) {
             // Some stock was exhausted by a concurrent purchase between order creation and
             // verification. The order is already paid on Razorpay's side; it is flagged so
             // fulfilment can resolve it, but stock was never allowed to go negative.
