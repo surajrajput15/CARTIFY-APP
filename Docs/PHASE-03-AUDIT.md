@@ -19,7 +19,7 @@
 
 | Category | Finding | Priority | Location | Action |
 |---|---|---|---|---|
-| 🔴 Security | JWT_SECRET is weak dictionary word (`surajbhanpratapsinghcartifyApp`) — token forgery risk | P0 | Backend `.env` / `middleware/auth.js:10` | Generate cryptographically strong secret via `crypto.randomBytes(32).toString('hex')` |
+| 🔴 Security | JWT_SECRET was a weak dictionary word — token forgery risk | P0 | Backend `.env` / `middleware/auth.js:10` | Generate cryptographically strong secret via `crypto.randomBytes(32).toString('hex')` and rotate the value in `.env` (placeholder in `.env.example`) |
 | 🔴 Security | `helmet()` not installed — zero HTTP security headers (CSP, HSTS, X-Frame-Options) | P0 | `Backend/server.js` | Install `helmet` package and apply `app.use(helmet())` before all routes |
 | 🔴 Security | CORS is open: `app.use(cors())` with no origin restriction | P0 | `Backend/server.js:45` | Restrict to `https://cartify-hub.vercel.app` and localhost |
 | 🔴 Security | Google OAuth Client ID hardcoded in `main.jsx:14` — exposed credential in public repo | P0 | `Frontend/src/main.jsx:14` | Move to `VITE_GOOGLE_CLIENT_ID` env var |

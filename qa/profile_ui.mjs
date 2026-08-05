@@ -1,5 +1,7 @@
 import { chromium } from 'playwright-core';
-const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const { CHROME } = require('./qa-utils.cjs');
 const BASE = 'http://localhost:5174';
 const API = 'http://localhost:5000';
 const results = [];

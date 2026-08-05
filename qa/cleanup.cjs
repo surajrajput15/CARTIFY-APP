@@ -1,6 +1,7 @@
-const dotenv = require('C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/Backend/node_modules/dotenv');
-dotenv.config({ path: 'C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/Backend/.env' });
-const mongoose = require('C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/Backend/node_modules/mongoose');
+const { loadBackendEnv, getMongoose, assertLocalDb } = require('./qa-utils.cjs');
+loadBackendEnv();
+const mongoose = getMongoose();
+assertLocalDb();
 mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 8000 }).then(async () => {
   const db = mongoose.connection.db;
   const qa = await db.collection('users').find({ $or: [{ email: /@(test|t)\.com$/ }, { email: 'notanemail' }] }).toArray();

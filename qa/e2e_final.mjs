@@ -1,12 +1,12 @@
 // Cartify E2E QA final — OTP happy path (corrected), Razorpay modal (headed), mobile search
 import { chromium } from 'playwright-core';
 import { createRequire } from 'module';
+import path from 'path';
 const require = createRequire(import.meta.url);
-const mongoose = require('C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/Backend/node_modules/mongoose');
-const dotenv = require('C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/Backend/node_modules/dotenv');
-dotenv.config({ path: 'C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/Backend/.env' });
+const { CHROME, qaDir, loadBackendEnv, getMongoose, assertLocalDb } = require('./qa-utils.cjs');
+loadBackendEnv();
+const mongoose = getMongoose();
 
-const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const BASE = 'http://localhost:5174';
 const API = 'http://localhost:5000';
 const results = [];
@@ -19,6 +19,7 @@ const api = (method, path, body, token) =>
     .then(async r => ({ status: r.status, json: await r.json().catch(() => ({})) }));
 
 const getDbOtp = async email => {
+  assertLocalDb();
   await mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 8000 });
   const u = await mongoose.connection.db.collection('users').findOne({ email });
   await mongoose.connection.close();
@@ -95,7 +96,7 @@ const run = async () => {
   }
   if (rzp) {
     info('RAZORPAY', `modal frame present: ${rzp.url().slice(0, 90)}`);
-    await p.screenshot({ path: 'C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/qa/rzp-open.png' });
+    await p.screenshot({ path: path.join(qaDir, 'rzp-open.png') });
     // try to complete a test card payment
     try {
       const cardTab = rzp.getByText('Card', { exact: true });
@@ -119,7 +120,7 @@ const run = async () => {
         const url = p.url();
         const cartLeft = await p.evaluate(() => (localStorage.getItem('cart') || '[]').length > 2);
         info('RAZORPAY', `post-payment URL=${url} cartCleared=${!cartLeft}`);
-        await p.screenshot({ path: 'C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/qa/rzp-after.png' });
+        await p.screenshot({ path: path.join(qaDir, 'rzp-after.png') });
       } else {
         info('RAZORPAY', 'card-number input not found in first secure iframe');
       }
@@ -128,11 +129,12 @@ const run = async () => {
     }
   } else {
     bad('Razorpay modal', 'modal did not open in headed browser');
-    await p.screenshot({ path: 'C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/qa/rzp-notopen.png' });
+    await p.screenshot({ path: path.join(qaDir, 'rzp-notopen.png') });
   }
   // final order DB check
+  assertLocalDb();
   await mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 8000 });
-  const orders = await mongoose.connection.db.collection('orders').find({ userId: new (require('C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/Backend/node_modules/mongoose')).Types.ObjectId(lr.json.user.id) }).toArray();
+  const orders = await mongoose.connection.db.collection('orders').find({ userId: new mongoose.Types.ObjectId(lr.json.user.id) }).toArray();
   await mongoose.connection.close();
   info('ORDERS-DB', JSON.stringify(orders.map(o => ({ paymentStatus: o.paymentStatus, razorpayPaymentId: !!o.razorpayPaymentId }))));
   ok(orders.length > 0 ? 'order record created' : 'NO order created');

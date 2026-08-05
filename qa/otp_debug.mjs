@@ -1,11 +1,10 @@
 import { chromium } from 'playwright-core';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const mongoose = require('C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/Backend/node_modules/mongoose');
-const dotenv = require('C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/Backend/node_modules/dotenv');
-dotenv.config({ path: 'C:/Users/Suraj Kumar/Desktop/June/HOME PROJECTS/CARTIFY-APP/Backend/.env' });
+const { CHROME, loadBackendEnv, getMongoose, assertLocalDb } = require('./qa-utils.cjs');
+loadBackendEnv();
+const mongoose = getMongoose();
 
-const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const BASE = 'http://localhost:5174';
 const API = 'http://localhost:5000';
 
@@ -15,6 +14,7 @@ const run = async () => {
   const email = `otpdbg${TS}@test.com`;
   await fetch(API + '/api/auth/send-otp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
   await new Promise(r => setTimeout(r, 2000));
+  assertLocalDb();
   await mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 8000 });
   const u = await mongoose.connection.db.collection('users').findOne({ email });
   await mongoose.connection.close();
