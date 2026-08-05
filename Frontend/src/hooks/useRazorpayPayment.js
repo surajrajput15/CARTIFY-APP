@@ -8,6 +8,11 @@ const RAZORPAY_SCRIPT_URL = 'https://checkout.razorpay.com/v1/checkout.js';
 export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAddress }) => {
   const [loading, setLoading] = useState(false);
   const razorpayLoadedRef = useRef(false);
+  // Ensures EXACTLY ONE success confirmation even if the Razorpay success
+  // callback fires more than once (e.g. replayed / duplicated handler events).
+  // Set before navigation so it is never lost when the checkout page unmounts
+  // into the lazy /profile route; the global <Toaster> keeps it visible.
+  const successNotifiedRef = useRef(false);
 
   const loadRazorpayScript = useCallback(() => {
     return new Promise((resolve) => {
@@ -106,9 +111,12 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
             });
 
             if (verifyRes.data.success) {
-              toast.success("Payment Successful! 🎉 Order Placed.");
-              clearCart();
-              navigate('/profile');
+              if (!successNotifiedRef.current) {
+                successNotifiedRef.current = true;
+                toast.success("Payment Successful! 🎉 Order Placed.");
+                clearCart();
+                navigate('/profile');
+              }
             } else {
               toast.error(verifyRes.data.message || "Payment could not be verified");
             }
