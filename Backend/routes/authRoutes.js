@@ -5,10 +5,27 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
+const Order = require('../models/Order');
+const Address = require('../models/Address');
 const sendEmail = require('../utils/sendEmail');
 const { protect } = require('../middleware/auth');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+// Emails are stored lowercased (see User schema setter); every lookup must use the same
+// normalized form so register/login/OTP/reset can never diverge by case.
+const normalizeEmail = (email) => (typeof email === 'string' ? email.trim().toLowerCase() : '');
+
+// Constant-time comparison — mitigates OTP timing attacks regardless of rate limiting.
+const safeEqual = (a, b) => {
+  const ba = Buffer.from(String(a), 'utf8');
+  const bb = Buffer.from(String(b), 'utf8');
+  if (ba.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ba, bb);
+};
+
+// Lower bound for failed OTP attempts before the account's OTP is locked.
+const MAX_OTP_ATTEMPTS = 5;
 
 // Shared password policy: min 8 chars, at least one upper, lower and digit.
 const validatePassword = (password) => {
@@ -34,13 +51,15 @@ const validatePassword = (password) => {
 // 1. SEND OTP API (Email par 6-digit code bhejna)
 router.post('/send-otp', async (req, res) => {
     try {
-        const { email } = req.body;
+        const email = normalizeEmail(req.body.email);
         if (!email) return res.status(400).json({ message: "Please enter your email." });
 
-        // User dhundho. Agar naya user hai, toh auto-create kar do (Bina password ke)
+        // User dhundho. Agar naya user hai, toh auto-create kar do (Bina password ke).
+        // NOTE: Such an account has no password and can be claimed via /register later —
+        // it can never permanently block the real owner from registering.
         let user = await User.findOne({ email });
         if (!user) {
-            user = new User({ name: 'Awesome User', email });
+            user = new User({ name: 'Cartify User', email });
         }
 
         // Generate 6-digit OTP (e.g. 482910)
@@ -48,7 +67,8 @@ router.post('/send-otp', async (req, res) => {
         
         // OTP aur Expiry Time (10 mins) database mein save karo
         user.otp = otp;
-        user.otpExpire = Date.now() + 10 * 60 * 1000; 
+        user.otpExpire = Date.now() + 10 * 60 * 1000;
+        user.otpAttempts = 0; // Fresh code always resets the brute-force counter
         await user.save();
 
         // Nodemailer se asali Email bhejo
@@ -70,20 +90,29 @@ router.post('/send-otp', async (req, res) => {
 // 2. VERIFY OTP API (Email aur OTP check karna)
 router.post('/verify-otp', async (req, res) => {
     try {
-        const { email, otp } = req.body;
+        const email = normalizeEmail(req.body.email);
+        const otp = req.body.otp;
         if (!email || !otp) return res.status(400).json({ message: "Email and OTP are required." });
 
         const user = await User.findOne({ email });
         if (!user) return res.status(404).json({ message: "User not found." });
 
-        // Check karo ki OTP match ho raha hai aur expire toh nahi hua
-        if (user.otp !== otp || user.otpExpire < Date.now()) {
+        // Lock the OTP after too many failed guesses, even if still within the expiry window.
+        if (user.otpAttempts >= MAX_OTP_ATTEMPTS) {
+            return res.status(429).json({ message: "Too many incorrect attempts. Please request a new OTP." });
+        }
+
+        // Constant-time compare + expiry check
+        if (!user.otp || !safeEqual(user.otp, otp) || user.otpExpire < Date.now()) {
+            user.otpAttempts = (user.otpAttempts || 0) + 1;
+            await user.save();
             return res.status(400).json({ message: "Invalid or Expired OTP." });
         }
 
         // OTP theek hai! Ab OTP ko database se mita do (Security)
         user.otp = undefined;
         user.otpExpire = undefined;
+        user.otpAttempts = 0;
         await user.save();
 
         // Login successful! Token generate karo
@@ -107,11 +136,14 @@ router.post('/verify-otp', async (req, res) => {
 
 router.post('/register', async (req, res) => {
     try {
-        const { name, email, password } = req.body;
-        if (!name || !email || !password) return res.status(400).json({ message: "Please fill in all fields." });
-        if (typeof name !== 'string' || typeof email !== 'string' || typeof password !== 'string') {
+        const { name, email: rawEmail, password } = req.body;
+        if (!name || !rawEmail || !password) return res.status(400).json({ message: "Please fill in all fields." });
+        if (typeof name !== 'string' || typeof rawEmail !== 'string' || typeof password !== 'string') {
             return res.status(400).json({ message: "Please fill in all fields." });
         }
+
+        const email = normalizeEmail(rawEmail);
+        if (!email) return res.status(400).json({ message: "Please enter a valid email." });
 
         const passwordError = validatePassword(password);
         if (passwordError) {
@@ -119,7 +151,19 @@ router.post('/register', async (req, res) => {
         }
 
         const userExists = await User.findOne({ email });
-        if (userExists) return res.status(400).json({ message: "User already exists." });
+        if (userExists) {
+            // A password-less account (created by OTP login) belongs to whoever proves ownership
+            // of the email. Registering claims it instead of being permanently blocked by
+            // "User already exists" — this ends the OTP account-squatting dead end.
+            if (userExists.password) {
+                return res.status(400).json({ message: "User already exists." });
+            }
+            const salt = await bcrypt.genSalt(10);
+            userExists.name = name;
+            userExists.password = await bcrypt.hash(password, salt);
+            await userExists.save();
+            return res.status(201).json({ message: "Account created successfully!" });
+        }
 
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
@@ -136,12 +180,15 @@ router.post('/register', async (req, res) => {
 
 router.post('/login', async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const email = normalizeEmail(req.body.email);
+        const { password } = req.body;
         if (!email || !password) return res.status(400).json({ message: "Please enter email and password." });
         const user = await User.findOne({ email });
-        
+
+        // Uniform error for every failure mode (no account / no password / wrong password)
+        // so the endpoint never reveals whether an email is registered or how it authenticates.
         if (!user || !user.password) {
-            return res.status(400).json({ message: "Invalid credentials or Try OTP Login." });
+            return res.status(400).json({ message: "Invalid credentials. If you have no password yet, use the OTP option." });
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
@@ -167,16 +214,21 @@ router.post('/login', async (req, res) => {
 // 1. SEND RESET OTP
 router.post('/forgot-password', async (req, res) => {
     try {
-        const { email } = req.body;
+        const email = normalizeEmail(req.body.email);
         const user = await User.findOne({ email });
-        
-        if (!user) return res.status(404).json({ message: "User with this email does not exist." });
+
+        // Always respond with the same message whether or not the account exists, so the
+        // endpoint cannot be used to enumerate registered emails.
+        if (!user) {
+            return res.status(200).json({ message: "If this email is registered, a password reset OTP has been sent." });
+        }
 
         // Generate 6-digit OTP
         const otp = crypto.randomInt(100000, 1000000).toString();
         
         user.otp = otp;
         user.otpExpire = Date.now() + 10 * 60 * 1000; // 10 minutes expiry
+        user.otpAttempts = 0;
         await user.save();
 
         // Email the OTP
@@ -188,7 +240,7 @@ router.post('/forgot-password', async (req, res) => {
             message: message
         });
 
-        res.status(200).json({ message: "Password reset OTP sent to your email!" });
+        res.status(200).json({ message: "If this email is registered, a password reset OTP has been sent." });
     } catch (error) {
         console.error("❌ Forgot password OTP error:", error);
         res.status(500).json({ message: "Error sending reset OTP." });
@@ -198,18 +250,29 @@ router.post('/forgot-password', async (req, res) => {
 // 2. VERIFY OTP AND SET NEW PASSWORD
 router.post('/reset-password', async (req, res) => {
     try {
-        const { email, otp, newPassword } = req.body;
+        const email = normalizeEmail(req.body.email);
+        const { otp, newPassword } = req.body;
 
         if (!email || !otp || !newPassword) {
             return res.status(400).json({ message: "Email, OTP and new password are required." });
         }
 
         const user = await User.findOne({ email });
-        if (!user) return res.status(404).json({ message: "User not found." });
+        // Do not reveal whether the email itself exists — keep the response uniform.
+        if (!user || !user.otp) {
+            return res.status(400).json({ message: "Invalid or expired OTP." });
+        }
 
-        // Check if OTP matches and is not expired
-        if (user.otp !== otp || user.otpExpire < Date.now()) {
-            return res.status(400).json({ message: "Invalid or Expired OTP." });
+        // Lock the OTP after too many failed guesses, even if still within the expiry window.
+        if (user.otpAttempts >= MAX_OTP_ATTEMPTS) {
+            return res.status(429).json({ message: "Too many incorrect attempts. Please request a new OTP." });
+        }
+
+        // Constant-time compare + expiry check
+        if (!safeEqual(user.otp, otp) || user.otpExpire < Date.now()) {
+            user.otpAttempts = (user.otpAttempts || 0) + 1;
+            await user.save();
+            return res.status(400).json({ message: "Invalid or expired OTP." });
         }
 
         const passwordError = validatePassword(newPassword);
@@ -224,6 +287,7 @@ router.post('/reset-password', async (req, res) => {
         // Clear the OTP fields
         user.otp = undefined;
         user.otpExpire = undefined;
+        user.otpAttempts = 0;
         await user.save();
 
         res.status(200).json({ message: "Password reset successful! You can now login." });
@@ -243,10 +307,16 @@ router.put('/update/:id', protect, async (req, res) => {
         if (req.user._id.toString() !== req.params.id) {
             return res.status(403).json({ message: "You can only update your own profile." });
         }
+
+        const newName = typeof req.body.name === 'string' ? req.body.name.trim() : '';
+        if (!newName) {
+            return res.status(400).json({ message: "Name is required and must be non-empty" });
+        }
+
         const updatedUser = await User.findByIdAndUpdate(
             req.params.id, 
-            { name: req.body.name }, 
-            { new: true }
+            { name: newName }, 
+            { new: true, runValidators: true }
         );
         
         if (!updatedUser) return res.status(404).json({ message: "User not found" });
@@ -267,7 +337,13 @@ router.delete('/delete/:id', protect, async (req, res) => {
         if (req.user._id.toString() !== req.params.id) {
             return res.status(403).json({ message: "You can only delete your own account." });
         }
-        await User.findByIdAndDelete(req.params.id);
+        // Cascade: remove the user together with all of their orders and saved addresses so
+        // no orphaned personal data (or unusable order history) is left behind.
+        await Promise.all([
+            User.findByIdAndDelete(req.params.id),
+            Order.deleteMany({ userId: req.params.id }),
+            Address.deleteMany({ userId: req.params.id })
+        ]);
         res.status(200).json({ message: "Account deleted permanently." });
     } catch (error) {
         console.error("❌ Account delete error:", error);
@@ -305,7 +381,7 @@ router.post('/google', async (req, res) => {
 
         // Only fields derived from the verified token payload are used.
         const name = payload.name || '';
-        const email = payload.email;
+        const email = normalizeEmail(payload.email);
         const picture = payload.picture;
 
         // Check if user already exists
@@ -327,7 +403,7 @@ router.post('/google', async (req, res) => {
 
         res.status(200).json({
             token,
-            user: { id: user._id, name: user.name, email: user.email }
+            user: { id: user._id, name: user.name, email: user.email, isAdmin: user.isAdmin }
         });
     } catch (error) {
         console.error("Google Login Error:", error);

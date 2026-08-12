@@ -89,6 +89,22 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
 
       const order = data.order;
 
+      // The cart stores a price snapshot, but the server always recomputes prices from the
+      // live catalog. If a product price changed since it was added, warn the user so the
+      // final charge never silently surprises them.
+      const clientTotal = cart.reduce(
+        (sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1),
+        0
+      );
+      if (
+        typeof order.calculatedAmount === 'number' &&
+        Math.abs(order.calculatedAmount - clientTotal) > 0.01
+      ) {
+        toast.warn(
+          `Order total refreshed to ₹${order.calculatedAmount.toFixed(2)} (prices were updated since you added items).`
+        );
+      }
+
       // Guards the modal-ondismiss handler so it only reports a user-initiated
       // cancellation. Without this, the modal ALSO dismisses after a successful
       // payment or a payment.failed event, producing a confusing duplicate toast.

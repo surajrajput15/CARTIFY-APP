@@ -13,27 +13,29 @@ const ProductDetailsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [quantity, setQuantity] = useState(1);
-  const [relatedProducts, setRelatedProducts] = useState([]);
-  const [relatedLoading, setRelatedLoading] = useState(false);
+  const [relatedProducts, setRelatedProducts] = useState(null);
   const { addToCart } = useCart();
 
-  const fetchProduct = useCallback(async () => {
-    setError(null);
-    setProduct(null);
-    try {
-      const response = await fetchProductById(id);
-      setProduct(response.data);
-    } catch (err) {
-      console.error("Error fetching product:", err);
-      const message = err.response?.data?.message || "Failed to load product details";
-      setError(message);
-      toast.error(message);
-    } finally {
-      setLoading(false);
-    }
+  // Derived loading states — avoids setting state synchronously inside effects.
+  const loading = product === null;
+  const relatedLoading = relatedProducts === null;
+
+  const fetchProduct = useCallback(() => {
+    // State updates happen inside promise callbacks only — never synchronously within the
+    // effect that calls this, which keeps the render cycle clean.
+    fetchProductById(id)
+      .then((response) => {
+        setProduct(response.data);
+        setError(null);
+      })
+      .catch((err) => {
+        console.error("Error fetching product:", err);
+        const message = err.response?.data?.message || "Failed to load product details";
+        setError(message);
+        toast.error(message);
+      });
   }, [id]);
 
   useEffect(() => {
@@ -41,17 +43,15 @@ const ProductDetailsPage = () => {
     fetchProduct();
   }, [fetchProduct]);
 
-  const fetchRelated = useCallback(async (category, excludeId) => {
-    setRelatedLoading(true);
-    try {
-      const response = await fetchProducts({ category, limit: 5 });
-      const data = Array.isArray(response.data) ? response.data : response.data.products || [];
-      setRelatedProducts(data.filter((p) => p._id !== excludeId).slice(0, 4));
-    } catch {
-      setRelatedProducts([]);
-    } finally {
-      setRelatedLoading(false);
-    }
+  const fetchRelated = useCallback((category, excludeId) => {
+    fetchProducts({ category, limit: 5 })
+      .then((response) => {
+        const data = Array.isArray(response.data) ? response.data : response.data.products || [];
+        setRelatedProducts(data.filter((p) => p._id !== excludeId).slice(0, 4));
+      })
+      .catch(() => {
+        setRelatedProducts([]);
+      });
   }, []);
 
   useEffect(() => {
@@ -68,30 +68,6 @@ const ProductDetailsPage = () => {
       navigate('/', { replace: true });
     }
   };
-
-  if (loading) {
-    return (
-      <main className="max-w-7xl mx-auto p-4 md:p-6 mt-4">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col md:flex-row animate-pulse">
-          <div className="md:w-1/2 p-8 bg-gray-50 flex justify-center items-center">
-            <div className="h-[400px] w-full bg-gray-200 rounded-xl"></div>
-          </div>
-          <div className="md:w-1/2 p-8 md:p-12 flex flex-col justify-center space-y-4">
-            <div className="h-4 w-20 bg-gray-200 rounded"></div>
-            <div className="h-8 w-3/4 bg-gray-200 rounded"></div>
-            <div className="h-6 w-32 bg-gray-200 rounded"></div>
-            <div className="space-y-2">
-              <div className="h-4 w-full bg-gray-200 rounded"></div>
-              <div className="h-4 w-5/6 bg-gray-200 rounded"></div>
-              <div className="h-4 w-4/6 bg-gray-200 rounded"></div>
-            </div>
-            <div className="h-12 w-40 bg-gray-200 rounded mt-4"></div>
-            <div className="h-14 w-full bg-gray-200 rounded"></div>
-          </div>
-        </div>
-      </main>
-    );
-  }
 
   if (error) {
     return (
@@ -113,6 +89,30 @@ const ProductDetailsPage = () => {
             <RefreshCw size={20} />
             Try Again
           </button>
+        </div>
+      </main>
+    );
+  }
+
+  if (loading) {
+    return (
+      <main className="max-w-7xl mx-auto p-4 md:p-6 mt-4">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col md:flex-row animate-pulse">
+          <div className="md:w-1/2 p-8 bg-gray-50 flex justify-center items-center">
+            <div className="h-[400px] w-full bg-gray-200 rounded-xl"></div>
+          </div>
+          <div className="md:w-1/2 p-8 md:p-12 flex flex-col justify-center space-y-4">
+            <div className="h-4 w-20 bg-gray-200 rounded"></div>
+            <div className="h-8 w-3/4 bg-gray-200 rounded"></div>
+            <div className="h-6 w-32 bg-gray-200 rounded"></div>
+            <div className="space-y-2">
+              <div className="h-4 w-full bg-gray-200 rounded"></div>
+              <div className="h-4 w-5/6 bg-gray-200 rounded"></div>
+              <div className="h-4 w-4/6 bg-gray-200 rounded"></div>
+            </div>
+            <div className="h-12 w-40 bg-gray-200 rounded mt-4"></div>
+            <div className="h-14 w-full bg-gray-200 rounded"></div>
+          </div>
         </div>
       </main>
     );

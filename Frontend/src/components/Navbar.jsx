@@ -18,6 +18,9 @@ const Navbar = () => {
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const navigate = useNavigate();
 
+  // Total units in cart (sum of all item quantities), not the number of distinct product rows.
+  const cartItemCount = cart.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
+
   const handleSearch = (e) => {
     e.preventDefault();
     if (keyword.trim()) {
@@ -101,9 +104,9 @@ const Navbar = () => {
             }>
               <div className="relative inline-flex items-center justify-center">
                 <ShoppingCart size={20} aria-hidden="true" />
-                {cart && cart.length > 0 && (
+                {cartItemCount > 0 && (
                   <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shadow-sm px-1 leading-none">
-                    {cart.length}
+                    {cartItemCount}
                   </span>
                 )}
               </div>

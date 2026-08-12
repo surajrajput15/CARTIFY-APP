@@ -103,11 +103,18 @@ router.post('/create-order', protect, async (req, res, next) => {
                 });
             }
 
-            // Stock is NOT enforced here. Stock is reserved only at verify-payment time via
-            // an atomic $inc guarded by `countInStock >= quantity`, so an oversell always
-            // surfaces as the 409 there and stock can never go negative. Enforcing stock here
-            // would reject on the client's requested quantity while stock may still change
-            // between order creation and payment, and it can never match the verify-time 409.
+            // Early stock gate: reject quantities that can never be fulfilled by the CURRENT
+            // stock (tracked stock only — legacy products without a numeric countInStock are
+            // skipped, matching verify-time behaviour). This prevents a user from being put
+            // through a full Razorpay charge for a quantity that is already impossible to ship.
+            // A concurrent purchase can still deplete stock between this check and payment; that
+            // remainder is handled at verify-time by the atomic $gte reservation + 409 shortfall.
+            if (product.countInStock != null && item.quantity > product.countInStock) {
+                return res.status(400).json({
+                    message: `Only ${product.countInStock} unit(s) of "${product.title}" are available in stock`
+                });
+            }
+
             const itemTotal = product.price * item.quantity;
             calculatedTotal += itemTotal;
             orderItems.push({
@@ -140,7 +147,8 @@ router.post('/create-order', protect, async (req, res, next) => {
         }
 
         // Persist a Pending Order BEFORE returning — binds razorpay_order_id, server items,
-        // server total, userId and Pending paymentStatus to Mongo.
+        // server total, userId and Pending paymentStatus to Mongo. A TTL expiry is attached so
+        // abandoned checkouts are auto-purged after 24h instead of accumulating forever.
         const pendingOrder = new Order({
             userId: req.user._id,
             orderItems,
@@ -148,7 +156,8 @@ router.post('/create-order', protect, async (req, res, next) => {
             razorpayOrderId: rzpOrder.id,
             paymentStatus: 'Pending',
             status: 'Pending',
-            totalPrice: calculatedTotal
+            totalPrice: calculatedTotal,
+            expireAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
         });
 
         let savedOrder;
@@ -245,14 +254,18 @@ router.post('/verify-payment', protect, async (req, res) => {
         }
 
         // 5) Atomic transition Pending -> Paid. Only one concurrent request can win the update,
-        //    preventing duplicate finalisation (replay / double submit).
+        //    preventing duplicate finalisation (replay / double submit). The TTL expiry is removed
+        //    so a paid order is never auto-purged.
         const finalisedOrder = await Order.findOneAndUpdate(
             { _id: order._id, paymentStatus: 'Pending' },
             {
-                paymentStatus: 'Paid',
-                razorpayPaymentId: razorpay_payment_id,
-                paidAt: new Date(),
-                status: 'Processing'
+                $set: {
+                    paymentStatus: 'Paid',
+                    razorpayPaymentId: razorpay_payment_id,
+                    paidAt: new Date(),
+                    status: 'Processing'
+                },
+                $unset: { expireAt: 1 }
             },
             { new: true }
         );
@@ -312,11 +325,13 @@ router.post('/verify-payment', protect, async (req, res) => {
         const stockReserved = stockResult.matchedCount === stockOps.length;
 
         if (!stockReserved) {
-            // Some stock was exhausted by a concurrent purchase between order creation and
-            // verification. The order is already paid on Razorpay's side; it is flagged so
-            // fulfilment can resolve it, but stock was never allowed to go negative.
+            // Signature verified above means Razorpay captured the FULL amount, but a concurrent
+            // purchase exhausted some stock between order creation and verification. The order was
+            // already transitioned to Paid (money is real) — so we flag it for refund/fulfilment
+            // resolution and tell the user the honest state. Never claim a "partial charge".
+            await Order.findByIdAndUpdate(order._id, { stockShortfall: true });
             return res.status(409).json({
-                message: "Some items in your order went out of stock during payment. You have been charged only for confirmed items — our team will contact you shortly.",
+                message: "Your payment was captured for the full amount, but one or more items went out of stock during checkout. Your order is safely recorded and our team will contact you shortly to arrange a refund for the unavailable items.",
                 success: false,
                 order: finalisedOrder
             });

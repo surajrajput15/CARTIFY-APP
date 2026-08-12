@@ -33,13 +33,14 @@ const HomePage = () => {
   const searchQuery = searchParams.get('search') || '';
 
   useEffect(() => {
-    setLoading(true);
     const params = { page, limit: 12 };
     if (selectedCategory !== 'all') params.category = selectedCategory;
     if (searchQuery) params.search = searchQuery;
 
+    let cancelled = false;
       fetchProducts(params)
       .then((response) => {
+        if (cancelled) return;
         const d = response.data;
         if (Array.isArray(d)) {
           setProducts(d);
@@ -52,15 +53,24 @@ const HomePage = () => {
         }
       })
       .catch((error) => {
+        if (cancelled) return;
         console.error("Failed to fetch products:", error);
         toast.error("Failed to load products");
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!cancelled) setLoading(false); });
+
+    return () => { cancelled = true; };
   }, [page, selectedCategory, searchQuery]);
 
   const handleCategoryChange = (cat) => {
+    setLoading(true);
     setSelectedCategory(cat);
     setPage(1);
+  };
+
+  const goToPage = (p) => {
+    setLoading(true);
+    setPage(p);
   };
 
   return (
@@ -128,7 +138,7 @@ const HomePage = () => {
           {pages > 1 && (
             <div className="mt-10 flex justify-center items-center gap-1.5">
               <button
-                onClick={() => setPage(1)}
+                onClick={() => goToPage(1)}
                 disabled={page === 1}
                 className="px-3 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 aria-label="First page"
@@ -136,7 +146,7 @@ const HomePage = () => {
                 First
               </button>
               <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
+                onClick={() => goToPage(Math.max(1, page - 1))}
                 disabled={page === 1}
                 className="px-3 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 aria-label="Previous page"
@@ -150,7 +160,7 @@ const HomePage = () => {
                 ) : (
                   <button
                     key={item}
-                    onClick={() => setPage(item)}
+                    onClick={() => goToPage(item)}
                     aria-label={`Page ${item}`}
                     aria-current={page === item ? 'page' : undefined}
                     className={`w-9 h-9 rounded-lg text-sm font-bold transition-colors ${
@@ -163,7 +173,7 @@ const HomePage = () => {
               )}
 
               <button
-                onClick={() => setPage(p => Math.min(pages, p + 1))}
+                onClick={() => goToPage(Math.min(pages, page + 1))}
                 disabled={page === pages}
                 className="px-3 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 aria-label="Next page"
@@ -171,7 +181,7 @@ const HomePage = () => {
                 Next
               </button>
               <button
-                onClick={() => setPage(pages)}
+                onClick={() => goToPage(pages)}
                 disabled={page === pages}
                 className="px-3 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 aria-label="Last page"

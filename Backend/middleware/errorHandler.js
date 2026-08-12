@@ -25,6 +25,12 @@ const errorHandler = (err, req, res, next) => {
     return res.status(400).json({ message: err.message });
   }
 
+  // express.json() payload exceeded the 10kb body limit — client needs to know it was a
+  // size problem (413), not a generic server failure (500).
+  if (err.type === 'entity.too.large' || err.name === 'PayloadTooLargeError') {
+    return res.status(413).json({ message: 'Request body too large' });
+  }
+
   res.status(err.statusCode || 500).json({
     message: 'Internal server error'
   });
