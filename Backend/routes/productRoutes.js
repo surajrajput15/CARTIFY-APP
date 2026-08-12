@@ -224,10 +224,17 @@ router.patch('/:id', protect, admin, async (req, res) => {
                     updates.countInStock = stock;
                 } else if (field === 'rating') {
                     const { rate, count } = req.body.rating || {};
-                    updates.rating = {
-                        rate: rate !== undefined ? Number(rate) : product.rating.rate,
-                        count: count !== undefined ? Number(count) : product.rating.count,
-                    };
+                    const parsedRate = rate !== undefined ? Number(rate) : product.rating.rate;
+                    const parsedCount = count !== undefined ? Number(count) : product.rating.count;
+                    // Same bounds as the POST /add validator — prevents rating corruption
+                    // (e.g. rate > 5 or negative) through the update path.
+                    if (rate !== undefined && (isNaN(parsedRate) || parsedRate < 0 || parsedRate > 5)) {
+                        return res.status(400).json({ message: "Rating rate must be between 0 and 5" });
+                    }
+                    if (count !== undefined && (isNaN(parsedCount) || parsedCount < 0 || !Number.isInteger(parsedCount))) {
+                        return res.status(400).json({ message: "Rating count must be a non-negative integer" });
+                    }
+                    updates.rating = { rate: parsedRate, count: parsedCount };
                 } else if (field === 'image') {
                     if (!req.body.image || typeof req.body.image !== 'string' || !req.body.image.trim()) {
                         return res.status(400).json({ message: "Image URL is required" });

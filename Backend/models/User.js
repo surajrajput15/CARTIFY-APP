@@ -8,7 +8,10 @@ const userSchema = new mongoose.Schema({
     email: { 
         type: String, 
         required: true, 
-        unique: true 
+        unique: true,
+        // Normalize on save so case-only differences ("John@X.com" vs "john@x.com") can never
+        // create duplicate accounts or block logins.
+        set: (v) => (typeof v === 'string' ? v.trim().toLowerCase() : v)
     },
     password: { 
         type: String, 
@@ -27,6 +30,12 @@ const userSchema = new mongoose.Schema({
     otpExpire: {
         type: Date,
         default: null
+    },
+    // Brute-force guard: counts consecutive failed OTP verifications for this account.
+    // Reset whenever a fresh OTP is issued.
+    otpAttempts: {
+        type: Number,
+        default: 0
     }
 }, { timestamps: true });
 

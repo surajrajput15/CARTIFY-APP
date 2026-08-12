@@ -37,7 +37,7 @@ const CartPage = () => {
   // Populated cart state
   return (
     <div className="max-w-7xl mx-auto p-4 md:p-6 mt-4 lg:pb-0 pb-24">
-      <h1 className="text-2xl font-bold text-gray-800 mb-8">Shopping Cart ({cart.length} items)</h1>
+      <h1 className="text-2xl font-bold text-gray-800 mb-8">Shopping Cart ({totalItems} {totalItems === 1 ? 'item' : 'items'})</h1>
       
       <div className="flex flex-col lg:flex-row gap-8">
         
