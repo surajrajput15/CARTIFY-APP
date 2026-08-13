@@ -7,6 +7,7 @@ import Footer from './components/Footer';
 import Spinner from './components/Spinner';
 import HomePage from './pages/HomePage';
 import NotFound from './pages/NotFound';
+import { GoogleIdentityProvider } from './context/googleIdentityContext';
 import { useAuth } from './context/authContext';
 
 const CartPage = lazy(() => import('./pages/CartPage'));
@@ -29,27 +30,29 @@ function App() {
 
   return (
     <Router>
-      <div className="min-h-screen bg-gray-50 font-sans pb-10">
-        
-        <Navbar />
-        <Toaster position="bottom-right" reverseOrder={false} />
-        
-        <Suspense fallback={<Spinner />}>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/cart" element={<CartPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/checkout" element={<CheckoutPage />} />
-            <Route path="/product/:id" element={<ProductDetailsPage />} />
-            <Route path="/admin" element={<AdminPage />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Suspense>
+      <GoogleIdentityProvider>
+        <div className="min-h-screen bg-gray-50 font-sans pb-10">
+          
+          <Navbar />
+          <Toaster position="bottom-right" reverseOrder={false} />
+          
+          <Suspense fallback={<Spinner />}>
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/cart" element={<CartPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/checkout" element={<CheckoutPage />} />
+              <Route path="/product/:id" element={<ProductDetailsPage />} />
+              <Route path="/admin" element={<AdminPage />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
 
-        <Footer />
-        
-      </div>
+          <Footer />
+          
+        </div>
+      </GoogleIdentityProvider>
     </Router>
   );
 }
