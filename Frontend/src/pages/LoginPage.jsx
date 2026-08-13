@@ -204,9 +204,7 @@ const LoginPage = () => {
           />
         )}
 
-        {!isForgotPassword && (
-          <GoogleLoginButton login={login} navigate={navigate} setError={setError} />
-        )}
+        {!isForgotPassword && <GoogleLoginButton />}
 
       </div>
     </div>
