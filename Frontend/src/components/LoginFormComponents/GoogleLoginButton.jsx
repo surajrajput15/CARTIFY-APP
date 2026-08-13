@@ -43,7 +43,10 @@ const GoogleLoginButton = ({ login, navigate, setError }) => {
       window.google.accounts.id.initialize({
         client_id: clientId,
         ux_mode: 'redirect',
-        redirect_uri: `${window.location.origin}/login`,
+        // Google rejects localhost redirect URIs that contain a path, so the
+        // origin (no path) is used. GIS re-fires the callback on whichever
+        // page Google lands the user back on (origin works for an SPA).
+        redirect_uri: window.location.origin,
         callback: handleCredential,
       });
 
