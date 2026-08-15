@@ -379,7 +379,7 @@ router.put('/update/:id', protect, async (req, res) => {
         const updatedUser = await User.findByIdAndUpdate(
             req.params.id, 
             { name: newName }, 
-            { new: true, runValidators: true }
+            { returnDocument: 'after', runValidators: true }
         );
         
         if (!updatedUser) return res.status(404).json({ message: "User not found" });

@@ -285,7 +285,7 @@ router.patch('/:id', protect, admin, async (req, res) => {
         const updatedProduct = await Product.findByIdAndUpdate(
             req.params.id,
             updates,
-            { new: true, runValidators: true }
+            { returnDocument: 'after', runValidators: true }
         );
 
         // If the image was replaced with a new one, remove the old uploaded file.

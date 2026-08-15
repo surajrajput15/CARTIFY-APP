@@ -26,7 +26,7 @@ async function finalisePaidOrder(order, { paymentId } = {}) {
   const finalisedOrder = await Order.findOneAndUpdate(
     { _id: order._id, paymentStatus: 'Pending' },
     { $set: setFields, $unset: { expireAt: 1 } },
-    { new: true }
+    { returnDocument: 'after' }
   );
 
   if (!finalisedOrder) {

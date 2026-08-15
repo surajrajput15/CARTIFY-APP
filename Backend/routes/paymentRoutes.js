@@ -374,7 +374,7 @@ router.post('/refund/:orderId', protect, admin, async (req, res) => {
         const updated = await Order.findByIdAndUpdate(
             order._id,
             { $set: { paymentStatus: 'Refunded', status: 'Cancelled', refundId: refund.id } },
-            { new: true }
+            { returnDocument: 'after' }
         );
 
         res.status(200).json({ message: 'Refund initiated', refund, order: updated });
