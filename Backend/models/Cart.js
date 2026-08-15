@@ -10,7 +10,4 @@ const cartSchema = new mongoose.Schema({
     items: [cartItemSchema]
 }, { timestamps: true });
 
-// Hot read path: a user's cart is fetched by userId.
-cartSchema.index({ userId: 1 });
-
 module.exports = mongoose.model('Cart', cartSchema);
