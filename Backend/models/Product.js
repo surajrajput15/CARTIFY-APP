@@ -33,5 +33,9 @@ const productSchema = new mongoose.Schema({
     }
 }, { timestamps: true }); // timestamps true karne se 'createdAt' aur 'updatedAt' apne aap add ho jayega
 
+// Hot read paths: category filtering and title-prefix searches benefit from these.
+productSchema.index({ category: 1 });
+productSchema.index({ title: 1 });
+
 // Is schema ko export karna taaki hum isko doosri files mein use kar sakein
 module.exports = mongoose.model('Product', productSchema);

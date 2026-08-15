@@ -6,7 +6,28 @@ const { protect } = require('../middleware/auth');
 // 1. ADD NEW ADDRESS
 router.post('/add', protect, async (req, res, next) => {
     try {
-        const newAddress = new Address({ ...req.body, userId: req.user._id });
+        // Strict allowlist + server-side validation. The raw body is never spread
+        // into the document, so a client can't inject extra fields (userId etc.).
+        const allowedFields = ['fullName', 'phone', 'street', 'city', 'state', 'pinCode'];
+        const sanitized = {};
+
+        for (const field of allowedFields) {
+            const raw = req.body[field];
+            const val = typeof raw === 'string' ? raw.trim() : '';
+            if (!val) {
+                return res.status(400).json({ message: `${field} is required and must be non-empty` });
+            }
+            sanitized[field] = val;
+        }
+
+        if (!/^[6-9]\d{9}$/.test(sanitized.phone)) {
+            return res.status(400).json({ message: 'Phone must be a valid 10-digit Indian number starting with 6, 7, 8 or 9' });
+        }
+        if (!/^\d{6}$/.test(sanitized.pinCode)) {
+            return res.status(400).json({ message: 'PIN code must be exactly 6 digits' });
+        }
+
+        const newAddress = new Address({ ...sanitized, userId: req.user._id });
         const savedAddress = await newAddress.save();
         res.status(201).json(savedAddress);
     } catch (error) {

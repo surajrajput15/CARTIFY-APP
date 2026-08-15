@@ -1,7 +1,18 @@
 const express = require('express');
 const router = express.Router();
+const path = require('path');
+const fs = require('fs');
 const Product = require('../models/Product');
 const { protect, admin } = require('../middleware/auth');
+
+// Delete the on-disk file behind an uploaded image URL (/uploads/<name>), if any.
+// Remote URLs and seed-data images are left untouched. Errors are swallowed — a
+// leftover file is harmless; a missing file is not worth failing the request over.
+const unlinkUploadedImage = (imageUrl) => {
+  if (typeof imageUrl !== 'string' || !imageUrl.startsWith('/uploads/')) return;
+  const filePath = path.join(__dirname, '..', 'uploads', path.basename(imageUrl));
+  fs.unlink(filePath, () => {});
+};
 
 // Utility: Escape all regex special characters to prevent ReDoS (Regular Expression DoS)
 // Without this, a malicious user could inject patterns like "(?:.*)*" into $regex,
@@ -186,7 +197,12 @@ router.delete('/clear', protect, admin, async (req, res) => {
 // 6. DELETE API: Single product delete (Admin only)
 router.delete('/:id', protect, admin, async (req, res, next) => {
     try {
-        await Product.findByIdAndDelete(req.params.id);
+        const product = await Product.findByIdAndDelete(req.params.id);
+        if (!product) {
+            return res.status(404).json({ message: "Product not found" });
+        }
+        // Clean up the uploaded image file so deleted products don't leak disk space.
+        unlinkUploadedImage(product.image);
         res.status(200).json({ message: "Product delete ho gaya! 🗑️" });
     } catch (error) {
         if (error.name === 'CastError') {
@@ -204,6 +220,7 @@ router.patch('/:id', protect, admin, async (req, res) => {
         if (!product) {
             return res.status(404).json({ message: "Product not found" });
         }
+        const previousImage = product.image;
 
         const allowedFields = ['title', 'price', 'description', 'category', 'image', 'rating', 'countInStock'];
         const updates = {};
@@ -270,6 +287,11 @@ router.patch('/:id', protect, admin, async (req, res) => {
             updates,
             { new: true, runValidators: true }
         );
+
+        // If the image was replaced with a new one, remove the old uploaded file.
+        if (updates.image && updates.image !== previousImage) {
+            unlinkUploadedImage(previousImage);
+        }
 
         res.status(200).json({
             success: true,

@@ -8,13 +8,20 @@
       "destination": "/index.html"
     }
   ],
-  "headers": [
+"headers": [
     {
       "source": "/(.*)",
       "headers": [
         { "key": "Cross-Origin-Opener-Policy", "value": "same-origin-allow-popups" },
-        { "key": "Cross-Origin-Resource-Policy", "value": "cross-origin" }
+        { "key": "Cross-Origin-Resource-Policy", "value": "cross-origin" },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' https://checkout.razorpay.com https://accounts.google.com; style-src 'self' 'unsafe-inline'; font-src 'self' data: https:; img-src 'self' data: https:; connect-src 'self' https://cartify-api-10g3.onrender.com http://localhost:5000 https://checkout.razorpay.com; frame-src https://checkout.razorpay.com https://accounts.google.com; object-src 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com; frame-ancestors 'self'"
+        },
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
       ]
+    }
+  ]
     }
   ]
 }

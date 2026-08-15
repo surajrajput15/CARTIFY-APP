@@ -86,6 +86,13 @@ app.use(cors({
   },
   credentials: true
 }));
+
+// Razorpay webhook: signature is computed over the RAW request body, so it must be
+// parsed BEFORE the global express.json() middleware (which would otherwise consume
+// the stream and replace req.body with a parsed object). The actual handler lives in
+// paymentRoutes.js (/api/payment/webhook).
+app.post('/api/payment/webhook', express.raw({ type: 'application/json', limit: '50kb' }));
+
 app.use(express.json({ limit: "10kb" }));
 app.use(helmet());
 
@@ -155,6 +162,23 @@ app.use((req, res) => {
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
+
+// Graceful shutdown — drain in-flight requests, then close MongoDB, so Render's
+// restarts don't leave the process hanging or drop active connections mid-request.
+const shutdown = (signal) => {
+    console.log(`\n${signal} received. Shutting down gracefully...`);
+    server.close(() => {
+        mongoose.connection.close(false).then(() => {
+            console.log('MongoDB connection closed.');
+            process.exit(0);
+        });
+    });
+    // Force-exit if connections refuse to drain (prevents an indefinite hang).
+    setTimeout(() => process.exit(1), 10000).unref();
+};
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));

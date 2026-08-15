@@ -75,8 +75,14 @@ export const GoogleIdentityProvider = ({ children }) => {
         window.google.accounts.id.initialize({
           client_id: GOOGLE_CLIENT_ID,
           ux_mode: 'redirect',
-          // Pathless so it matches the authorized redirect URI exactly.
-          redirect_uri: window.location.origin,
+          // GIS uses `login_uri` (mapped to Google's OAuth `redirect_uri`) for the
+          // redirect flow — `redirect_uri` is not a recognized GIS config key and
+          // is silently ignored. When unset, GIS defaults to the current page URL
+          // (e.g. .../login), which is NOT the authorized redirect URI and triggers
+          // Google's "Error 400: redirect_uri_mismatch". The pathless origin here
+          // matches the authorized redirect URI exactly and lets the app-wide
+          // provider re-fire the credential callback on the landing page.
+          login_uri: window.location.origin,
           callback: handleCredential,
         });
         setStatus('ready');

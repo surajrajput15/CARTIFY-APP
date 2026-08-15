@@ -23,6 +23,7 @@ const userSchema = new mongoose.Schema({
         default: false 
     },
     // 👇 NAYE OTP FIELDS
+    // otp stores the SHA-256 hash of the code (never the plaintext), see authRoutes.
     otp: {
         type: String,
         default: null

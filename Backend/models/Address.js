@@ -14,4 +14,7 @@ const addressSchema = new mongoose.Schema({
     pinCode: { type: String, required: true },
 }, { timestamps: true });
 
+// Addresses are always read/written per user.
+addressSchema.index({ userId: 1 });
+
 module.exports = mongoose.model('Address', addressSchema);

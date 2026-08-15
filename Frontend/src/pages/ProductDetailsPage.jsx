@@ -212,7 +212,7 @@ const ProductDetailsPage = () => {
         </div>
       </div>
 
-      {relatedProducts.length > 0 && (
+      {relatedProducts?.length > 0 && (
         <section className="mt-14">
           <h2 className="text-2xl font-bold text-gray-900 mb-8 flex items-center gap-3">
             <span className="w-1 h-7 bg-teal-500 rounded-full" aria-hidden="true" />
