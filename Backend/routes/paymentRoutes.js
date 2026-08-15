@@ -310,6 +310,7 @@ router.post('/webhook', async (req, res) => {
         }
 
         const event = JSON.parse(req.body.toString('utf8'));
+        console.log(`Webhook received: ${event.event}${event.payload?.payment?.entity?.order_id ? ` for order ${event.payload.payment.entity.order_id}` : ''}`);
 
         if (event.event === 'payment.captured') {
             const payment = event.payload?.payment?.entity;
