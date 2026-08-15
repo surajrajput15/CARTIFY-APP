@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { RefreshCw, RotateCcw } from 'lucide-react';
 import { fetchAdminOrders, updateOrderStatus, refundOrder } from '../../services/ordersApi';
+import ConfirmModal from '../ConfirmModal';
 
 const ORDER_STATUSES = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
 
@@ -20,6 +21,7 @@ const AdminOrdersTab = () => {
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [busyId, setBusyId] = useState(null);
+  const [refundTarget, setRefundTarget] = useState(null);
 
   // Fetch without touching loading synchronously inside the effect (linter rule);
   // the click handlers set loading=true before refetching.
@@ -67,7 +69,6 @@ const AdminOrdersTab = () => {
   };
 
   const handleRefund = async (order) => {
-    if (!window.confirm(`Refund ₹${Number(order.totalPrice || 0).toFixed(2)} for order ${order._id.slice(-6)}?`)) return;
     setBusyId(order._id);
     try {
       await refundOrder(order._id);
@@ -77,11 +78,13 @@ const AdminOrdersTab = () => {
       toast.error(err.response?.data?.message || 'Refund failed');
     } finally {
       setBusyId(null);
+      setRefundTarget(null);
     }
   };
 
   return (
-    <div className="space-y-4">
+    <>
+      <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
           {['all', ...ORDER_STATUSES].map((s) => (
@@ -161,7 +164,7 @@ const AdminOrdersTab = () => {
                     <td className="p-4 text-center">
                       {o.paymentStatus === 'Paid' && (
                         <button
-                          onClick={() => handleRefund(o)}
+                          onClick={() => setRefundTarget(o)}
                           disabled={busyId === o._id}
                           className="inline-flex items-center gap-1 text-amber-600 hover:text-amber-800 p-2 hover:bg-amber-50 rounded-lg transition-colors disabled:opacity-50"
                           aria-label={`Refund order ${o._id}`}
@@ -202,6 +205,18 @@ const AdminOrdersTab = () => {
         </div>
       )}
     </div>
+
+    {refundTarget && (
+        <ConfirmModal
+          title="Confirm Refund"
+          message={`Refund ₹${Number(refundTarget.totalPrice || 0).toFixed(2)} for order ${refundTarget._id.slice(-6)}? This cannot be undone.`}
+          confirmLabel="Refund"
+          loading={busyId === refundTarget._id}
+          onConfirm={() => handleRefund(refundTarget)}
+          onCancel={() => setRefundTarget(null)}
+        />
+      )}
+    </>
   );
 };
 

@@ -15,14 +15,14 @@ const userSchema = new mongoose.Schema({
     },
     password: { 
         type: String, 
-        // Ab password required nahi hai kyunki user sirf OTP se bhi login kar sakta hai!
+        // Password is optional because a user can also log in with OTP alone.
         required: false 
     },
     isAdmin: { 
         type: Boolean, 
         default: false 
     },
-    // 👇 NAYE OTP FIELDS
+    // OTP fields
     // otp stores the SHA-256 hash of the code (never the plaintext), see authRoutes.
     otp: {
         type: String,

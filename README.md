@@ -104,7 +104,7 @@ Cartify follows a sprint-based engineering process focused on building productio
 ### 🛍️ Shopping Experience
 - **Product Catalog** — Grid view with category filter, search, pagination (12/page)
 - **Product Details** — Full product page with image, ratings, add-to-cart
-- **Shopping Cart** — Add/remove/update quantities, live total, localStorage persistence
+- **Shopping Cart** — Add/remove/update quantities, live total, localStorage persistence, and server-side sync so the cart survives across devices (merge-on-login)
 - **Checkout** — Address selection, order summary, Razorpay payment flow
 
 ### 👤 User Dashboard
@@ -423,8 +423,18 @@ npm run dev
 | Method | Route | Auth | Description |
 |--------|-------|------|-------------|
 | GET | `/myorders/:userId` | JWT | User order history (own orders only) |
+| GET | `/admin` | Admin | All orders (paginated, status filter) |
+| PATCH | `/:id/status` | Admin | Update order status |
 
 > Order records are created server-side during the payment flow (see `/api/payment` below); the client never submits prices, totals, or order status.
+
+### Cart (`/api/cart`)
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| GET | `/` | JWT | Fetch saved cart (enriched with live product data) |
+| POST | `/merge` | JWT | Merge guest cart into server cart on login |
+| PUT | `/` | JWT | Replace server cart with current items |
+| DELETE | `/` | JWT | Clear server cart |
 
 ### Payments (`/api/payment`)
 | Method | Route | Auth | Description |

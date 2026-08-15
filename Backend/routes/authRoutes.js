@@ -78,7 +78,7 @@ const validatePassword = (password) => {
 // 🚀 NEW: OTP BASED LOGIN SYSTEM
 // ==========================================
 
-// 1. SEND OTP API (Email par 6-digit code bhejna)
+// 1. SEND OTP API (Send 6-digit code to the email)
 router.post('/send-otp', async (req, res) => {
     try {
         const email = normalizeEmail(req.body.email);
@@ -89,7 +89,7 @@ router.post('/send-otp', async (req, res) => {
             return res.status(429).json({ message: cooldownMessage });
         }
 
-        // User dhundho. Agar naya user hai, toh auto-create kar do (Bina password ke).
+        // Find the user. If it's a new user, auto-create one (without a password).
         // NOTE: Such an account has no password and can be claimed via /register later —
         // but ONLY after proving email ownership with the OTP sent here (see /register).
         let user = await User.findOne({ email });
@@ -100,13 +100,13 @@ router.post('/send-otp', async (req, res) => {
         // Generate 6-digit OTP (e.g. 482910)
         const otp = crypto.randomInt(100000, 1000000).toString();
         
-        // OTP aur Expiry Time (10 mins) database mein save karo — hash karke
+        // Save the OTP and expiry time (10 mins) to the database — hashed
         user.otp = hashOtp(otp);
         user.otpExpire = Date.now() + 10 * 60 * 1000;
         user.otpAttempts = 0; // Fresh code always resets the brute-force counter
         await user.save();
 
-        // Nodemailer se asali Email bhejo
+        // Send the actual email via Nodemailer
         const message = `Welcome to Cartify!\n\nYour Login OTP is: ${otp}\n\nThis OTP is valid for 10 minutes. Please do not share it with anyone.`;
         
         await sendEmail({
@@ -122,7 +122,7 @@ router.post('/send-otp', async (req, res) => {
     }
 });
 
-// 2. VERIFY OTP API (Email aur OTP check karna)
+// 2. VERIFY OTP API (Check the email and OTP)
 router.post('/verify-otp', async (req, res) => {
     try {
         const email = normalizeEmail(req.body.email);
@@ -146,13 +146,13 @@ router.post('/verify-otp', async (req, res) => {
             return res.status(400).json({ message: "Invalid or Expired OTP." });
         }
 
-        // OTP theek hai! Ab OTP ko database se mita do (Security)
+        // OTP is valid! Now clear the OTP from the database (Security)
         user.otp = undefined;
         user.otpExpire = undefined;
         user.otpAttempts = 0;
         await user.save();
 
-        // Login successful! Token generate karo
+        // Login successful! Generate token
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
         res.status(200).json({

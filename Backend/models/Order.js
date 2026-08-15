@@ -6,7 +6,7 @@ const orderSchema = new mongoose.Schema({
         ref: 'User', 
         required: true 
     },
-    // Cart Items ka format (server-calculated, price is authoritative from Product)
+    // Cart item format (server-calculated, price is authoritative from Product)
     orderItems: [
         {
             productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
@@ -15,7 +15,7 @@ const orderSchema = new mongoose.Schema({
             quantity: { type: Number, default: 1 }
         }
     ],
-    // Address ka format
+    // Shipping address format
     shippingAddress: {
         fullName: { type: String, required: true },
         phone: { type: String, required: true },

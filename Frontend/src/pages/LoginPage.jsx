@@ -11,6 +11,12 @@ const LoginPage = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  const redirectAfterLogin = useCallback(() => {
+    const intendedPath = sessionStorage.getItem('redirectAfterLogin');
+    sessionStorage.removeItem('redirectAfterLogin');
+    navigate(intendedPath && intendedPath !== '/login' ? intendedPath : '/');
+  }, [navigate]);
+
   const validatePassword = (value) => {
     if (value.length < 8) return 'Password must be at least 8 characters long';
     if (!/[A-Z]/.test(value)) return 'Password must contain at least one uppercase letter';
@@ -98,13 +104,13 @@ const LoginPage = () => {
     try {
       const response = await verifyOtp({ email, otp: otpValue });
       login(response.data.user, response.data.token);
-      navigate('/');
+      redirectAfterLogin();
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid or expired OTP.');
     } finally {
       setLoading(false);
     }
-  }, [email, otp, login, navigate]);
+  }, [email, otp, login, redirectAfterLogin]);
 
   const handlePasswordAuth = useCallback(async (e) => {
     e.preventDefault();
@@ -123,7 +129,7 @@ const LoginPage = () => {
       } else {
         const response = await loginWithPassword({ email, password });
         login(response.data.user, response.data.token);
-        navigate('/');
+        redirectAfterLogin();
       }
     } catch (err) {
       const msg = err.response?.data?.message || 'Authentication failed.';
@@ -137,7 +143,7 @@ const LoginPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [isRegistering, name, email, password, login, navigate]);
+  }, [isRegistering, name, email, password, login, redirectAfterLogin]);
 
   const handleClaimSendOtp = useCallback(async (e) => {
     if (e) e.preventDefault();

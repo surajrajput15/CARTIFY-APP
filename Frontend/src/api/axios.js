@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_URL } from '../config';
+import { navigateToLogin } from '../utils/navigation';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -20,9 +21,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
-      }
+      navigateToLogin();
     }
     return Promise.reject(error);
   }

@@ -8,6 +8,4 @@ No confirmed bugs yet.
 
 ## Needs Verification
 
-- Security findings from engineering audit
-- Performance findings from engineering audit
-- Code quality findings from engineering audit
+- None outstanding — all findings from the engineering audit have been resolved or tracked as future features.

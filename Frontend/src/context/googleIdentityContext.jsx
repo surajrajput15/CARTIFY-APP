@@ -60,7 +60,9 @@ export const GoogleIdentityProvider = ({ children }) => {
         // Verify the ID token server-side; never decode/trust it locally.
         const serverResponse = await googleLogin({ credential });
         login(serverResponse.data.user, serverResponse.data.token);
-        navigate('/');
+        const intendedPath = sessionStorage.getItem('redirectAfterLogin');
+        sessionStorage.removeItem('redirectAfterLogin');
+        navigate(intendedPath && intendedPath !== '/login' ? intendedPath : '/');
       } catch (err) {
         console.error('Google Login Error:', err);
         toast.error('Google login failed. Please try again.');

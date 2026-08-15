@@ -4,9 +4,27 @@ const multer = require('multer');
 const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
+const cloudinary = require('cloudinary').v2;
 const { protect, admin } = require('../middleware/auth');
 
 const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
+
+// Cloudinary is preferred for production (persistent, CDN-backed). When its env
+// vars are configured we upload there; otherwise we fall back to the local disk
+// (fine for development, but images vanish on Render restarts).
+const hasCloudinary = Boolean(
+  process.env.CLOUDINARY_CLOUD_NAME &&
+  process.env.CLOUDINARY_API_KEY &&
+  process.env.CLOUDINARY_API_SECRET
+);
+
+if (hasCloudinary) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+}
 
 // Detect the true image format from its magic bytes, never trusting the
 // client-supplied mimetype or the original filename extension.
@@ -55,8 +73,31 @@ router.post('/', protect, admin, (req, res) => {
       });
     }
 
-    // Safe, unpredictable filename: the extension is derived from the detected
-    // format, so a crafted *.html / *.svg payload can never be written or served.
+    // Unique, unpredictable public id so a crafted *.html / *.svg payload can
+    // never be stored or served, and images cannot collide.
+    const publicId = `cartify/${crypto.randomBytes(16).toString('hex')}`;
+
+    const finishUpload = (url) => {
+      res.status(200).json({ message: 'Image uploaded successfully', image: url });
+    };
+
+    if (hasCloudinary) {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { public_id: publicId, resource_type: 'image' },
+        (cloudErr, result) => {
+          if (cloudErr || !result?.secure_url) {
+            console.error('Cloudinary upload error:', cloudErr?.message || 'no url returned');
+            return res.status(500).json({ message: 'Failed to save image' });
+          }
+          finishUpload(result.secure_url);
+        }
+      );
+      uploadStream.end(req.file.buffer);
+      return;
+    }
+
+    // Fallback: local disk (development only). The extension is derived from the
+    // detected format so a crafted payload can never be written with a bad extension.
     const safeName = crypto.randomBytes(16).toString('hex') + detected.ext;
     const filePath = path.join(UPLOAD_DIR, safeName);
 
@@ -65,10 +106,8 @@ router.post('/', protect, admin, (req, res) => {
         console.error('Upload write error:', writeErr.message);
         return res.status(500).json({ message: 'Failed to save image' });
       }
-
       const baseUrl = `${req.protocol}://${req.get('host')}`;
-      const imageUrl = `${baseUrl}/uploads/${safeName}`;
-      res.status(200).json({ message: 'Image uploaded successfully', image: imageUrl });
+      finishUpload(`${baseUrl}/uploads/${safeName}`);
     });
   });
 });
@@ -76,4 +115,4 @@ router.post('/', protect, admin, (req, res) => {
 // Ensure the uploads directory exists up-front so first uploads never fail sync.
 fs.mkdir(UPLOAD_DIR, { recursive: true }, () => {});
 
-module.exports = { router, UPLOAD_DIR };
+module.exports = { router, UPLOAD_DIR, hasCloudinary };

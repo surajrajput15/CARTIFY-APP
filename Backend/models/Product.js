@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-// Product ka Blueprint (Schema)
+// Product blueprint (Schema)
 const productSchema = new mongoose.Schema({
     title: { 
         type: String, 
@@ -31,11 +31,11 @@ const productSchema = new mongoose.Schema({
         rate: { type: Number, default: 0 },
         count: { type: Number, default: 0 }
     }
-}, { timestamps: true }); // timestamps true karne se 'createdAt' aur 'updatedAt' apne aap add ho jayega
+}, { timestamps: true }); // timestamps adds 'createdAt' and 'updatedAt' automatically
 
 // Hot read paths: category filtering and title-prefix searches benefit from these.
 productSchema.index({ category: 1 });
 productSchema.index({ title: 1 });
 
-// Is schema ko export karna taaki hum isko doosri files mein use kar sakein
+// Export this schema so it can be used in other files
 module.exports = mongoose.model('Product', productSchema);
