@@ -71,7 +71,7 @@ router.patch('/:id/status', protect, admin, async (req, res) => {
         const order = await Order.findByIdAndUpdate(
             req.params.id,
             { $set: { status } },
-            { new: true }
+            { returnDocument: 'after' }
         );
 
         if (!order) return res.status(404).json({ message: "Order not found" });
