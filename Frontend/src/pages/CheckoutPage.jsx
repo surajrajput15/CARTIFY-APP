@@ -24,6 +24,7 @@ const CheckoutPage = () => {
 
   useEffect(() => {
     if (!user) {
+      sessionStorage.setItem('redirectAfterLogin', '/checkout');
       navigate('/login');
       return;
     }

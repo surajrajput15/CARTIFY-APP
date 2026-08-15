@@ -70,7 +70,7 @@ const Navbar = () => {
 
             {user ? (
               <div className="flex items-center space-x-2 sm:space-x-3">
-                <NavLink to="/profile" className={({ isActive }) =>
+                <NavLink to="/profile" aria-label="Profile" className={({ isActive }) =>
                   `${linkBase} font-bold ${isActive ? `${linkActiveBase} border-b-2 border-teal-500 pb-0.5` : 'text-teal-700 hover:text-teal-800'}`
                 }>
                   <User size={20} aria-hidden="true" />
@@ -99,7 +99,7 @@ const Navbar = () => {
               </NavLink>
             )}
 
-            <NavLink to="/cart" className={({ isActive }) =>
+            <NavLink to="/cart" aria-label="Cart" className={({ isActive }) =>
               `${linkBase} ${isActive ? `${linkActiveBase} border-b-2 border-teal-500 pb-0.5` : linkInactive}`
             }>
               <div className="relative inline-flex items-center justify-center">

@@ -2,16 +2,45 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const fs = require('fs');
+const cloudinary = require('cloudinary').v2;
 const Product = require('../models/Product');
 const { protect, admin } = require('../middleware/auth');
 
-// Delete the on-disk file behind an uploaded image URL (/uploads/<name>), if any.
-// Remote URLs and seed-data images are left untouched. Errors are swallowed — a
-// leftover file is harmless; a missing file is not worth failing the request over.
+const hasCloudinary = Boolean(
+  process.env.CLOUDINARY_CLOUD_NAME &&
+  process.env.CLOUDINARY_API_KEY &&
+  process.env.CLOUDINARY_API_SECRET
+);
+
+if (hasCloudinary) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+}
+
+// Delete the on-disk file behind an uploaded image URL (/uploads/<name>), or the
+// Cloudinary asset behind a cloudinary:// URL, if any. Remote URLs and seed-data
+// images are left untouched. Errors are swallowed — a leftover file is harmless;
+// a missing file is not worth failing the request over.
 const unlinkUploadedImage = (imageUrl) => {
-  if (typeof imageUrl !== 'string' || !imageUrl.startsWith('/uploads/')) return;
-  const filePath = path.join(__dirname, '..', 'uploads', path.basename(imageUrl));
-  fs.unlink(filePath, () => {});
+  if (typeof imageUrl !== 'string') return;
+
+  if (imageUrl.startsWith('/uploads/')) {
+    const filePath = path.join(__dirname, '..', 'uploads', path.basename(imageUrl));
+    fs.unlink(filePath, () => {});
+    return;
+  }
+
+  if (imageUrl.includes('/image/upload/cartify/')) {
+    // Extract public id from a URL like https://res.cloudinary.com/<name>/image/upload/cartify/<hex>
+    const match = imageUrl.match(/\/image\/upload\/(.+)$/);
+    if (match) {
+      const publicId = match[1].replace(/^v\d+\//, '');
+      cloudinary.uploader.destroy(publicId, () => {});
+    }
+  }
 };
 
 // Utility: Escape all regex special characters to prevent ReDoS (Regular Expression DoS)
@@ -22,6 +51,8 @@ const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // 1. GET API: Products with search, category filter & pagination
 router.get('/', async (req, res) => {
     try {
+        // Product list is safe to cache briefly — stale-while-revalidate keeps it fresh.
+        res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=30');
         const { search, category, page, limit } = req.query;
         const query = {};
 
@@ -148,15 +179,15 @@ router.post('/add', protect, admin, async (req, res) => {
     }
 });
 
-// 3. POST API: Ek saath bahut saare products dalne ke liye (Admin only)
+// 3. POST API: Insert many products at once (Admin only)
 router.post('/seed', protect, admin, async (req, res, next) => {
     try {
         if (!Array.isArray(req.body) || req.body.length === 0) {
             return res.status(400).json({ message: "Please provide an array of products to seed" });
         }
-        // insertMany() function array ko ek saath database me dalta hai
+        // insertMany() inserts the whole array into the database in one call
         const products = await Product.insertMany(req.body); 
-        res.status(201).json({ message: "Dukaan full ho gayi! Saare products add ho gaye! 🛒🎉", count: products.length });
+        res.status(201).json({ message: "Store is now stocked! All products added! 🛒🎉", count: products.length });
     } catch (error) {
         if (error.name === 'ValidationError' || error.name === 'CastError') {
             return next(error);
@@ -166,12 +197,13 @@ router.post('/seed', protect, admin, async (req, res, next) => {
     }
 });
 
-// 4. GET API: Kisi ek specific product ko uski ID se fetch karne ke liye
+// 4. GET API: Fetch a single product by its ID
 router.get('/:id', async (req, res, next) => {
     try {
+        res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=30');
         const product = await Product.findById(req.params.id); 
         if (!product) {
-            return res.status(404).json({ message: "Product nahi mila! 😢" });
+            return res.status(404).json({ message: "Product not found! 😢" });
         }
         res.status(200).json(product);
     } catch (error) {
@@ -183,18 +215,18 @@ router.get('/:id', async (req, res, next) => {
     }
 });
 
-// 5. DELETE API: Saare products saaf karne ke liye (Admin only)
+// 5. DELETE API: Clear all products (Admin only)
 router.delete('/clear', protect, admin, async (req, res) => {
     try {
         await Product.deleteMany({});
-        res.status(200).json({ message: "Database ekdum saaf ho gaya! 🧹✨" });
+        res.status(200).json({ message: "Database cleared successfully! 🧹✨" });
     } catch (error) {
         console.error("❌ Product delete error:", error);
         res.status(500).json({ message: "Failed to delete product" });
     }
 });
 
-// 6. DELETE API: Single product delete (Admin only)
+// 6. DELETE API: Delete a single product (Admin only)
 router.delete('/:id', protect, admin, async (req, res, next) => {
     try {
         const product = await Product.findByIdAndDelete(req.params.id);
@@ -203,7 +235,7 @@ router.delete('/:id', protect, admin, async (req, res, next) => {
         }
         // Clean up the uploaded image file so deleted products don't leak disk space.
         unlinkUploadedImage(product.image);
-        res.status(200).json({ message: "Product delete ho gaya! 🗑️" });
+        res.status(200).json({ message: "Product deleted successfully! 🗑️" });
     } catch (error) {
         if (error.name === 'CastError') {
             return next(error);

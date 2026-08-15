@@ -43,6 +43,7 @@ const productRoutes = require('./routes/productRoutes');
 const authRoutes = require('./routes/authRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const addressRoutes = require('./routes/addressRoutes');
+const cartRoutes = require('./routes/cartRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 const errorHandler = require('./middleware/errorHandler');
@@ -60,10 +61,10 @@ const authLimiter = rateLimit({
   message: { message: "Too many requests. Please try again after a minute." }
 });
 
-// Rate Limiting - General API (100 requests per minute)
+// Rate Limiting - General API (200 requests per minute, burst of 300)
 const generalLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
-  max: 100,
+  max: 200,
   message: { message: "Too many requests. Please try again later." }
 });
 
@@ -103,7 +104,7 @@ mongoose.connect(process.env.MONGO_URI)
   })
   .catch((error) => {
     console.log("MongoDB Connection Error: ", error.message);
-    console.log("❌ Server band ho raha hai - MONGO_URI check karo Render Dashboard mein!");
+    console.log("❌ Server failed to start - check MONGO_URI in the Render Dashboard!");
     process.exit(1);
   });
 
@@ -116,6 +117,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/addresses', addressRoutes); // 👈 Connected Address API
+app.use('/api/cart', cartRoutes); // 👈 Connected Cart API (server-side sync)
 app.use('/api/payment', paymentRoutes); // 👈 Connected Payment API
 app.use('/api/upload', uploadRoutes.router); // 👈 Image Upload
 
@@ -150,7 +152,7 @@ app.get('/', (req, res) => {
     res.send("Backend & Database are running perfectly! 🚀");
 });
 
-// Favicon route — browser har jagah favicon maangta hai, 404 na aaye isliye
+// Favicon route — browsers request a favicon everywhere; avoid a 404 for it
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 
 // 404 handler - no route matched
