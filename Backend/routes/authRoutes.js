@@ -24,8 +24,38 @@ const safeEqual = (a, b) => {
   return crypto.timingSafeEqual(ba, bb);
 };
 
+// OTPs are persisted as SHA-256 hashes (defense-in-depth) so a leaked database never
+// exposes live codes. Verification compares the hash in constant time. A 6-digit code
+// is low-entropy, so this layers on top of rate limiting + attempt lockout, it does
+// not replace them.
+const hashOtp = (otp) => crypto.createHash('sha256').update(String(otp)).digest('hex');
+
 // Lower bound for failed OTP attempts before the account's OTP is locked.
 const MAX_OTP_ATTEMPTS = 5;
+
+// In-memory per-email OTP send cooldown. Stops email-bombing/DB-pollution of
+// passwordless accounts even when the per-IP rate limit is rotated around.
+// Single-instance scope is fine here (Render runs one server); it resets on restart.
+const otpSendTracker = new Map();
+const OTP_SEND_COOLDOWN_MS = 30 * 1000;
+const OTP_SEND_MAX_ENTRIES = 10000;
+
+const enforceOtpCooldown = (email) => {
+  const now = Date.now();
+  const lastSent = otpSendTracker.get(email);
+  if (lastSent && now - lastSent < OTP_SEND_COOLDOWN_MS) {
+    const wait = Math.ceil((OTP_SEND_COOLDOWN_MS - (now - lastSent)) / 1000);
+    return `Please wait ${wait} second(s) before requesting another OTP.`;
+  }
+  otpSendTracker.set(email, now);
+  // Bounded size: opportunistically prune entries older than the cooldown window.
+  if (otpSendTracker.size > OTP_SEND_MAX_ENTRIES) {
+    for (const [key, ts] of otpSendTracker) {
+      if (now - ts > OTP_SEND_COOLDOWN_MS) otpSendTracker.delete(key);
+    }
+  }
+  return null;
+};
 
 // Shared password policy: min 8 chars, at least one upper, lower and digit.
 const validatePassword = (password) => {
@@ -54,9 +84,14 @@ router.post('/send-otp', async (req, res) => {
         const email = normalizeEmail(req.body.email);
         if (!email) return res.status(400).json({ message: "Please enter your email." });
 
+        const cooldownMessage = enforceOtpCooldown(email);
+        if (cooldownMessage) {
+            return res.status(429).json({ message: cooldownMessage });
+        }
+
         // User dhundho. Agar naya user hai, toh auto-create kar do (Bina password ke).
         // NOTE: Such an account has no password and can be claimed via /register later —
-        // it can never permanently block the real owner from registering.
+        // but ONLY after proving email ownership with the OTP sent here (see /register).
         let user = await User.findOne({ email });
         if (!user) {
             user = new User({ name: 'Cartify User', email });
@@ -65,8 +100,8 @@ router.post('/send-otp', async (req, res) => {
         // Generate 6-digit OTP (e.g. 482910)
         const otp = crypto.randomInt(100000, 1000000).toString();
         
-        // OTP aur Expiry Time (10 mins) database mein save karo
-        user.otp = otp;
+        // OTP aur Expiry Time (10 mins) database mein save karo — hash karke
+        user.otp = hashOtp(otp);
         user.otpExpire = Date.now() + 10 * 60 * 1000;
         user.otpAttempts = 0; // Fresh code always resets the brute-force counter
         await user.save();
@@ -95,15 +130,17 @@ router.post('/verify-otp', async (req, res) => {
         if (!email || !otp) return res.status(400).json({ message: "Email and OTP are required." });
 
         const user = await User.findOne({ email });
-        if (!user) return res.status(404).json({ message: "User not found." });
+        // Uniform response whether or not the email has an account, so this endpoint
+        // cannot be used to enumerate which emails are registered.
+        if (!user) return res.status(400).json({ message: "Invalid or expired OTP." });
 
         // Lock the OTP after too many failed guesses, even if still within the expiry window.
         if (user.otpAttempts >= MAX_OTP_ATTEMPTS) {
             return res.status(429).json({ message: "Too many incorrect attempts. Please request a new OTP." });
         }
 
-        // Constant-time compare + expiry check
-        if (!user.otp || !safeEqual(user.otp, otp) || user.otpExpire < Date.now()) {
+        // Constant-time compare + expiry check (both sides hashed)
+        if (!user.otp || !safeEqual(user.otp, hashOtp(otp)) || user.otpExpire < Date.now()) {
             user.otpAttempts = (user.otpAttempts || 0) + 1;
             await user.save();
             return res.status(400).json({ message: "Invalid or Expired OTP." });
@@ -152,15 +189,35 @@ router.post('/register', async (req, res) => {
 
         const userExists = await User.findOne({ email });
         if (userExists) {
-            // A password-less account (created by OTP login) belongs to whoever proves ownership
-            // of the email. Registering claims it instead of being permanently blocked by
-            // "User already exists" — this ends the OTP account-squatting dead end.
+            // SECURITY: a passwordless account (created by OTP login) can be claimed
+            // ONLY by someone who proves email ownership — a valid, unexpired OTP that
+            // was just sent to that email. Without this proof, any attacker could
+            // auto-create an account for a victim's email (via /send-otp) and then
+            // register a password on it, taking over the identity.
             if (userExists.password) {
                 return res.status(400).json({ message: "User already exists." });
             }
+
+            const claimOtp = typeof req.body.otp === 'string' ? req.body.otp : '';
+            if (!claimOtp) {
+                return res.status(400).json({
+                    message: "This email already has an OTP login account. Verify ownership with an OTP to set a password (use the OTP option, or Forgot Password)."
+                });
+            }
+            if (
+                !userExists.otp ||
+                userExists.otpExpire < Date.now() ||
+                !safeEqual(userExists.otp, hashOtp(claimOtp))
+            ) {
+                return res.status(400).json({ message: "Invalid or expired OTP. Request a new OTP for this email." });
+            }
+
             const salt = await bcrypt.genSalt(10);
             userExists.name = name;
             userExists.password = await bcrypt.hash(password, salt);
+            userExists.otp = undefined;
+            userExists.otpExpire = undefined;
+            userExists.otpAttempts = 0;
             await userExists.save();
             return res.status(201).json({ message: "Account created successfully!" });
         }
@@ -215,6 +272,12 @@ router.post('/login', async (req, res) => {
 router.post('/forgot-password', async (req, res) => {
     try {
         const email = normalizeEmail(req.body.email);
+
+        const cooldownMessage = enforceOtpCooldown(email);
+        if (cooldownMessage) {
+            return res.status(429).json({ message: cooldownMessage });
+        }
+
         const user = await User.findOne({ email });
 
         // Always respond with the same message whether or not the account exists, so the
@@ -226,7 +289,7 @@ router.post('/forgot-password', async (req, res) => {
         // Generate 6-digit OTP
         const otp = crypto.randomInt(100000, 1000000).toString();
         
-        user.otp = otp;
+        user.otp = hashOtp(otp);
         user.otpExpire = Date.now() + 10 * 60 * 1000; // 10 minutes expiry
         user.otpAttempts = 0;
         await user.save();
@@ -268,8 +331,8 @@ router.post('/reset-password', async (req, res) => {
             return res.status(429).json({ message: "Too many incorrect attempts. Please request a new OTP." });
         }
 
-        // Constant-time compare + expiry check
-        if (!safeEqual(user.otp, otp) || user.otpExpire < Date.now()) {
+        // Constant-time compare + expiry check (both sides hashed)
+        if (!safeEqual(user.otp, hashOtp(otp)) || user.otpExpire < Date.now()) {
             user.otpAttempts = (user.otpAttempts || 0) + 1;
             await user.save();
             return res.status(400).json({ message: "Invalid or expired OTP." });

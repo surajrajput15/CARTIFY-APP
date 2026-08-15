@@ -33,6 +33,11 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  // Claim flow: registering a password over an existing OTP-created (passwordless)
+  // account. Requires proof of email ownership via the OTP sent to that email.
+  const [claimMode, setClaimMode] = useState(false);
+  const [claimOtp, setClaimOtp] = useState('');
+  const [claimOtpSent, setClaimOtpSent] = useState(false);
 
   const handleSendResetOtp = useCallback(async (e) => {
     e.preventDefault();
@@ -121,14 +126,57 @@ const LoginPage = () => {
         navigate('/');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Authentication failed.');
+      const msg = err.response?.data?.message || 'Authentication failed.';
+      setError(msg);
+      // The email already has an OTP-login account (passwordless). Surface the claim
+      // flow and auto-send the OTP so the owner can prove ownership and set a password.
+      if (isRegistering && msg.includes('already has an OTP login account')) {
+        setClaimMode(true);
+        sendOtp({ email }).then(() => setClaimOtpSent(true)).catch(() => {});
+      }
     } finally {
       setLoading(false);
     }
   }, [isRegistering, name, email, password, login, navigate]);
 
+  const handleClaimSendOtp = useCallback(async (e) => {
+    if (e) e.preventDefault();
+    setError(''); setSuccessMsg(''); setLoading(true);
+    try {
+      await sendOtp({ email });
+      setClaimOtpSent(true);
+      setSuccessMsg('OTP sent to your email. Enter it below to claim this account.');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to send OTP.');
+    } finally {
+      setLoading(false);
+    }
+  }, [email]);
+
+  const handleClaimWithOtp = useCallback(async (e) => {
+    e.preventDefault();
+    if (claimOtp.length < 6) {
+      setError('Please enter the 6-digit OTP.');
+      return;
+    }
+    setError(''); setSuccessMsg(''); setLoading(true);
+    try {
+      await register({ name, email, password, otp: claimOtp });
+      setSuccessMsg('Account created successfully! Please log in.');
+      setIsRegistering(false);
+      setClaimMode(false);
+      setClaimOtp('');
+      setPassword('');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Claim failed. Check the OTP and try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [name, email, password, claimOtp]);
+
   const switchMode = (mode) => {
     setLoginMethod(mode); setError(''); setSuccessMsg(''); setIsForgotPassword(false); setStep(1); setForgotStep(1);
+    setClaimMode(false); setClaimOtp(''); setClaimOtpSent(false);
   };
 
   return (
@@ -201,6 +249,12 @@ const LoginPage = () => {
             setIsForgotPassword={setIsForgotPassword}
             setError={setError}
             setSuccessMsg={setSuccessMsg}
+            claimMode={claimMode}
+            claimOtp={claimOtp}
+            setClaimOtp={setClaimOtp}
+            claimOtpSent={claimOtpSent}
+            onClaimSendOtp={handleClaimSendOtp}
+            onClaimSubmit={handleClaimWithOtp}
           />
         )}
 

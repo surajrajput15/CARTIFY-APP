@@ -27,8 +27,9 @@ const orderSchema = new mongoose.Schema({
     // Razorpay Payment Details (server-authoritative, never accepted from the client)
     razorpayOrderId: { type: String, unique: true, sparse: true },
     razorpayPaymentId: { type: String },
-    // Payment lifecycle: Pending -> Paid (only ever transitioned server-side)
-    paymentStatus: { type: String, enum: ['Pending', 'Paid'], default: 'Pending' },
+    refundId: { type: String },
+    // Payment lifecycle: Pending -> Paid -> Refunded (only ever transitioned server-side)
+    paymentStatus: { type: String, enum: ['Pending', 'Paid', 'Refunded'], default: 'Pending' },
     paidAt: { type: Date },
     // Set to true when payment was captured but stock reservation failed at verify-time.
     // Flags the order for fulfilment/refund so it is never silently treated as a clean sale.
@@ -50,5 +51,8 @@ const orderSchema = new mongoose.Schema({
 
 // Auto-purge Pending orders one day after they were created (never applies to Paid orders).
 orderSchema.index({ expireAt: 1 }, { expireAfterSeconds: 0 });
+
+// Hot read path: a user's order history is fetched by userId, newest first.
+orderSchema.index({ userId: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Order', orderSchema);

@@ -12,6 +12,7 @@ import AdminHeader from '../components/admin/AdminHeader';
 import AdminFilterBar from '../components/admin/AdminFilterBar';
 import ProductTable from '../components/admin/ProductTable';
 import ProductFormModal from '../components/admin/ProductFormModal';
+import AdminOrdersTab from '../components/admin/AdminOrdersTab';
 
 const CLOSED_CONFIRM = { show: false, title: '', message: '', onConfirm: null, loading: false };
 
@@ -26,6 +27,7 @@ const AdminPage = () => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [confirmModal, setConfirmModal] = useState(CLOSED_CONFIRM);
   const [form, setForm] = useState(EMPTY_PRODUCT_FORM);
+  const [adminTab, setAdminTab] = useState('products');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
@@ -152,46 +154,69 @@ const AdminPage = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <AdminHeader onBack={() => navigate('/')} onSeed={handleSeed} onClearAll={handleClearAll} />
+      <div className="flex gap-2 mb-6">
+        {['products', 'orders'].map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setAdminTab(tab)}
+            className={`px-5 py-2 rounded-full text-sm font-bold capitalize transition-colors ${
+              adminTab === tab
+                ? 'bg-teal-600 text-white shadow-md'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+            aria-pressed={adminTab === tab}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
 
-      <AdminFilterBar
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        filterCategory={filterCategory}
-        onCategoryChange={setFilterCategory}
-        categories={categories}
-        productsCount={products.length}
-        filteredCount={filteredProducts.length}
-        hasFilters={Boolean(searchTerm || filterCategory)}
-        onAddProduct={() => {
-          setShowForm(true);
-          setEditingProduct(null);
-          setForm(EMPTY_PRODUCT_FORM);
-        }}
-      />
+      {adminTab === 'products' && (
+        <>
+          <AdminHeader onBack={() => navigate('/')} onSeed={handleSeed} onClearAll={handleClearAll} />
 
-      {showForm && (
-        <ProductFormModal
-          form={form}
-          setForm={setForm}
-          saving={saving}
-          isEditing={Boolean(editingProduct)}
-          onImageUpload={handleImageUpload}
-          onSubmit={handleSave}
-          onClose={() => setShowForm(false)}
-        />
+          <AdminFilterBar
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            filterCategory={filterCategory}
+            onCategoryChange={setFilterCategory}
+            categories={categories}
+            productsCount={products.length}
+            filteredCount={filteredProducts.length}
+            hasFilters={Boolean(searchTerm || filterCategory)}
+            onAddProduct={() => {
+              setShowForm(true);
+              setEditingProduct(null);
+              setForm(EMPTY_PRODUCT_FORM);
+            }}
+          />
+
+          {showForm && (
+            <ProductFormModal
+              form={form}
+              setForm={setForm}
+              saving={saving}
+              isEditing={Boolean(editingProduct)}
+              onImageUpload={handleImageUpload}
+              onSubmit={handleSave}
+              onClose={() => setShowForm(false)}
+            />
+          )}
+
+          {loading ? (
+            <Spinner />
+          ) : filteredProducts.length === 0 ? (
+            <EmptyState
+              message={emptyMessage}
+              onClearFilters={() => { setSearchTerm(''); setFilterCategory(''); }}
+            />
+          ) : (
+            <ProductTable products={filteredProducts} onEdit={handleEdit} onDelete={handleDelete} />
+          )}
+        </>
       )}
 
-      {loading ? (
-        <Spinner />
-      ) : filteredProducts.length === 0 ? (
-        <EmptyState
-          message={emptyMessage}
-          onClearFilters={() => { setSearchTerm(''); setFilterCategory(''); }}
-        />
-      ) : (
-        <ProductTable products={filteredProducts} onEdit={handleEdit} onDelete={handleDelete} />
-      )}
+      {adminTab === 'orders' && <AdminOrdersTab />}
 
       {confirmModal.show && (
         <ConfirmModal
