@@ -335,6 +335,7 @@ router.post('/webhook', async (req, res) => {
             }
 
             const result = await finalisePaidOrder(order, { paymentId: payment.id });
+            console.log(`Webhook processed: payment.captured -> order ${orderId} (${result.transition})`);
             return res.status(200).json({ ok: true, ...result });
         }
 
