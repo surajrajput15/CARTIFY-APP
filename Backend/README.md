@@ -65,6 +65,16 @@ graph TD
 | **GET** | `/:userId` | Retrieve all saved addresses of a user | *None* |
 | **DELETE**| `/:id` | Delete a saved address by ID | *None* |
 
+### 🛒 Cart (`/api/cart`)
+| HTTP Method | Route | Description | Request Body |
+| :--- | :--- | :--- | :--- |
+| **GET** | `/` | Fetch the user's saved cart (enriched with live product data) | *None* |
+| **POST** | `/merge` | Merge the guest cart into the server cart on login | `{ "items": [{ "productId": "id", "quantity": 2 }] }` |
+| **PUT** | `/` | Replace the server cart with the current items | `{ "items": [{ "productId": "id", "quantity": 2 }] }` |
+| **DELETE**| `/` | Clear the server cart (after order placement) | *None* |
+
+> Server-side cart sync means a user's cart survives across devices. The client merges its local guest cart on login and pushes subsequent changes to the server.
+
 ### 🛒 Orders (`/api/orders`)
 | HTTP Method | Route | Description | Request Body |
 | :--- | :--- | :--- | :--- |
@@ -102,6 +112,13 @@ EMAIL_PASS=your_gmail_app_password
 
 # Production Email (Bypass Render SMTP Blocks)
 BREVO_API_KEY=xkeysib-your_brevo_api_key
+
+# Optional: Cloudinary for persistent image storage (recommended on Render,
+# where the local disk is wiped on every restart). When unset, uploads fall
+# back to the local /uploads folder (development only).
+CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+CLOUDINARY_API_KEY=your_cloudinary_api_key
+CLOUDINARY_API_SECRET=your_cloudinary_api_secret
 ```
 
 ---
