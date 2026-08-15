@@ -66,6 +66,7 @@ Cartify follows a sprint-based engineering process focused on building productio
 |----------|-------------|
 | [Phase 3 — Engineering for Production](Docs/PHASE-03-ENGINEERING-FOR-PRODUCTION.md) | Engineering approach, architecture decisions, and production standards |
 | [Phase 3 Audit](Docs/PHASE-03-AUDIT.md) | Security, performance, and accessibility audit results |
+| [Phase 4 — QA & Reliability](Docs/PHASE-04-RELIABILITY.md) | Automated tests, cart sync, Cloudinary storage & a11y hardening |
 | [Security Notes](Docs/SECURITY.md) | Security hardening decisions and practices |
 | [Known Bugs](Docs/BUGS.md) | Confirmed, tracked bugs |
 | [Roadmap](Docs/ROADMAP.md) | Planned feature and engineering work |
