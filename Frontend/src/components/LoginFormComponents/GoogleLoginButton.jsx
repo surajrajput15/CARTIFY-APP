@@ -3,8 +3,8 @@ import { useGoogleIdentity } from '../../context/googleIdentityContext';
 
 // Renders the Google Identity Services button. All GIS state (script loading,
 // redirect-mode initialization, credential verification) lives in
-// GoogleIdentityProvider so that the callback also fires on the page Google
-// redirects the user back to.
+// GoogleIdentityProvider so the credential returned after Google's redirect is
+// handled on the landing page regardless of which route it lands on.
 const GoogleLoginButton = () => {
   const { status, renderButton } = useGoogleIdentity();
   const buttonContainerRef = useRef(null);
@@ -28,7 +28,7 @@ const GoogleLoginButton = () => {
           Google sign-in failed to load. Check your connection and refresh the page.
         </p>
       ) : (
-        <div ref={buttonContainerRef} />
+        <div ref={buttonContainerRef} className="w-full max-w-[288px]" />
       )}
     </div>
   );
