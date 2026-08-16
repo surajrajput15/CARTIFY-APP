@@ -159,7 +159,7 @@ Cartify follows a sprint-based engineering process focused on building productio
 | **Styling** | Tailwind CSS 4 | Utility-first CSS |
 | **Routing** | React Router DOM 7 | Client-side routing |
 | **HTTP Client** | Axios 1 (with JWT interceptor) | API calls |
-| **Auth** | @react-oauth/google | Google OAuth |
+| **Auth** | Google Identity Services (GIS) + `google-auth-library` | Google OAuth (server-side ID token verification) |
 | **Icons** | Lucide React | Icon library |
 | **Notifications** | React Hot Toast | Toast alerts |
 | **Code Splitting** | React.lazy + Suspense | Route-based lazy page loading |
