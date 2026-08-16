@@ -5,14 +5,19 @@ import { GOOGLE_CLIENT_ID } from '../config';
 import { googleLogin } from '../services/authApi';
 import { useAuth } from './authContext';
 
-// Google Identity Services (GIS) redirect mode, wired up app-wide.
+// Google Identity Services (GIS) popup mode, wired up app-wide.
 //
-// Why app-wide instead of inside the login button:
-//   - Redirect mode takes the user away to Google and lands them back on
-//     window.location.origin (Google rejects localhost redirect URIs that
-//     contain a path). GIS only re-fires the callback if the script is
-//     loaded AND initialized on that landing page, so the initialization
-//     (with the credential callback) must exist on every route.
+// Why popup mode instead of redirect mode:
+//   - Redirect mode makes Google full-page POST the ID token to `login_uri`,
+//     which must be a server endpoint that reads a `credential` body param.
+//     A static SPA (Vercel) cannot receive that POST, and Google's JS API
+//     does not allow setting both `login_uri` and `callback`. The result is
+//     either "Error 400: redirect_uri_mismatch" (unregistered URI) or a
+//     silently lost credential.
+//   - Popup mode returns the credential directly to the JS `callback` in the
+//     same tab. It needs no redirect URI registration at all.
+//
+// Why initialize app-wide instead of inside the login button:
 //   - Calling window.google.accounts.id.initialize() from both the button
 //     and the provider double-initializes GIS ("initialize() is called
 //     multiple times"), so we drop the library's auto-init entirely and own
@@ -76,15 +81,12 @@ export const GoogleIdentityProvider = ({ children }) => {
         if (cancelled) return;
         window.google.accounts.id.initialize({
           client_id: GOOGLE_CLIENT_ID,
-          ux_mode: 'redirect',
-          // GIS uses `login_uri` (mapped to Google's OAuth `redirect_uri`) for the
-          // redirect flow — `redirect_uri` is not a recognized GIS config key and
-          // is silently ignored. When unset, GIS defaults to the current page URL
-          // (e.g. .../login), which is NOT the authorized redirect URI and triggers
-          // Google's "Error 400: redirect_uri_mismatch". The pathless origin here
-          // matches the authorized redirect URI exactly and lets the app-wide
-          // provider re-fire the credential callback on the landing page.
-          login_uri: window.location.origin,
+          // Popup mode (default) returns the credential to `callback` in the
+          // same tab — no login_uri/redirect_uri required, so there is nothing
+          // for Google to reject with redirect_uri_mismatch. We deliberately
+          // omit `ux_mode: 'redirect'` and `login_uri`: on a static SPA host
+          // the redirect flow's credential POST cannot be received, and the
+          // JS API forbids combining `login_uri` with `callback`.
           callback: handleCredential,
         });
         setStatus('ready');
