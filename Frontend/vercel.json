@@ -1,4 +1,5 @@
 {
+  "installCommand": "npm install --legacy-peer-deps",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
@@ -8,7 +9,7 @@
       "destination": "/index.html"
     }
   ],
-"headers": [
+  "headers": [
     {
       "source": "/(.*)",
       "headers": [
@@ -20,8 +21,6 @@
         },
         { "key": "X-Content-Type-Options", "value": "nosniff" }
       ]
-    }
-  ]
     }
   ]
 }
