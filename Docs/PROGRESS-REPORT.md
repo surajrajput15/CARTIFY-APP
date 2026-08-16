@@ -113,10 +113,7 @@ resolved or tracked as future features.
 ## Pending / Future
 
 - Phase 5 & Phase 6 — **not started** (Roadmap lists no detail yet)
-- Stale README notes (non-blocking): `@react-oauth/google` listed in tech stack
-  while the app now uses GIS directly; "Google OAuth requires GOOGLE_CLIENT_ID
-  on Render" — this is set and login is verified working; `robots.txt` / SEO
-  and localStorage JWT caveats remain documented trade-offs
+- `robots.txt` / SEO and localStorage JWT caveats remain documented trade-offs
 
 ---
 
