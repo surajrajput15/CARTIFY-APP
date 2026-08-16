@@ -85,10 +85,11 @@ These shipped after Phase 4 as maintenance releases on `main`:
 | `4e91257` | `.npmrc` `legacy-peer-deps` — unblocks Vercel install (eslint 10 vs plugin peer conflict) |
 | `47b0552` | Repaired malformed `vercel.json` that blocked every Vercel build |
 | `296bcfb` | CSP expanded for Razorpay checkout/API/analytics + Google GSI stylesheet |
+| `05e8e41` | Google sign-in switched to GIS **redirect mode** (popup silently failed on non-Chrome/mobile & in-app browsers); token delivered via URL fragment + `accounts.google.com/gsi/` added to `connect-src` CSP |
+| `c037197` | Added Vercel function `api/google-auth` as the GIS `login_uri` — Google's redirect POST (which the static SPA answered with 405) is now bounced back to `/login#id_token=...` and exchanged with the backend. Google login now works on all browsers (laptop + mobile) |
 
-**Verified live:** new bundle `index-B5wg1OfO.js`, CSP headers active, Google
-login working, Razorpay checkout working. `npm run lint` clean, `npm test`
-24/24 passing.
+**Verified live:** CSP headers active, Google login working on all browsers,
+Razorpay checkout working. `npm run lint` clean, `npm test` 24/24 passing.
 
 ---
 
