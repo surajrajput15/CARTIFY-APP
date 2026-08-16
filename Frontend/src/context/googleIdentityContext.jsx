@@ -19,14 +19,16 @@ import { useAuth } from './authContext';
 //     works in every browser. It needs no popup, no third-party cookies and no
 //     iframe↔parent messaging, so it cannot be blocked.
 //
-// Why no `login_uri`:
-//   - Setting `login_uri` makes Google POST the ID token to that endpoint,
-//     which a static SPA host cannot receive, and the value must be registered
-//     as an Authorized redirect URI in the Google Cloud Console (otherwise
-//     Google returns Error 400 redirect_uri_mismatch). Leaving it unset makes
-//     Google use the OIDC implicit flow: the JWT comes back in the URL fragment
-//     of the current page and only the Authorized JavaScript origin needs to be
-//     configured (which is already required for the button to render).
+// Why an explicit `login_uri` pointing at a serverless function:
+//   - With `ux_mode: 'redirect'`, Google POSTs the ID token to `login_uri`.
+//     Without a `login_uri`, Google POSTs it to the current page, which a
+//     static SPA host answers with 405 (Method Not Allowed). The Vercel
+//     function at /api/google-auth receives the POST and 302-redirects the
+//     browser to /login#id_token=..., which the app parses below and exchanges
+//     with the backend (see api/google-auth.js).
+//   - The value must be registered as an Authorized redirect URI in the Google
+//     Cloud Console. Because it is a fixed path, it never changes with the
+//     page the user happens to be on.
 //
 // Why initialize app-wide instead of inside the login button:
 //   - Calling window.google.accounts.id.initialize() from both the button
@@ -52,10 +54,9 @@ const loadGsiScript = () => {
   return gsiScriptPromise;
 };
 
-// Guards against processing a single credential twice. In redirect mode the
-// token can arrive both via the JS callback and via our URL-fragment parsing.
-// Module-level flag: it resets naturally on a full page load (after Google's
-// redirect back), while surviving React StrictMode's double effect run.
+// Guards against processing a single credential twice (e.g. React StrictMode's
+// double effect run, or a stray popup callback in dev). Resets on a full page
+// load, which happens naturally after Google's redirect back.
 let credentialConsumed = false;
 
 export const GoogleIdentityProvider = ({ children }) => {
@@ -94,11 +95,8 @@ export const GoogleIdentityProvider = ({ children }) => {
       }
     };
 
-    // Redirect-mode fallback: after Google bounces the user back, the ID token
-    // sits in the URL fragment (#id_token=...). Some browser/library combos
-    // deliver it to the `callback` above, others do not — so we always parse it
-    // ourselves. The `credentialConsumed` guard + fragment removal prevent a
-    // duplicate exchange if both paths fire.
+    // The serverless function hands the token back to us in the URL fragment
+    // (#id_token=...); parse it ourselves and exchange it with the backend.
     const consumeHashCredential = () => {
       const match = window.location.hash.match(/[#&]id_token=([^&]+)/);
       if (!match) return;
@@ -114,15 +112,25 @@ export const GoogleIdentityProvider = ({ children }) => {
     loadGsiScript()
       .then(() => {
         if (cancelled) return;
-        window.google.accounts.id.initialize({
-          client_id: GOOGLE_CLIENT_ID,
-          // Redirect mode (full-page navigation) is the only mode that works on
-          // every mobile browser. We deliberately omit `login_uri` so the JWT is
-          // returned in the URL fragment of the current page instead of being
-          // POSTed to a server endpoint that a static host cannot receive.
-          ux_mode: 'redirect',
-          callback: handleCredential,
-        });
+        if (import.meta.env.DEV) {
+          // Local dev (`vite dev`) has no Vercel function, so fall back to
+          // popup mode, which delivers the token straight to the callback.
+          window.google.accounts.id.initialize({
+            client_id: GOOGLE_CLIENT_ID,
+            ux_mode: 'popup',
+            callback: handleCredential,
+          });
+        } else {
+          // Production: redirect mode — Google POSTs the ID token to the
+          // serverless function, which bounces the browser back to /login with
+          // the token in the URL fragment. GIS forbids combining `login_uri`
+          // with `callback`, so the token is consumed via fragment parsing.
+          window.google.accounts.id.initialize({
+            client_id: GOOGLE_CLIENT_ID,
+            ux_mode: 'redirect',
+            login_uri: `${window.location.origin}/api/google-auth`,
+          });
+        }
         setStatus('ready');
       })
       .catch(() => {

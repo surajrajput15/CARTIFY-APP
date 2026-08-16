@@ -53,6 +53,13 @@ export default defineConfig([
       },
     },
   },
+  // Vercel serverless functions (api/*) run in Node.js, not the browser.
+  {
+    files: ['api/**/*.{js,jsx}'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
   // Context files intentionally export a Provider component AND a consumer hook together —
   // a widespread, working React pattern. The fast-refresh rule is not applicable to them.
   {
