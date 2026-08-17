@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Spinner from './components/Spinner';
+import InstallButton from './components/InstallButton';
 import HomePage from './pages/HomePage';
 import NotFound from './pages/NotFound';
 import { GoogleIdentityProvider } from './context/googleIdentityContext';
@@ -73,6 +74,8 @@ function App() {
           </main>
 
           <Footer />
+
+          <InstallButton />
           
         </div>
       </GoogleIdentityProvider>
