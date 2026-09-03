@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { createPaymentOrder, verifyPayment } from '../services/ordersApi';
 import { RAZORPAY_KEY } from '../config';
+import { handleApiError } from '../utils/apiError';
 
 const RAZORPAY_SCRIPT_URL = 'https://checkout.razorpay.com/v1/checkout.js';
 
@@ -138,7 +139,7 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
             }
           } catch (err) {
             console.error("Verification Error:", err.response?.data || err.message);
-            toast.error(err.response?.data?.message || "Payment verification failed");
+            toast.error(handleApiError(err, "Payment verification failed"));
           }
         },
         modal: {
@@ -169,7 +170,7 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
 
     } catch (error) {
       console.error("Payment setup failed", error);
-      toast.error(error.response?.data?.message || "Something went wrong with the payment gateway.");
+      toast.error(handleApiError(error, "Something went wrong with the payment gateway."));
     } finally {
       setLoading(false);
     }

@@ -1,0 +1,98 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/Frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "frontend"
+    groups:
+      react:
+        patterns:
+          - "react*"
+          - "@types/react*"
+        update-types: ["minor", "patch"]
+      vite:
+        patterns:
+          - "vite*"
+          - "@vitejs/*"
+          - "rollup*"
+        update-types: ["minor", "patch"]
+      tailwind:
+        patterns:
+          - "tailwindcss*"
+          - "@tailwindcss/*"
+        update-types: ["minor", "patch"]
+      testing:
+        patterns:
+          - "vitest*"
+          - "@testing-library/*"
+          - "playwright*"
+          - "jsdom*"
+        update-types: ["minor", "patch"]
+      linting:
+        patterns:
+          - "eslint*"
+          - "eslint-plugin-*"
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "npm"
+    directory: "/Backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "backend"
+    groups:
+      express:
+        patterns:
+          - "express*"
+          - "cors"
+          - "helmet*"
+          - "cookie-parser"
+          - "csurf"
+        update-types: ["minor", "patch"]
+      mongoose:
+        patterns:
+          - "mongoose*"
+        update-types: ["minor", "patch"]
+      auth:
+        patterns:
+          - "jsonwebtoken"
+          - "bcryptjs"
+          - "google-auth-library"
+        update-types: ["minor", "patch"]
+      payments:
+        patterns:
+          - "razorpay*"
+        update-types: ["minor", "patch"]
+      testing:
+        patterns:
+          - "jest*"
+          - "supertest*"
+          - "mongodb-memory-server*"
+        update-types: ["minor", "patch"]
+      utilities:
+        patterns:
+          - "pino*"
+          - "zod"
+          - "ioredis*"
+          - "redis*"
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    labels:
+      - "dependencies"
+      - "github-actions"

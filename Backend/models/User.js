@@ -37,7 +37,22 @@ const userSchema = new mongoose.Schema({
     otpAttempts: {
         type: Number,
         default: 0
+    },
+    // Refresh token fields for JWT rotation
+    refreshToken: {
+        type: String,
+        default: null
+    },
+    refreshTokenExpire: {
+        type: Date,
+        default: null
     }
 }, { timestamps: true });
+
+// Indexes
+userSchema.index({ email: 1 }); // Already unique, but explicit for clarity
+userSchema.index({ isAdmin: 1 });
+userSchema.index({ createdAt: -1 });
+userSchema.index({ refreshToken: 1 });
 
 module.exports = mongoose.model('User', userSchema);

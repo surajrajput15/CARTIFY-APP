@@ -10,7 +10,8 @@ let listenersAttached = false;
 
 export function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
-  if (import.meta.env.DEV) return;
+  // Skip registration in dev unless ?pwa=1 query param is set (for local PWA testing)
+  if (import.meta.env.DEV && !new URLSearchParams(window.location.search).has('pwa')) return;
 
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch((err) => {

@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useAuth } from '../context/authContext';
 import { useNavigate } from 'react-router-dom';
 import { loginWithPassword, register, sendOtp, verifyOtp, forgotPassword, resetPassword } from '../services/authApi';
+import api from '../api/axios';
 import PasswordLoginForm from '../components/LoginFormComponents/PasswordLoginForm';
 import OTPLoginForm from '../components/LoginFormComponents/OTPLoginForm';
 import ForgotPasswordForm from '../components/LoginFormComponents/ForgotPasswordForm';
@@ -102,8 +103,10 @@ const LoginPage = () => {
     if (otpValue.length < 6) return setError('Please enter all 6 digits.');
     setError(''); setLoading(true);
     try {
-      const response = await verifyOtp({ email, otp: otpValue });
-      login(response.data.user, response.data.token);
+      await verifyOtp({ email, otp: otpValue });
+      // After successful verification, fetch user via /me endpoint
+      const { data } = await api.get('/api/auth/me');
+      login(data.user);
       redirectAfterLogin();
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid or expired OTP.');
@@ -127,8 +130,10 @@ const LoginPage = () => {
         setIsRegistering(false);
         setPassword('');
       } else {
-        const response = await loginWithPassword({ email, password });
-        login(response.data.user, response.data.token);
+        await loginWithPassword({ email, password });
+        // After successful login, fetch user via /me endpoint
+        const { data } = await api.get('/api/auth/me');
+        login(data.user);
         redirectAfterLogin();
       }
     } catch (err) {

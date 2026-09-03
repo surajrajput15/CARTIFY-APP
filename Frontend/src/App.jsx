@@ -11,6 +11,7 @@ import NotFound from './pages/NotFound';
 import { GoogleIdentityProvider } from './context/googleIdentityContext';
 import { useAuth } from './context/authContext';
 import { registerNavigator } from './utils/navigation';
+import RouteErrorBoundary from './components/RouteErrorBoundary';
 
 const CartPage = lazy(() => import('./pages/CartPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -18,6 +19,24 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
 const ProductDetailsPage = lazy(() => import('./pages/ProductDetailsPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
+
+function withErrorBoundary(Component) {
+  return function WithErrorBoundary() {
+    return (
+      <RouteErrorBoundary>
+        <Component />
+      </RouteErrorBoundary>
+    );
+  };
+}
+
+const HomePageWithError = withErrorBoundary(HomePage);
+const CartPageWithError = withErrorBoundary(CartPage);
+const LoginPageWithError = withErrorBoundary(LoginPage);
+const ProfilePageWithError = withErrorBoundary(ProfilePage);
+const CheckoutPageWithError = withErrorBoundary(CheckoutPage);
+const ProductDetailsPageWithError = withErrorBoundary(ProductDetailsPage);
+const AdminPageWithError = withErrorBoundary(AdminPage);
 
 function NavigationBridge() {
   const navigate = useNavigate();
@@ -61,13 +80,13 @@ function App() {
           <main id="main-content">
             <Suspense fallback={<Spinner />}>
               <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/cart" element={<CartPage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/checkout" element={<CheckoutPage />} />
-                <Route path="/product/:id" element={<ProductDetailsPage />} />
-                <Route path="/admin" element={<AdminPage />} />
+                <Route path="/" element={<HomePageWithError />} />
+                <Route path="/cart" element={<CartPageWithError />} />
+                <Route path="/login" element={<LoginPageWithError />} />
+                <Route path="/profile" element={<ProfilePageWithError />} />
+                <Route path="/checkout" element={<CheckoutPageWithError />} />
+                <Route path="/product/:id" element={<ProductDetailsPageWithError />} />
+                <Route path="/admin" element={<AdminPageWithError />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>

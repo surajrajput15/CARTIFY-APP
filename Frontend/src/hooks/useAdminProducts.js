@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import * as productsApi from '../services/productsApi';
 import toast from 'react-hot-toast';
 import seedProductData from '../data/seedProducts';
+import { handleApiError } from '../utils/apiError';
 
 export const useAdminProducts = () => {
   const [products, setProducts] = useState([]);
@@ -13,7 +14,7 @@ export const useAdminProducts = () => {
       setProducts(Array.isArray(data) ? data : data.products);
     } catch (err) {
       console.error('Failed to fetch products', err);
-      toast.error('Failed to fetch products');
+      toast.error(handleApiError(err, 'Failed to fetch products'));
     } finally {
       setLoading(false);
     }
@@ -26,33 +27,52 @@ export const useAdminProducts = () => {
       rating: { rate: Number(product.rating.rate), count: Number(product.rating.count) }
     };
 
-    if (editingProduct) {
-      await productsApi.updateProduct(editingProduct._id, payload);
-      toast.success('Product updated successfully');
-    } else {
-      await productsApi.addProduct(payload);
-      toast.success('Product saved successfully');
+    try {
+      if (editingProduct) {
+        await productsApi.updateProduct(editingProduct._id, payload);
+        toast.success('Product updated successfully');
+      } else {
+        await productsApi.addProduct(payload);
+        toast.success('Product saved successfully');
+      }
+      await fetchProducts();
+    } catch (err) {
+      console.error('Failed to save product', err);
+      toast.error(handleApiError(err, 'Failed to save product'));
     }
-
-    await fetchProducts();
   }, [fetchProducts]);
 
   const deleteProduct = useCallback(async (id) => {
-    await productsApi.deleteProduct(id);
-    await fetchProducts();
-    toast.success('Product deleted');
+    try {
+      await productsApi.deleteProduct(id);
+      await fetchProducts();
+      toast.success('Product deleted');
+    } catch (err) {
+      console.error('Failed to delete product', err);
+      toast.error(handleApiError(err, 'Failed to delete product'));
+    }
   }, [fetchProducts]);
 
   const seedProducts = useCallback(async () => {
-    const { data } = await productsApi.seedProducts(seedProductData);
-    toast.success(`${data.count} products seeded successfully!`);
-    await fetchProducts();
+    try {
+      const { data } = await productsApi.seedProducts(seedProductData);
+      toast.success(`${data.count} products seeded successfully!`);
+      await fetchProducts();
+    } catch (err) {
+      console.error('Failed to seed products', err);
+      toast.error(handleApiError(err, 'Failed to seed products'));
+    }
   }, [fetchProducts]);
 
   const clearAllProducts = useCallback(async () => {
-    await productsApi.clearAllProducts();
-    await fetchProducts();
-    toast.success('All products cleared');
+    try {
+      await productsApi.clearAllProducts();
+      await fetchProducts();
+      toast.success('All products cleared');
+    } catch (err) {
+      console.error('Failed to clear products', err);
+      toast.error(handleApiError(err, 'Failed to clear products'));
+    }
   }, [fetchProducts]);
 
   return {

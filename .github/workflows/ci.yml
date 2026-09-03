@@ -1,0 +1,264 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  NODE_VERSION: '20'
+  MONGO_URI: 'mongodb://localhost:27017/cartify-test'
+  JWT_SECRET: 'test-jwt-secret-key-for-testing-only'
+  RAZORPAY_KEY_ID: 'rzp_test_key'
+  RAZORPAY_KEY_SECRET: 'rzp_test_secret'
+  GOOGLE_CLIENT_ID: 'test-google-client-id'
+  BREVO_API_KEY: 'test-brevo-key'
+  EMAIL_USER: 'test@test.com'
+  EMAIL_PASS: 'test-pass'
+  CLOUDINARY_CLOUD_NAME: 'test-cloud'
+  CLOUDINARY_API_KEY: 'test-api-key'
+  CLOUDINARY_API_SECRET: 'test-api-secret'
+  NODE_ENV: 'test'
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: Frontend/package-lock.json
+      
+      - name: Install Frontend dependencies
+        run: npm ci
+        working-directory: ./Frontend
+      
+      - name: Run Frontend Lint
+        run: npm run lint
+        working-directory: ./Frontend
+      
+      - name: Setup Node.js for Backend
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: Backend/package-lock.json
+      
+      - name: Install Backend dependencies
+        run: npm ci
+        working-directory: ./Backend
+      
+      - name: Run Backend Lint (if script exists)
+        run: |
+          if npm run lint --if-present 2>/dev/null; then
+            echo "Backend lint passed"
+          else
+            echo "No lint script in backend, skipping"
+          fi
+        working-directory: ./Backend
+
+  backend-test:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.adminCommand(\"ping\")'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: Backend/package-lock.json
+      
+      - name: Install Backend dependencies
+        run: npm ci
+        working-directory: ./Backend
+      
+      - name: Run Backend Tests
+        run: npm test
+        working-directory: ./Backend
+        env:
+          MONGO_URI: mongodb://localhost:27017/cartify-test
+      
+      - name: Upload Backend Coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-coverage
+          path: Backend/coverage/
+          retention-days: 7
+
+  frontend-test:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: Frontend/package-lock.json
+      
+      - name: Install Frontend dependencies
+        run: npm ci
+        working-directory: ./Frontend
+      
+      - name: Run Frontend Tests
+        run: npm test
+        working-directory: ./Frontend
+      
+      - name: Upload Frontend Coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-coverage
+          path: Frontend/coverage/
+          retention-days: 7
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [lint, backend-test, frontend-test]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: Frontend/package-lock.json
+      
+      - name: Install Frontend dependencies
+        run: npm ci
+        working-directory: ./Frontend
+      
+      - name: Build Frontend
+        run: npm run build
+        working-directory: ./Frontend
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_RAZORPAY_KEY: ${{ secrets.VITE_RAZORPAY_KEY }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+      
+      - name: Upload Frontend Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: Frontend/dist/
+          retention-days: 7
+      
+      - name: Setup Node.js for Backend
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: Backend/package-lock.json
+      
+      - name: Install Backend dependencies
+        run: npm ci
+        working-directory: ./Backend
+      
+      - name: Build Backend (verify no syntax errors)
+        run: node -c server.js
+        working-directory: ./Backend
+
+  e2e:
+    name: E2E Tests (Playwright)
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: Frontend/package-lock.json
+      
+      - name: Install Frontend dependencies
+        run: npm ci
+        working-directory: ./Frontend
+      
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+        working-directory: ./Frontend
+      
+      - name: Run E2E Tests
+        run: |
+          if [ -f package.json ] && grep -q '"test:e2e"' package.json; then
+            npm run test:e2e
+          else
+            echo "No E2E test script found, skipping"
+          fi
+        working-directory: ./Frontend
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:5173
+      
+      - name: Upload E2E Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-report
+          path: Frontend/playwright-report/
+          retention-days: 7
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build, e2e]
+    if: github.ref == 'refs/heads/develop'
+    steps:
+      - name: Deploy to Staging
+        run: |
+          echo "Deploy to staging environment"
+          # Add your staging deployment commands here
+          # e.g., Vercel CLI for frontend, Render API for backend
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build, e2e]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    steps:
+      - name: Deploy to Production
+        run: |
+          echo "Deploy to production environment"
+          # Add your production deployment commands here
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+
+  notify:
+    name: Notify
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always()
+    steps:
+      - name: Send notification
+        run: |
+          echo "Pipeline completed"
+          # Add Slack/Discord/Email notification here

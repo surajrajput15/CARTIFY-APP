@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { fetchMyOrders } from '../services/ordersApi';
 import toast from 'react-hot-toast';
+import { handleApiError } from '../utils/apiError';
 
 export const useOrders = (userId) => {
   const [orders, setOrders] = useState([]);
@@ -13,7 +14,7 @@ export const useOrders = (userId) => {
       setOrders(response.data);
     } catch (error) {
       console.error("Failed to fetch orders", error);
-      toast.error("Failed to load orders");
+      toast.error(handleApiError(error, "Failed to load orders"));
     } finally {
       setLoadingOrders(false);
     }
