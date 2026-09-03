@@ -19,7 +19,7 @@
     "@sentry/react": "^10.73.0",
     "@sentry/tracing": "^7.120.4",
     "bcryptjs": "^3.0.3",
-    "cloudinary": "^2.10.0",
+    "cloudinary": "^2.11.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "csurf": "^1.11.0",
