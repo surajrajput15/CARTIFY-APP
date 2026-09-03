@@ -10,8 +10,7 @@ const cartSchema = new mongoose.Schema({
     items: [cartItemSchema]
 }, { timestamps: true });
 
-// Indexes
-cartSchema.index({ userId: 1 }); // Already unique, but explicit
+// Indexes (userId unique index is auto-created from `unique: true` on the field)
 cartSchema.index({ 'items.productId': 1 });
 cartSchema.index({ updatedAt: -1 });
 
