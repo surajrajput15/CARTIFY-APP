@@ -74,6 +74,39 @@ const validatePassword = (password) => {
   return null;
 };
 
+// Token generation helpers
+const generateAccessToken = (userId) => {
+  return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: '15m' });
+};
+
+const generateRefreshToken = (userId) => {
+  return jwt.sign({ id: userId, type: 'refresh' }, process.env.JWT_SECRET, { expiresIn: '7d' });
+};
+
+const setAuthCookies = (res, accessToken, refreshToken) => {
+  const isProd = process.env.NODE_ENV === 'production';
+  const cookieOptions = {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: 'lax',
+    path: '/',
+  };
+  res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 }); // 15 min
+  res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 }); // 7 days
+};
+
+const clearAuthCookies = (res) => {
+  const isProd = process.env.NODE_ENV === 'production';
+  const cookieOptions = {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: 'lax',
+    path: '/',
+  };
+  res.clearCookie('accessToken', cookieOptions);
+  res.clearCookie('refreshToken', cookieOptions);
+};
+
 // ==========================================
 // 🚀 NEW: OTP BASED LOGIN SYSTEM
 // ==========================================
@@ -150,14 +183,19 @@ router.post('/verify-otp', async (req, res) => {
         user.otp = undefined;
         user.otpExpire = undefined;
         user.otpAttempts = 0;
+
+        // Generate tokens
+        const accessToken = generateAccessToken(user._id);
+        const refreshToken = generateRefreshToken(user._id);
+        user.refreshToken = refreshToken;
+        user.refreshTokenExpire = Date.now() + 7 * 24 * 60 * 60 * 1000;
         await user.save();
 
-        // Login successful! Generate token
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+        // Set HttpOnly cookies
+        setAuthCookies(res, accessToken, refreshToken);
 
         res.status(200).json({
             message: "Login successful! 🎉",
-            token,
             user: { id: user._id, name: user.name, email: user.email, isAdmin: user.isAdmin }
         });
     } catch (error) {
@@ -228,7 +266,19 @@ router.post('/register', async (req, res) => {
         const newUser = new User({ name, email, password: hashedPassword });
         await newUser.save();
 
-        res.status(201).json({ message: "Account created successfully!" });
+        // Generate tokens for auto-login after registration
+        const accessToken = generateAccessToken(newUser._id);
+        const refreshToken = generateRefreshToken(newUser._id);
+        newUser.refreshToken = refreshToken;
+        newUser.refreshTokenExpire = Date.now() + 7 * 24 * 60 * 60 * 1000;
+        await newUser.save();
+
+        setAuthCookies(res, accessToken, refreshToken);
+
+        res.status(201).json({ 
+            message: "Account created successfully!",
+            user: { id: newUser._id, name: newUser.name, email: newUser.email, isAdmin: newUser.isAdmin }
+        });
     } catch (error) {
         console.error("❌ Registration error:", error);
         res.status(500).json({ message: "Server error during registration." });
@@ -251,16 +301,106 @@ router.post('/login', async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ message: "Invalid credentials." });
 
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+        // Generate tokens
+        const accessToken = generateAccessToken(user._id);
+        const refreshToken = generateRefreshToken(user._id);
+        user.refreshToken = refreshToken;
+        user.refreshTokenExpire = Date.now() + 7 * 24 * 60 * 60 * 1000;
+        await user.save();
+
+        setAuthCookies(res, accessToken, refreshToken);
 
         res.status(200).json({
             message: "Login successful!",
-            token,
             user: { id: user._id, name: user.name, email: user.email, isAdmin: user.isAdmin }
         });
     } catch (error) {
         console.error("❌ Login error:", error);
         res.status(500).json({ message: "Server error during login." });
+    }
+});
+
+// ==========================================
+// 🔄 TOKEN REFRESH & LOGOUT
+// ==========================================
+
+// Refresh access token using refresh token (with rotation)
+router.post('/refresh', async (req, res) => {
+    try {
+        const refreshToken = req.cookies?.refreshToken;
+        if (!refreshToken) {
+            return res.status(401).json({ message: 'No refresh token provided' });
+        }
+
+        let decoded;
+        try {
+            decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+        } catch (err) {
+            clearAuthCookies(res);
+            return res.status(401).json({ message: 'Invalid or expired refresh token' });
+        }
+
+        if (decoded.type !== 'refresh') {
+            clearAuthCookies(res);
+            return res.status(401).json({ message: 'Invalid token type' });
+        }
+
+        const user = await User.findById(decoded.id).select('+refreshToken +refreshTokenExpire');
+        if (!user || !user.refreshToken) {
+            clearAuthCookies(res);
+            return res.status(401).json({ message: 'Session not found' });
+        }
+
+        // Verify refresh token matches and hasn't expired
+        if (!safeEqual(user.refreshToken, refreshToken) || user.refreshTokenExpire < Date.now()) {
+            // Potential token reuse attack - invalidate all tokens
+            user.refreshToken = undefined;
+            user.refreshTokenExpire = undefined;
+            await user.save();
+            clearAuthCookies(res);
+            return res.status(401).json({ message: 'Refresh token revoked. Please login again.' });
+        }
+
+        // Rotate: generate new access + refresh tokens
+        const newAccessToken = generateAccessToken(user._id);
+        const newRefreshToken = generateRefreshToken(user._id);
+        user.refreshToken = newRefreshToken;
+        user.refreshTokenExpire = Date.now() + 7 * 24 * 60 * 60 * 1000;
+        await user.save();
+
+        setAuthCookies(res, newAccessToken, newRefreshToken);
+
+        res.status(200).json({ message: 'Token refreshed' });
+    } catch (error) {
+        console.error("❌ Token refresh error:", error);
+        clearAuthCookies(res);
+        res.status(500).json({ message: "Error refreshing token." });
+    }
+});
+
+// Logout - clear cookies and invalidate refresh token
+router.post('/logout', async (req, res) => {
+    try {
+        const refreshToken = req.cookies?.refreshToken;
+        if (refreshToken) {
+            try {
+                const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+                if (decoded.type === 'refresh' && decoded.id) {
+                    await User.findByIdAndUpdate(decoded.id, { 
+                        refreshToken: undefined, 
+                        refreshTokenExpire: undefined 
+                    });
+                }
+            } catch (e) {
+                // Ignore verification errors, just clear cookies
+            }
+        }
+        clearAuthCookies(res);
+        res.status(200).json({ message: "Logged out successfully" });
+    } catch (error) {
+        console.error("❌ Logout error:", error);
+        clearAuthCookies(res);
+        res.status(200).json({ message: "Logged out successfully" });
     }
 });
 
@@ -351,6 +491,10 @@ router.post('/reset-password', async (req, res) => {
         user.otp = undefined;
         user.otpExpire = undefined;
         user.otpAttempts = 0;
+        
+        // Invalidate existing refresh tokens on password reset
+        user.refreshToken = undefined;
+        user.refreshTokenExpire = undefined;
         await user.save();
 
         res.status(200).json({ message: "Password reset successful! You can now login." });
@@ -407,12 +551,14 @@ router.delete('/delete/:id', protect, async (req, res) => {
             Order.deleteMany({ userId: req.params.id }),
             Address.deleteMany({ userId: req.params.id })
         ]);
+        clearAuthCookies(res);
         res.status(200).json({ message: "Account deleted permanently." });
     } catch (error) {
         console.error("❌ Account delete error:", error);
         res.status(500).json({ message: "Error deleting account." });
     }
 });
+
 // ==========================================
 // 🌐 GOOGLE LOGIN ROUTE
 // ==========================================
@@ -462,15 +608,42 @@ router.post('/google', async (req, res) => {
             await user.save();
         }
 
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+        // Generate tokens
+        const accessToken = generateAccessToken(user._id);
+        const refreshToken = generateRefreshToken(user._id);
+        user.refreshToken = refreshToken;
+        user.refreshTokenExpire = Date.now() + 7 * 24 * 60 * 60 * 1000;
+        await user.save();
+
+        setAuthCookies(res, accessToken, refreshToken);
 
         res.status(200).json({
-            token,
             user: { id: user._id, name: user.name, email: user.email, isAdmin: user.isAdmin }
         });
     } catch (error) {
         console.error("Google Login Error:", error);
         res.status(500).json({ message: "Google login failed" });
+    }
+});
+
+// ==========================================
+// 🛡️ CSRF TOKEN ENDPOINT
+// ==========================================
+router.get('/csrf-token', (req, res) => {
+    res.status(200).json({ csrfToken: req.csrfToken() });
+});
+
+// ==========================================
+// 👤 GET CURRENT USER (/me)
+// ==========================================
+router.get('/me', protect, async (req, res) => {
+    try {
+        res.status(200).json({
+            user: { id: req.user._id, name: req.user.name, email: req.user.email, isAdmin: req.user.isAdmin }
+        });
+    } catch (error) {
+        console.error("❌ /me error:", error);
+        res.status(500).json({ message: "Error fetching user" });
     }
 });
 

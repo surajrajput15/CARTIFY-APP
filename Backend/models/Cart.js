@@ -10,4 +10,9 @@ const cartSchema = new mongoose.Schema({
     items: [cartItemSchema]
 }, { timestamps: true });
 
+// Indexes
+cartSchema.index({ userId: 1 }); // Already unique, but explicit
+cartSchema.index({ 'items.productId': 1 });
+cartSchema.index({ updatedAt: -1 });
+
 module.exports = mongoose.model('Cart', cartSchema);

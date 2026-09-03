@@ -1,5 +1,64 @@
 @import "tailwindcss";
 
+@layer base {
+  :root {
+    /* High-contrast focus ring color (WCAG AA compliant) */
+    --focus-ring: #0d9488; /* teal-600 */
+  }
+
+  /* Focus visible styles for keyboard navigation (WCAG 2.4.7) */
+  *:focus {
+    outline: none;
+  }
+  *:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Skip link focus styles */
+  .sr-only:focus,
+  .sr-only:focus-visible,
+  [tabindex="-1"]:focus,
+  a[href="#main-content"]:focus {
+    clip: auto !important;
+    width: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    position: static !important;
+    white-space: normal !important;
+  }
+}
+
+@layer utilities {
+  /* Ensure interactive elements meet 44x44px minimum touch target (WCAG 2.5.5) */
+  .tap-target {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* High-contrast text for WCAG AA compliance */
+  .text-high-contrast {
+    color: #111827; /* gray-900 */
+  }
+  .text-medium-contrast {
+    color: #374151; /* gray-700 */
+  }
+
+  /* Screen reader only utility (alias for sr-only) */
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+}
+
 @keyframes fade-in-up {
   from {
     opacity: 0;

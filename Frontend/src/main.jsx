@@ -7,6 +7,26 @@ import { CartProvider } from './context/cartContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import { toast } from 'react-hot-toast';
 import { registerServiceWorker, listenForInstallPrompt } from './utils/pwa';
+import { validateEnv } from './utils/envValidation';
+import * as Sentry from '@sentry/react';
+import { browserTracingIntegration } from '@sentry/browser';
+
+validateEnv();
+
+// Sentry initialization
+if (import.meta.env.VITE_SENTRY_DSN) {
+  Sentry.init({
+    dsn: import.meta.env.VITE_SENTRY_DSN,
+    environment: import.meta.env.MODE || 'development',
+    integrations: [
+      browserTracingIntegration(),
+      Sentry.reactComponentAnnotationIntegration(),
+    ],
+    tracesSampleRate: 1.0,
+    replaysOnErrorSampleRate: 1.0,
+    replaysSessionSampleRate: 0.1,
+  });
+}
 
 // Surface otherwise-uncaught async errors instead of failing silently.
 window.addEventListener('unhandledrejection', (event) => {

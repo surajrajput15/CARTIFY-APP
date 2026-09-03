@@ -5,6 +5,7 @@ const fs = require('fs');
 const cloudinary = require('cloudinary').v2;
 const Product = require('../models/Product');
 const { protect, admin } = require('../middleware/auth');
+const { auditLogMiddleware } = require('../middleware/auditLog');
 
 const hasCloudinary = Boolean(
   process.env.CLOUDINARY_CLOUD_NAME &&
@@ -100,7 +101,7 @@ router.get('/', async (req, res) => {
 });
 
 // 2. POST API: Add a new product (Admin only)
-router.post('/add', protect, admin, async (req, res) => {
+router.post('/add', protect, admin, auditLogMiddleware('CREATE_PRODUCT', 'Product'), async (req, res) => {
     try {
         const allowedFields = ['title', 'description', 'price', 'category', 'image', 'rating', 'countInStock'];
         const sanitized = {};
@@ -180,7 +181,7 @@ router.post('/add', protect, admin, async (req, res) => {
 });
 
 // 3. POST API: Insert many products at once (Admin only)
-router.post('/seed', protect, admin, async (req, res, next) => {
+router.post('/seed', protect, admin, auditLogMiddleware('BULK_CREATE_PRODUCTS', 'Product'), async (req, res, next) => {
     try {
         if (!Array.isArray(req.body) || req.body.length === 0) {
             return res.status(400).json({ message: "Please provide an array of products to seed" });
@@ -216,7 +217,7 @@ router.get('/:id', async (req, res, next) => {
 });
 
 // 5. DELETE API: Clear all products (Admin only)
-router.delete('/clear', protect, admin, async (req, res) => {
+router.delete('/clear', protect, admin, auditLogMiddleware('DELETE_ALL_PRODUCTS', 'Product'), async (req, res) => {
     try {
         await Product.deleteMany({});
         res.status(200).json({ message: "Database cleared successfully! 🧹✨" });
@@ -227,7 +228,7 @@ router.delete('/clear', protect, admin, async (req, res) => {
 });
 
 // 6. DELETE API: Delete a single product (Admin only)
-router.delete('/:id', protect, admin, async (req, res, next) => {
+router.delete('/:id', protect, admin, auditLogMiddleware('DELETE_PRODUCT', 'Product'), async (req, res, next) => {
     try {
         const product = await Product.findByIdAndDelete(req.params.id);
         if (!product) {
@@ -246,7 +247,7 @@ router.delete('/:id', protect, admin, async (req, res, next) => {
 });
 
 // 7. PATCH API: Update single product (Admin only)
-router.patch('/:id', protect, admin, async (req, res) => {
+router.patch('/:id', protect, admin, auditLogMiddleware('UPDATE_PRODUCT', 'Product'), async (req, res) => {
     try {
         const product = await Product.findById(req.params.id);
         if (!product) {

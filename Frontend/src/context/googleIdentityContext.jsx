@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import { GOOGLE_CLIENT_ID } from '../config';
 import { googleLogin } from '../services/authApi';
 import { useAuth } from './authContext';
+import api from '../api/axios';
 
 // Google Identity Services (GIS) redirect mode, wired up app-wide.
 //
@@ -83,8 +84,10 @@ export const GoogleIdentityProvider = ({ children }) => {
 
       try {
         // Verify the ID token server-side; never decode/trust it locally.
-        const serverResponse = await googleLogin({ credential });
-        login(serverResponse.data.user, serverResponse.data.token);
+        await googleLogin({ credential });
+        // After successful login, fetch user via /me endpoint
+        const { data } = await api.get('/api/auth/me');
+        login(data.user);
         const intendedPath = sessionStorage.getItem('redirectAfterLogin');
         sessionStorage.removeItem('redirectAfterLogin');
         navigate(intendedPath && intendedPath !== '/login' ? intendedPath : '/');

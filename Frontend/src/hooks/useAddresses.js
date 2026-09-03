@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import * as addressesApi from '../services/addressesApi';
 import toast from 'react-hot-toast';
+import { handleApiError } from '../utils/apiError';
 
 export const useAddresses = (userId, initialLoading = false) => {
   const [addresses, setAddresses] = useState([]);
@@ -14,7 +15,7 @@ export const useAddresses = (userId, initialLoading = false) => {
       return response.data;
     } catch (error) {
       console.error("Failed to fetch addresses", error);
-      toast.error("Failed to load addresses");
+      toast.error(handleApiError(error, "Failed to load addresses"));
       return [];
     } finally {
       setAddressesLoading(false);
@@ -22,13 +23,25 @@ export const useAddresses = (userId, initialLoading = false) => {
   }, [userId]);
 
   const saveAddress = useCallback(async (address) => {
-    await addressesApi.addAddress(address);
-    await fetchAddresses();
+    try {
+      await addressesApi.addAddress(address);
+      await fetchAddresses();
+    } catch (err) {
+      console.error("Failed to save address", err);
+      toast.error(handleApiError(err, "Failed to save address"));
+      throw err;
+    }
   }, [fetchAddresses]);
 
   const deleteAddress = useCallback(async (id) => {
-    await addressesApi.deleteAddress(id);
-    await fetchAddresses();
+    try {
+      await addressesApi.deleteAddress(id);
+      await fetchAddresses();
+    } catch (err) {
+      console.error("Failed to delete address", err);
+      toast.error(handleApiError(err, "Failed to delete address"));
+      throw err;
+    }
   }, [fetchAddresses]);
 
   return { addresses, addressesLoading, fetchAddresses, saveAddress, deleteAddress };

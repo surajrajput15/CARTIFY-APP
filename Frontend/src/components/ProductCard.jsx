@@ -2,11 +2,19 @@ import { ShoppingCart, Star } from 'lucide-react';
 import { useCart } from '../context/cartContext';
 import { Link } from 'react-router-dom';
 import { getStockStatus } from '../utils/stockStatus';
-import { resolveImageUrl } from '../utils/imageUrl';
+import { resolveImageUrl, generateSrcSet } from '../utils/imageUrl';
+import { memo, useCallback } from 'react';
 
-const ProductCard = ({ product }) => {
+const ProductCard = memo(({ product }) => {
   const { addToCart } = useCart();
   const stock = getStockStatus(product.countInStock);
+
+  const handleAddToCart = useCallback(() => {
+    addToCart(product);
+  }, [addToCart, product]);
+
+  const imageUrl = resolveImageUrl(product.image);
+  const srcSet = generateSrcSet(product.image);
 
   return (
     <div className="bg-white rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden border border-gray-100 flex flex-col h-full group">
@@ -21,9 +29,12 @@ const ProductCard = ({ product }) => {
           {product.category}
         </span>
         <img 
-          src={resolveImageUrl(product.image)} 
-          alt={product.title} 
+          src={imageUrl}
+          srcSet={srcSet}
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+          alt={product.title}
           loading="lazy"
+          decoding="async"
           className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500 ease-out"
         />
       </Link>
@@ -49,7 +60,7 @@ const ProductCard = ({ product }) => {
             ₹{product.price}
           </span>
           <button 
-            onClick={() => addToCart(product)}
+            onClick={handleAddToCart}
             disabled={stock?.disabled}
             className={`p-2.5 rounded-xl transition-all shadow-md hover:shadow-lg shadow-teal-100 hover:shadow-teal-200 active:scale-95 ${
               stock?.disabled
@@ -64,6 +75,8 @@ const ProductCard = ({ product }) => {
       </div>
     </div>
   );
-};
+});
+
+ProductCard.displayName = 'ProductCard';
 
 export default ProductCard;

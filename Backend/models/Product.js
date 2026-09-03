@@ -36,6 +36,12 @@ const productSchema = new mongoose.Schema({
 // Hot read paths: category filtering and title-prefix searches benefit from these.
 productSchema.index({ category: 1 });
 productSchema.index({ title: 1 });
+productSchema.index({ createdAt: -1 });
+productSchema.index({ category: 1, price: 1 });
+productSchema.index({ category: 1, createdAt: -1 });
+
+// Text index for full-text search (alternative to regex)
+productSchema.index({ title: 'text', description: 'text' });
 
 // Export this schema so it can be used in other files
 module.exports = mongoose.model('Product', productSchema);

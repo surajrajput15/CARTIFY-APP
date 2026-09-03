@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { ShoppingCart, User, Search, LogOut, Shield } from 'lucide-react';
 import { useCart } from '../context/cartContext';
@@ -19,21 +19,24 @@ const Navbar = () => {
   const navigate = useNavigate();
 
   // Total units in cart (sum of all item quantities), not the number of distinct product rows.
-  const cartItemCount = cart.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
+  const cartItemCount = useMemo(
+    () => cart.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0),
+    [cart]
+  );
 
-  const handleSearch = (e) => {
+  const handleSearch = useCallback((e) => {
     e.preventDefault();
     if (keyword.trim()) {
       navigate(`/?search=${keyword}`);
     } else {
       navigate('/');
     }
-  };
+  }, [keyword, navigate]);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     logout();
     navigate('/');
-  };
+  }, [logout, navigate]);
 
   return (
     <nav className="bg-white border-b border-gray-100 sticky top-0 z-50 shadow-sm">

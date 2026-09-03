@@ -4,7 +4,35 @@ const cors = require('cors');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
+const cookieParser = require('cookie-parser');
+const csrf = require('csurf');
+const crypto = require('crypto');
+const { logger, createChildLogger } = require('./utils/logger');
+const { cache, getRedisClient } = require('./utils/redisCache');
+const * as Sentry = require('@sentry/node');
 require('dotenv').config();
+
+// Sentry initialization
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV || 'development',
+    tracesSampleRate: 1.0,
+    profilesSampleRate: 1.0,
+    integrations: [
+      Sentry.httpIntegration(),
+      Sentry.expressIntegration(),
+      Sentry.mongoIntegration(),
+    ],
+  });
+}
+
+// Request ID middleware for tracing
+const requestIdMiddleware = (req, res, next) => {
+  req.id = req.headers['x-request-id'] || crypto.randomUUID();
+  res.setHeader('X-Request-ID', req.id);
+  next();
+};
 
 // Environment Validation
 const requiredBackendVars = [
@@ -88,6 +116,8 @@ app.use(cors({
   credentials: true
 }));
 
+app.use(cookieParser());
+
 // Razorpay webhook: signature is computed over the RAW request body, so it must be
 // parsed BEFORE the global express.json() middleware (which would otherwise consume
 // the stream and replace req.body with a parsed object). The actual handler lives in
@@ -95,31 +125,112 @@ app.use(cors({
 app.post('/api/payment/webhook', express.raw({ type: 'application/json', limit: '50kb' }));
 
 app.use(express.json({ limit: "10kb" }));
-app.use(helmet());
 
-// MongoDB Database Connection
-mongoose.connect(process.env.MONGO_URI)
+// CSRF Protection - exclude webhook and auth endpoints that use JWT in body
+const csrfProtection = csrf({ cookie: { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' } });
+app.use((req, res, next) => {
+  const excludedPaths = ['/api/payment/webhook', '/api/auth/send-otp', '/api/auth/verify-otp', '/api/auth/register', '/api/auth/login', '/api/auth/forgot-password', '/api/auth/reset-password', '/api/auth/google'];
+  if (excludedPaths.some(p => req.path.startsWith(p))) {
+    return next();
+  }
+  csrfProtection(req, res, next);
+});
+
+// Helmet with CSP
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", 'https://checkout.razorpay.com', 'https://apis.google.com'],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+      imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
+      connectSrc: ["'self'", 'https://cartify-api-10g3.onrender.com', 'https://api.razorpay.com', 'https://checkout.razorpay.com'],
+      frameSrc: ["'self'", 'https://checkout.razorpay.com'],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}));
+
+// Request ID middleware for tracing
+app.use(requestIdMiddleware);
+
+// Sentry request handler (must be before routes)
+if (process.env.SENTRY_DSN) {
+  app.use(Sentry.Handlers.requestHandler());
+  app.use(Sentry.Handlers.tracingHandler());
+}
+
+// Health check endpoints
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.get('/ready', async (req, res) => {
+  try {
+    // Check MongoDB connection
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ status: 'not ready', reason: 'database disconnected' });
+    }
+    // Quick ping
+    await mongoose.connection.db.admin().ping();
+    res.status(200).json({ status: 'ready', timestamp: new Date().toISOString() });
+  } catch (error) {
+    res.status(503).json({ status: 'not ready', reason: error.message });
+  }
+});
+
+// MongoDB Database Connection with connection pool tuning
+mongoose.connect(process.env.MONGO_URI, {
+  maxPoolSize: 50, // Maximum number of connections
+  minPoolSize: 10, // Minimum number of connections
+  maxIdleTimeMS: 30000, // Close connections after 30s of inactivity
+  serverSelectionTimeoutMS: 5000, // How long to wait for a server
+  socketTimeoutMS: 45000, // How long a send or receive on a socket can take
+  family: 4, // Use IPv4
+  retryWrites: true, // Retry write operations
+  w: 'majority', // Write concern
+})
   .then(() => {
-    console.log("MongoDB Database Connected Successfully! 🗄️🎉");
+    logger.info('MongoDB Database Connected Successfully with connection pooling');
   })
   .catch((error) => {
-    console.log("MongoDB Connection Error: ", error.message);
-    console.log("❌ Server failed to start - check MONGO_URI in the Render Dashboard!");
+    logger.error({ err: error }, 'MongoDB Connection Error');
     process.exit(1);
   });
 
 mongoose.connection.on('disconnected', () => {
-  console.log("⚠️ MongoDB disconnected!");
+  logger.warn('MongoDB disconnected');
 });
 
-// Setup API Routes
+mongoose.connection.on('reconnected', () => {
+  logger.info('MongoDB reconnected');
+});
+
+mongoose.connection.on('error', (err) => {
+  logger.error({ err }, 'MongoDB connection error');
+});
+
+// Setup API Routes - Versioned
+const v1Routes = require('./routes/index');
+app.use('/api/v1', v1Routes);
+app.use('/api', v1Routes); // Backward compatibility (defaults to v1)
+
+// Legacy routes (kept for backward compatibility - will be deprecated)
 app.use('/api/products', productRoutes);
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/orders', orderRoutes);
-app.use('/api/addresses', addressRoutes); // 👈 Connected Address API
-app.use('/api/cart', cartRoutes); // 👈 Connected Cart API (server-side sync)
-app.use('/api/payment', paymentRoutes); // 👈 Connected Payment API
-app.use('/api/upload', uploadRoutes.router); // 👈 Image Upload
+app.use('/api/addresses', addressRoutes);
+app.use('/api/cart', cartRoutes);
+app.use('/api/payment', paymentRoutes);
+app.use('/api/upload', uploadRoutes.router);
+
+// Swagger API Documentation
+const { setupSwagger } = require('./utils/swagger');
+setupSwagger(app);
 
 // Serve uploaded images with a strict allowlist of safe content types. Files
 // are stored with a detected-format extension only, but this layer hardens
@@ -160,6 +271,11 @@ app.use((req, res) => {
   res.status(404).json({ message: "Route not found" });
 });
 
+// Sentry error handler (must be before other error handlers)
+if (process.env.SENTRY_DSN) {
+  app.use(Sentry.Handlers.errorHandler());
+}
+
 // Centralized error handler
 app.use(errorHandler);
 
@@ -168,15 +284,22 @@ const server = app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
 
-// Graceful shutdown — drain in-flight requests, then close MongoDB, so Render's
+// Graceful shutdown — drain in-flight requests, then close MongoDB and Redis, so Render's
 // restarts don't leave the process hanging or drop active connections mid-request.
-const shutdown = (signal) => {
-    console.log(`\n${signal} received. Shutting down gracefully...`);
-    server.close(() => {
-        mongoose.connection.close(false).then(() => {
-            console.log('MongoDB connection closed.');
+const shutdown = async (signal) => {
+    logger.info({ signal }, 'Shutting down gracefully...');
+    server.close(async () => {
+        try {
+            await Promise.all([
+                mongoose.connection.close(false),
+                cache.close(),
+            ]);
+            logger.info('All connections closed');
             process.exit(0);
-        });
+        } catch (error) {
+            logger.error({ err: error }, 'Error during shutdown');
+            process.exit(1);
+        }
     });
     // Force-exit if connections refuse to drain (prevents an indefinite hang).
     setTimeout(() => process.exit(1), 10000).unref();

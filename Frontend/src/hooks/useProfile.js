@@ -3,6 +3,7 @@ import { useAuth } from '../context/authContext';
 import { useNavigate } from 'react-router-dom';
 import { updateProfile, deleteAccount as deleteAccountApi } from '../services/authApi';
 import toast from 'react-hot-toast';
+import { handleApiError } from '../utils/apiError';
 
 export const useProfile = () => {
   const { user, login, logout } = useAuth();
@@ -23,7 +24,7 @@ export const useProfile = () => {
       setIsEditing(false);
     } catch (error) {
       console.error("Failed to update profile", error);
-      toast.error("Failed to update profile");
+      toast.error(handleApiError(error, "Failed to update profile"));
     } finally {
       setUpdateLoading(false);
     }
@@ -36,7 +37,7 @@ export const useProfile = () => {
       navigate('/');
     } catch (error) {
       console.error("Failed to delete account", error);
-      toast.error("Failed to delete account");
+      toast.error(handleApiError(error, "Failed to delete account"));
     }
   }, [user, logout, navigate]);
 
