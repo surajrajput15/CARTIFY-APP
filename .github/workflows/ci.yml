@@ -97,7 +97,7 @@ jobs:
           MONGO_URI: mongodb://localhost:27017/cartify-test
       
       - name: Upload Backend Coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: backend-coverage
@@ -126,7 +126,7 @@ jobs:
         working-directory: ./Frontend
       
       - name: Upload Frontend Coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: frontend-coverage
@@ -160,7 +160,7 @@ jobs:
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
       
       - name: Upload Frontend Build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-dist
           path: Frontend/dist/
@@ -215,7 +215,7 @@ jobs:
           PLAYWRIGHT_BASE_URL: http://localhost:5173
       
       - name: Upload E2E Report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: e2e-report
