@@ -5,7 +5,14 @@ dist/
 .DS_Store
 nul
 
+# Test coverage reports
+coverage/
+*.lcov
+
 # QA test artifacts (keep test scripts, ignore generated output)
 qa/node_modules/
 qa/*.png
 qa/lh-prod.json
+
+# Build stats (rollup visualizer)
+Frontend/dist/stats.html

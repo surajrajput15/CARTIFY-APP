@@ -58,9 +58,6 @@ orderSchema.index({ userId: 1, createdAt: -1 });
 // Admin: paginated order listing with status filter
 orderSchema.index({ status: 1, createdAt: -1 });
 
-// Admin: lookup by Razorpay order ID
-orderSchema.index({ razorpayOrderId: 1 });
-
 // Admin: lookup by Razorpay payment ID
 orderSchema.index({ razorpayPaymentId: 1 });
 

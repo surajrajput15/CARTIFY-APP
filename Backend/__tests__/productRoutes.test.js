@@ -1,44 +1,15 @@
 const request = require('supertest');
-const express = require('express');
-const cookieParser = require('cookie-parser');
-const csrf = require('csurf');
+const bcrypt = require('bcryptjs');
 const Product = require('../models/Product');
-const productRoutes = require('../routes/productRoutes');
-const { protect, admin } = require('../middleware/auth');
 const User = require('../models/User');
-const jwt = require('jsonwebtoken');
+const { buildTestApp, getCsrfToken } = require('./testApp');
 
-const app = express();
-app.use(express.json({ limit: '10kb' }));
-app.use(cookieParser());
+const app = buildTestApp();
 
-const csrfProtection = csrf({ cookie: { httpOnly: true, sameSite: 'lax', secure: false } });
-app.use((req, res, next) => {
-  const excludedPaths = ['/api/auth/send-otp', '/api/auth/verify-otp', '/api/auth/register', '/api/auth/login', '/api/auth/forgot-password', '/api/auth/reset-password', '/api/auth/google', '/api/auth/refresh', '/api/auth/logout', '/api/auth/me', '/api/auth/csrf-token'];
-  if (excludedPaths.some(p => req.path.startsWith(p))) {
-    return next();
-  }
-  csrfProtection(req, res, next);
-});
-
-app.use('/api/products', productRoutes);
-
-// Test protected route
-app.get('/api/test/admin', protect, admin, (req, res) => {
-  res.json({ success: true });
-});
-
-// Helper to get CSRF token from cookie
-const getCsrfToken = async (agent) => {
-  const res = await agent.get('/api/auth/csrf-token');
-  const cookies = res.headers['set-cookie'];
-  if (cookies) {
-    const csrfCookie = cookies.find(c => c.startsWith('csrfToken='));
-    if (csrfCookie) {
-      return csrfCookie.split(';')[0].split('=')[1];
-    }
-  }
-  return null;
+// Helper: create a user with properly hashed password (User.create stores raw password)
+const createTestUser = async ({ name, email, password, isAdmin = false }) => {
+  const hashedPassword = await bcrypt.hash(password, 10);
+  return User.create({ name, email, password: hashedPassword, isAdmin });
 };
 
 describe('Product Routes', () => {
@@ -48,17 +19,16 @@ describe('Product Routes', () => {
     adminAgent = request.agent(app);
     userAgent = request.agent(app);
 
-    // Create admin user
-    adminUser = new User({ name: 'Admin', email: 'admin@test.com', password: 'Password123', isAdmin: true });
-    await adminUser.save();
+    // Create users with hashed passwords
+    adminUser = await createTestUser({ name: 'Admin', email: 'admin@test.com', password: 'Password123', isAdmin: true });
+    regularUser = await createTestUser({ name: 'User', email: 'user@test.com', password: 'Password123', isAdmin: false });
 
-    // Create regular user
-    regularUser = new User({ name: 'User', email: 'user@test.com', password: 'Password123', isAdmin: false });
-    await regularUser.save();
+    // Login both users (sets HttpOnly cookies)
+    const adminLogin = await adminAgent.post('/api/auth/login').send({ email: 'admin@test.com', password: 'Password123' });
+    const userLogin = await userAgent.post('/api/auth/login').send({ email: 'user@test.com', password: 'Password123' });
 
-    // Login both users
-    await adminAgent.post('/api/auth/login').send({ email: 'admin@test.com', password: 'Password123' });
-    await userAgent.post('/api/auth/login').send({ email: 'user@test.com', password: 'Password123' });
+    if (adminLogin.status !== 200) throw new Error(`Admin login failed: ${adminLogin.status}`);
+    if (userLogin.status !== 200) throw new Error(`User login failed: ${userLogin.status}`);
   });
 
   describe('GET /api/products', () => {
@@ -74,7 +44,7 @@ describe('Product Routes', () => {
         price: 100 + i,
         description: `Description ${i}`,
         category: 'electronics',
-        image: 'https://example.com/image.jpg'
+        image: 'https://example.com/image.jpg',
       }));
       await Product.insertMany(products);
 
@@ -88,7 +58,7 @@ describe('Product Routes', () => {
     it('should filter by category', async () => {
       await Product.insertMany([
         { title: 'Phone', price: 500, description: 'Phone', category: 'electronics', image: 'img.jpg' },
-        { title: 'Shirt', price: 50, description: 'Shirt', category: 'clothing', image: 'img.jpg' }
+        { title: 'Shirt', price: 50, description: 'Shirt', category: 'clothing', image: 'img.jpg' },
       ]);
 
       const res = await request(app).get('/api/products?category=electronics').expect(200);
@@ -99,7 +69,7 @@ describe('Product Routes', () => {
     it('should search by title (case-insensitive)', async () => {
       await Product.insertMany([
         { title: 'MacBook Pro', price: 1000, description: 'Laptop', category: 'electronics', image: 'img.jpg' },
-        { title: 'Windows Laptop', price: 800, description: 'Laptop', category: 'electronics', image: 'img.jpg' }
+        { title: 'Windows Laptop', price: 800, description: 'Laptop', category: 'electronics', image: 'img.jpg' },
       ]);
 
       const res = await request(app).get('/api/products?search=macbook').expect(200);
@@ -109,11 +79,7 @@ describe('Product Routes', () => {
 
     it('should sanitize regex input (ReDoS protection)', async () => {
       await Product.create({
-        title: 'Normal Product',
-        price: 100,
-        description: 'Normal',
-        category: 'electronics',
-        image: 'img.jpg'
+        title: 'Normal Product', price: 100, description: 'Normal', category: 'electronics', image: 'img.jpg',
       });
 
       const res = await request(app).get('/api/products?search=(a+)+').expect(200);
@@ -124,11 +90,7 @@ describe('Product Routes', () => {
   describe('GET /api/products/:id', () => {
     it('should return product by ID', async () => {
       const product = await Product.create({
-        title: 'Test Product',
-        price: 200,
-        description: 'Test Description',
-        category: 'electronics',
-        image: 'https://example.com/image.jpg'
+        title: 'Test Product', price: 200, description: 'Test Description', category: 'electronics', image: 'https://example.com/image.jpg',
       });
 
       const res = await request(app).get(`/api/products/${product._id}`).expect(200);
@@ -154,11 +116,8 @@ describe('Product Routes', () => {
         .post('/api/products/add')
         .set('X-CSRF-Token', csrfToken)
         .send({
-          title: 'New Product',
-          price: 299,
-          description: 'New product description',
-          category: 'electronics',
-          image: 'https://example.com/new.jpg'
+          title: 'New Product', price: 299, description: 'New product description',
+          category: 'electronics', image: 'https://example.com/new.jpg',
         })
         .expect(201);
 
@@ -173,11 +132,8 @@ describe('Product Routes', () => {
         .post('/api/products/add')
         .set('X-CSRF-Token', csrfToken)
         .send({
-          title: 'New Product',
-          price: 299,
-          description: 'New product description',
-          category: 'electronics',
-          image: 'https://example.com/new.jpg'
+          title: 'New Product', price: 299, description: 'New product description',
+          category: 'electronics', image: 'https://example.com/new.jpg',
         })
         .expect(403);
     });
@@ -201,11 +157,7 @@ describe('Product Routes', () => {
         .post('/api/products/add')
         .set('X-CSRF-Token', csrfToken)
         .send({
-          title: 'Test',
-          price: -10,
-          description: 'Test',
-          category: 'electronics',
-          image: 'img.jpg'
+          title: 'Test', price: -10, description: 'Test', category: 'electronics', image: 'img.jpg',
         })
         .expect(400);
 
@@ -216,11 +168,7 @@ describe('Product Routes', () => {
   describe('PATCH /api/products/:id (Admin)', () => {
     it('should update product (admin)', async () => {
       const product = await Product.create({
-        title: 'Original',
-        price: 100,
-        description: 'Original desc',
-        category: 'electronics',
-        image: 'img.jpg'
+        title: 'Original', price: 100, description: 'Original desc', category: 'electronics', image: 'img.jpg',
       });
 
       const csrfToken = await getCsrfToken(adminAgent);
@@ -237,11 +185,7 @@ describe('Product Routes', () => {
 
     it('should reject non-admin user', async () => {
       const product = await Product.create({
-        title: 'Test',
-        price: 100,
-        description: 'Test',
-        category: 'electronics',
-        image: 'img.jpg'
+        title: 'Test', price: 100, description: 'Test', category: 'electronics', image: 'img.jpg',
       });
 
       const csrfToken = await getCsrfToken(userAgent);
@@ -257,11 +201,7 @@ describe('Product Routes', () => {
   describe('DELETE /api/products/:id (Admin)', () => {
     it('should delete product (admin)', async () => {
       const product = await Product.create({
-        title: 'To Delete',
-        price: 100,
-        description: 'Test',
-        category: 'electronics',
-        image: 'img.jpg'
+        title: 'To Delete', price: 100, description: 'Test', category: 'electronics', image: 'img.jpg',
       });
 
       const csrfToken = await getCsrfToken(adminAgent);
@@ -277,11 +217,7 @@ describe('Product Routes', () => {
 
     it('should reject non-admin user', async () => {
       const product = await Product.create({
-        title: 'Test',
-        price: 100,
-        description: 'Test',
-        category: 'electronics',
-        image: 'img.jpg'
+        title: 'Test', price: 100, description: 'Test', category: 'electronics', image: 'img.jpg',
       });
 
       const csrfToken = await getCsrfToken(userAgent);
@@ -298,11 +234,8 @@ describe('Product Routes', () => {
       const csrfToken = await getCsrfToken(adminAgent);
 
       const products = Array.from({ length: 5 }, (_, i) => ({
-        title: `Seed Product ${i}`,
-        price: 100 + i,
-        description: `Seed ${i}`,
-        category: 'electronics',
-        image: 'https://example.com/seed.jpg'
+        title: `Seed Product ${i}`, price: 100 + i, description: `Seed ${i}`,
+        category: 'electronics', image: 'https://example.com/seed.jpg',
       }));
 
       const res = await adminAgent
@@ -319,7 +252,7 @@ describe('Product Routes', () => {
     it('should clear all products', async () => {
       await Product.insertMany([
         { title: 'P1', price: 100, description: 'D', category: 'electronics', image: 'img.jpg' },
-        { title: 'P2', price: 200, description: 'D', category: 'electronics', image: 'img.jpg' }
+        { title: 'P2', price: 200, description: 'D', category: 'electronics', image: 'img.jpg' },
       ]);
 
       const csrfToken = await getCsrfToken(adminAgent);

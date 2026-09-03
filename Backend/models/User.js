@@ -49,8 +49,7 @@ const userSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
-// Indexes
-userSchema.index({ email: 1 }); // Already unique, but explicit for clarity
+// Indexes (email unique index is auto-created from `unique: true` on the field)
 userSchema.index({ isAdmin: 1 });
 userSchema.index({ createdAt: -1 });
 userSchema.index({ refreshToken: 1 });

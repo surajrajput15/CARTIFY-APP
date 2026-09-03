@@ -199,17 +199,17 @@ router.post('/seed', protect, admin, auditLogMiddleware('BULK_CREATE_PRODUCTS', 
 });
 
 // 4. GET API: Fetch a single product by its ID
-router.get('/:id', async (req, res, next) => {
+router.get('/:id', async (req, res) => {
     try {
         res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=30');
-        const product = await Product.findById(req.params.id); 
+        const product = await Product.findById(req.params.id);
         if (!product) {
             return res.status(404).json({ message: "Product not found! 😢" });
         }
         res.status(200).json(product);
     } catch (error) {
         if (error.name === 'CastError') {
-            return next(error);
+            return res.status(400).json({ message: "Invalid product ID format" });
         }
         console.error("❌ Product fetch by ID error:", error);
         res.status(500).json({ message: "Failed to fetch product" });

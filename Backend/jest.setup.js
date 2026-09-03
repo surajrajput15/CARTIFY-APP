@@ -10,7 +10,7 @@ let mongoServer;
 beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
   const uri = mongoServer.getUri();
-  
+
   process.env.MONGO_URI = uri;
   process.env.JWT_SECRET = 'test-jwt-secret-key-for-testing-only';
   process.env.RAZORPAY_KEY_ID = 'rzp_test_key';
