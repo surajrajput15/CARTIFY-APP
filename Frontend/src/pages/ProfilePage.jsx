@@ -86,13 +86,13 @@ const ProfilePage = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <h1 className="text-3xl font-extrabold text-gray-900 mb-8">My Account</h1>
+    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
+      <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-6 sm:mb-8">My Account</h1>
 
-      <div className="flex flex-col md:flex-row gap-8">
+      <div className="flex flex-col md:flex-row gap-4 sm:gap-6 md:gap-8">
         <ProfileSidebar user={user} activeTab={activeTab} onTabChange={handleTabChange} onLogout={handleLogout} />
 
-        <div className="w-full md:w-3/4 space-y-6">
+        <div className="w-full md:w-3/4 space-y-4 sm:space-y-6 min-w-0">
           {activeTab === 'profile' && (
             <ProfileInfo
               user={user}
@@ -131,7 +131,7 @@ const ProfilePage = () => {
           onCancel={() => setConfirmModal(CLOSED_CONFIRM)}
         />
       )}
-    </div>
+    </main>
   );
 };
 

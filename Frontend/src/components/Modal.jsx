@@ -10,6 +10,10 @@ const Modal = ({ title, labelledBy, onClose, children, className = '' }) => {
   useEffect(() => {
     previousFocusRef.current = document.activeElement;
 
+    // Lock body scroll while modal is open
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
     const dialog = dialogRef.current;
     if (dialog) {
       const focusables = dialog.querySelectorAll(FOCUSABLE);
@@ -41,14 +45,16 @@ const Modal = ({ title, labelledBy, onClose, children, className = '' }) => {
     document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = originalOverflow;
       previousFocusRef.current?.focus?.();
     };
   }, [onClose]);
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 overflow-y-auto"
       onClick={onClose}
+      role="presentation"
     >
       <div
         ref={dialogRef}
@@ -56,7 +62,7 @@ const Modal = ({ title, labelledBy, onClose, children, className = '' }) => {
         aria-modal="true"
         aria-label={labelledBy ? undefined : title}
         aria-labelledby={labelledBy}
-        className={`bg-white rounded-2xl shadow-2xl w-full ${className}`}
+        className={`bg-white rounded-2xl shadow-2xl w-full my-auto ${className}`}
         onClick={(e) => e.stopPropagation()}
       >
         {children}

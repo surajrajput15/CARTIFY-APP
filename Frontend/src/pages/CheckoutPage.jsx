@@ -7,6 +7,8 @@ import { useAddresses } from '../hooks/useAddresses';
 import { useRazorpayPayment } from '../hooks/useRazorpayPayment';
 import AddressSelector from '../components/checkout/AddressSelector';
 import OrderSummary from '../components/checkout/OrderSummary';
+import { formatPrice } from '../utils/format';
+import { getShippingCost } from '../utils/constants';
 
 const CheckoutPage = () => {
   const { user } = useAuth();
@@ -18,8 +20,13 @@ const CheckoutPage = () => {
   const [selectedAddress, setSelectedAddress] = useState(null);
 
   const calculatedTotal = useMemo(
-    () => cart.reduce((total, item) => total + (item.price * (item.quantity || 1)), 0),
+    () => cart.reduce((total, item) => total + (Number(item.price) * (Number(item.quantity) || 1)), 0),
     [cart]
+  );
+
+  const finalTotal = useMemo(
+    () => calculatedTotal + getShippingCost(calculatedTotal),
+    [calculatedTotal]
   );
 
   useEffect(() => {
@@ -41,13 +48,13 @@ const CheckoutPage = () => {
   const { loading, handlePayment } = useRazorpayPayment({ user, cart, clearCart, navigate, selectedAddress });
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <h1 className="text-3xl font-extrabold text-gray-900 mb-8 flex items-center gap-2">
-        <ShieldCheck className="text-teal-600" size={32} aria-hidden="true" /> Secure Checkout
+    <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
+      <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-6 sm:mb-8 flex items-center gap-2">
+        <ShieldCheck className="text-teal-600" size={28} aria-hidden="true" /> Secure Checkout
       </h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           <AddressSelector
             addresses={addresses}
             loading={addressesLoading}
@@ -65,7 +72,7 @@ const CheckoutPage = () => {
           onPay={handlePayment}
         />
       </div>
-    </div>
+    </main>
   );
 };
 
