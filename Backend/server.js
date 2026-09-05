@@ -7,10 +7,10 @@ const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 const csrf = require('csurf');
 const crypto = require('crypto');
+const Sentry = require('@sentry/node');
+require('dotenv').config();
 const { logger, createChildLogger } = require('./utils/logger');
 const { cache, getRedisClient } = require('./utils/redisCache');
-const * as Sentry = require('@sentry/node');
-require('dotenv').config();
 
 // Sentry initialization
 if (process.env.SENTRY_DSN) {
@@ -126,10 +126,23 @@ app.post('/api/payment/webhook', express.raw({ type: 'application/json', limit: 
 
 app.use(express.json({ limit: "10kb" }));
 
-// CSRF Protection - exclude webhook and auth endpoints that use JWT in body
-const csrfProtection = csrf({ cookie: { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' } });
+// CSRF Protection - exclude webhook, auth endpoints that use JWT in body, and cart read operations
+const csrfProtection = csrf({ cookie: { httpOnly: false, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' } });
 app.use((req, res, next) => {
-  const excludedPaths = ['/api/payment/webhook', '/api/auth/send-otp', '/api/auth/verify-otp', '/api/auth/register', '/api/auth/login', '/api/auth/forgot-password', '/api/auth/reset-password', '/api/auth/google'];
+  const excludedPaths = [
+    '/api/payment/webhook',
+    '/api/auth/send-otp',
+    '/api/auth/verify-otp',
+    '/api/auth/register',
+    '/api/auth/login',
+    '/api/auth/forgot-password',
+    '/api/auth/reset-password',
+    '/api/auth/google'
+  ];
+  // Only exclude GET /api/cart (cart reads) - mutations need CSRF
+  if (req.method === 'GET' && req.path.startsWith('/api/cart')) {
+    return next();
+  }
   if (excludedPaths.some(p => req.path.startsWith(p))) {
     return next();
   }
