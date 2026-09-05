@@ -16,3 +16,11 @@ qa/lh-prod.json
 
 # Build stats (rollup visualizer)
 Frontend/dist/stats.html
+
+# Local development binaries (MongoDB, etc.)
+mongodb/
+*.zip
+*.tar.gz
+*.dmg
+*.msi
+*.exe
