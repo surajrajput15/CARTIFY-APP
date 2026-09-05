@@ -14,9 +14,19 @@ export function registerServiceWorker() {
   if (import.meta.env.DEV && !new URLSearchParams(window.location.search).has('pwa')) return;
 
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((err) => {
-      console.error('Service worker registration failed:', err);
-    });
+    // Wrap in try/catch — service worker registration can throw (e.g. when
+    // /sw.js is not served, or in dev mode without proper headers). We don't
+    // want PWA failures to surface as uncaught errors in the console.
+    try {
+      const registration = navigator.serviceWorker.register('/sw.js');
+      registration.catch((err) => {
+        // Warn rather than error — PWA is optional and not having it shouldn't
+        // disrupt the rest of the app.
+        console.warn('Service worker registration failed:', err?.message || err);
+      });
+    } catch (err) {
+      console.warn('Service worker registration threw:', err?.message || err);
+    }
   });
 }
 

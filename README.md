@@ -392,6 +392,33 @@ cd Frontend
 npm run dev
 ```
 
+**Important:** The backend must be running on port 5000 before starting the frontend. The frontend expects the API at `http://localhost:5000` by default (configurable via `VITE_API_URL`).
+
+**Verify backend is running:**
+```bash
+curl http://localhost:5000/health
+# Should return: {"status":"ok","timestamp":"..."}
+```
+
+**Common issues:**
+- ❌ `ERR_CONNECTION_REFUSED` → Backend not running. Run `cd Backend && npm run dev`
+- ❌ `ECONNREFUSED` / `Network Error` → Same as above; start the backend first
+- ❌ `ERR_NETWORK` in console → Same issue; backend not reachable
+
+---
+
+## 🛠️ Common Issues & Troubleshooting
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `ERR_CONNECTION_REFUSED` / `ECONNREFUSED` / `Network Error` | Backend server not running | Run `cd Backend && npm run dev` first |
+| `Failed to load products` / `Failed to fetch orders` | Backend down or wrong `VITE_API_URL` | Check backend is running; verify `VITE_API_URL` in `Frontend/.env` |
+| `The given origin is not allowed for the given client ID` | Google OAuth origin not authorized | Add `http://localhost:5173` (or your dev port) to **Authorized JavaScript origins** in Google Cloud Console |
+| `403 Forbidden` on Google Sign-In | Origin not whitelisted | Same as above — add your dev URL to Google Cloud Console |
+| `MongoDB connection failed` | Wrong `MONGO_URI` or network blocked | Check `MONGO_URI` in `Backend/.env`; ensure IP is whitelisted in Atlas |
+| `JWT_SECRET` not set | Missing env var | Add `JWT_SECRET` to `Backend/.env` (min 32 chars random) |
+| `ERR_CONNECTION_REFUSED` on `localhost:5000` | Backend port in use | Kill process on 5000: `npx kill-port 5000` or change `PORT` in `Backend/.env` |
+
 ---
 
 ## 🔌 API Endpoints

@@ -191,6 +191,26 @@ npm run migrate:status
 5. **Update** CHANGELOG.md
 6. **Notify** team of successful deployment
 
+## Security Considerations
+
+- Never commit secrets to git
+- Rotate secrets every 90 days
+- Use environment variables in deployment platforms
+- Enable 2FA on Vercel, Render, MongoDB Atlas, Sentry
+- Review access logs monthly
+
+## Common Issues & Troubleshooting
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `ERR_CONNECTION_REFUSED` / `ECONNREFUSED` / `Network Error` | Backend server not running | Run `cd Backend && npm run dev` |
+| `Failed to load products` / `Failed to fetch orders` | Backend down or wrong `VITE_API_URL` | Check backend is running; verify `VITE_API_URL` in `Frontend/.env` |
+| `The given origin is not allowed for the given client ID` | Google OAuth origin not authorized | Add `http://localhost:5173` (or your dev port) to **Authorized JavaScript origins** in Google Cloud Console |
+| `403 Forbidden` on Google Sign-In | Origin not whitelisted | Same as above — add your dev URL to Google Cloud Console |
+| `MongoDB connection failed` | Wrong `MONGO_URI` or network blocked | Check `MONGO_URI` in `Backend/.env`; ensure IP is whitelisted in Atlas |
+| `JWT_SECRET` not set | Missing env var | Add `JWT_SECRET` to `Backend/.env` (min 32 chars random) |
+| `ERR_CONNECTION_REFUSED` on `localhost:5000` | Backend port in use | Kill process on 5000: `npx kill-port 5000` or change `PORT` in `Backend/.env` |
+
 ## Disaster Recovery
 
 ### Database Backup

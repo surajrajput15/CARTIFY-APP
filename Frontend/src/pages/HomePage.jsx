@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import toast from 'react-hot-toast';
 import { fetchProducts } from '../services/productsApi';
 import HeroBanner from '../components/HeroBanner';
 import ProductCard from '../components/ProductCard';
 import { SkeletonList } from '../components/Skeleton';
 import { SearchEmptyIllustration } from '../components/illustrations/EmptyStateIllustrations';
+import { isNetworkError } from '../utils/apiError';
 import { formatNumber, truncate } from '../utils/format';
 import { PRODUCT_CATEGORIES } from '../utils/constants';
 
@@ -32,14 +32,16 @@ const HomePage = () => {
   const [page, setPage] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
 
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('search') || '';
 
-  // FIX: Reset loading AND page to 1 whenever search/category/page changes
+  // Reset loading AND page to 1 whenever search/category changes
   useEffect(() => {
     setLoading(true);
     setPage(1);
+    setFetchError(null);
   }, [selectedCategory, searchQuery]);
 
   useEffect(() => {
@@ -61,11 +63,21 @@ const HomePage = () => {
           setTotal(d.total);
           setPages(d.pages);
         }
+        setFetchError(null);
       })
       .catch((error) => {
         if (cancelled) return;
-        console.error('Failed to fetch products:', error);
-        toast.error('Failed to load products');
+        // Network errors: show inline empty state (BackendStatusBanner
+        // already surfaces the offline status to the user).
+        // Server errors: log to console so devs can investigate.
+        if (isNetworkError(error)) {
+          setFetchError('network');
+          setProducts([]);
+          setTotal(0);
+        } else {
+          console.error('Failed to fetch products:', error);
+          setFetchError('server');
+        }
       })
       .finally(() => { if (!cancelled) setLoading(false); });
 
@@ -118,7 +130,7 @@ const HomePage = () => {
           </h2>
           <div className="w-20 h-1 bg-teal-500 rounded mt-2" aria-hidden="true"></div>
         </div>
-        {!loading && (
+        {!loading && fetchError !== 'network' && (
           <span className="text-sm text-gray-500" aria-live="polite">
             {formatNumber(total)} {total === 1 ? 'product' : 'products'} found
           </span>
@@ -127,6 +139,14 @@ const HomePage = () => {
 
       {loading ? (
         <SkeletonList count={8} />
+      ) : fetchError === 'network' ? (
+        <div className="text-center py-12 sm:py-20 bg-gray-50 rounded-2xl border border-gray-100 px-4">
+          <SearchEmptyIllustration className="w-24 h-24 sm:w-32 sm:h-32 mx-auto mb-4" />
+          <h3 className="text-xl sm:text-2xl font-bold text-gray-700 mb-2">Can't load products</h3>
+          <p className="text-gray-500 max-w-md mx-auto text-sm sm:text-base">
+            The backend is unreachable. Check the yellow banner at the top of the page for details, or refresh once the server is back online.
+          </p>
+        </div>
       ) : products.length > 0 ? (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">

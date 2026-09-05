@@ -13,6 +13,7 @@ import AdminFilterBar from '../components/admin/AdminFilterBar';
 import ProductTable from '../components/admin/ProductTable';
 import ProductFormModal from '../components/admin/ProductFormModal';
 import AdminOrdersTab from '../components/admin/AdminOrdersTab';
+import { isNetworkError } from '../utils/apiError';
 
 const CLOSED_CONFIRM = { show: false, title: '', message: '', onConfirm: null, loading: false };
 
@@ -37,7 +38,12 @@ const AdminPage = () => {
       navigate('/');
       return;
     }
-    fetchProducts();
+    fetchProducts()
+      .catch((err) => {
+        if (!isNetworkError(err)) {
+          toast.error('Failed to load products');
+        }
+      });
   }, [user, navigate, fetchProducts]);
 
   const filteredProducts = useMemo(
@@ -53,8 +59,12 @@ const AdminPage = () => {
     try {
       const { data } = await uploadImage(file);
       setForm({ ...form, image: data.image });
-    } catch {
-      toast.error('Upload failed');
+    } catch (err) {
+      if (isNetworkError(err)) {
+        toast.error('Backend is unreachable. Please start the server and try again.');
+      } else {
+        toast.error('Upload failed');
+      }
     }
   };
 
@@ -66,8 +76,12 @@ const AdminPage = () => {
       setShowForm(false);
       setEditingProduct(null);
       setForm(EMPTY_PRODUCT_FORM);
-    } catch {
-      toast.error('Failed to save product');
+    } catch (err) {
+      if (isNetworkError(err)) {
+        toast.error('Backend is unreachable. Please start the server and try again.');
+      } else {
+        toast.error('Failed to save product');
+      }
     } finally {
       setSaving(false);
     }
@@ -97,8 +111,12 @@ const AdminPage = () => {
         setConfirmModal(prev => ({ ...prev, loading: true }));
         try {
           await deleteProduct(id);
-        } catch {
-          toast.error('Failed to delete product');
+        } catch (err) {
+          if (isNetworkError(err)) {
+            toast.error('Backend is unreachable. Please start the server and try again.');
+          } else {
+            toast.error('Failed to delete product');
+          }
         } finally {
           setConfirmModal(CLOSED_CONFIRM);
         }
@@ -116,8 +134,12 @@ const AdminPage = () => {
         setConfirmModal(prev => ({ ...prev, loading: true }));
         try {
           await seedProducts();
-        } catch {
-          toast.error('Failed to seed products');
+        } catch (err) {
+          if (isNetworkError(err)) {
+            toast.error('Backend is unreachable. Please start the server and try again.');
+          } else {
+            toast.error('Failed to seed products');
+          }
         } finally {
           setConfirmModal(CLOSED_CONFIRM);
         }
@@ -135,8 +157,12 @@ const AdminPage = () => {
         setConfirmModal(prev => ({ ...prev, loading: true }));
         try {
           await clearAllProducts();
-        } catch {
-          toast.error('Failed to clear products');
+        } catch (err) {
+          if (isNetworkError(err)) {
+            toast.error('Backend is unreachable. Please start the server and try again.');
+          } else {
+            toast.error('Failed to clear products');
+          }
         } finally {
           setConfirmModal(CLOSED_CONFIRM);
         }

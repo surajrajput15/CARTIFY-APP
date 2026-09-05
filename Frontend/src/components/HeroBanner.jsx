@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { fetchProducts } from '../services/productsApi';
+import { isNetworkError } from '../utils/apiError';
 import { HeroIllustration } from './illustrations/EmptyStateIllustrations';
+
+const FALLBACK_COUNT = 1000; // reasonable estimate when API is unreachable
 
 const HeroBanner = () => {
   const [productCount, setProductCount] = useState(null);
+  const [apiOk, setApiOk] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -14,9 +18,16 @@ const HeroBanner = () => {
         const data = res.data;
         const count = Array.isArray(data) ? data.length : (data?.total ?? 0);
         setProductCount(count);
+        setApiOk(true);
       })
-      .catch(() => {
-        if (!cancelled) setProductCount(0);
+      .catch((err) => {
+        if (cancelled) return;
+        // Network errors: fall back to a sensible default so the UI is never broken.
+        if (isNetworkError(err)) {
+          setProductCount(FALLBACK_COUNT);
+          setApiOk(false);
+        }
+        // Other errors: silently set 0 (will show "Loading…" until next mount)
       });
     return () => { cancelled = true; };
   }, []);
@@ -25,9 +36,11 @@ const HeroBanner = () => {
     document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const productCountText = productCount === null
-    ? 'Loading…'
-    : `${productCount.toLocaleString('en-IN')}+ products`;
+  // Copy adapts based on whether we got a real count, are loading, or fell back.
+  const productCountText =
+    productCount === null
+      ? 'top-quality products'
+      : `${productCount.toLocaleString('en-IN')}${apiOk ? '+ products' : '+ curated products'}`;
 
   return (
     <div className="relative bg-gradient-to-r from-teal-700 via-teal-600 to-teal-500 rounded-3xl overflow-hidden shadow-xl mb-10 border border-teal-500/20">

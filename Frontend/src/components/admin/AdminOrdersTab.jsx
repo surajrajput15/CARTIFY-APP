@@ -6,6 +6,7 @@ import { ORDER_STATUSES } from '../../utils/constants';
 import { formatPrice, formatDate, formatNumber } from '../../utils/format';
 import { EmptyOrdersIllustration } from '../illustrations/EmptyStateIllustrations';
 import ConfirmModal from '../ConfirmModal';
+import { isNetworkError } from '../../utils/apiError';
 
 const paymentBadge = (status) => {
   switch (status) {
@@ -32,8 +33,14 @@ const AdminOrdersTab = () => {
         setOrders(data.orders);
         setPages(data.pages);
       })
-      .catch(() => {
-        if (!cancelled) toast.error('Failed to fetch orders');
+      .catch((err) => {
+        if (!cancelled) {
+          if (isNetworkError(err)) {
+            toast.error('Backend is unreachable. Please start the server and click Retry.');
+          } else {
+            toast.error('Failed to fetch orders');
+          }
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -47,8 +54,12 @@ const AdminOrdersTab = () => {
       const { data } = await fetchAdminOrders(statusFilter, page);
       setOrders(data.orders);
       setPages(data.pages);
-    } catch {
-      toast.error('Failed to fetch orders');
+    } catch (err) {
+      if (isNetworkError(err)) {
+        toast.error('Backend is unreachable. Please start the server and click Retry.');
+      } else {
+        toast.error('Failed to fetch orders');
+      }
     } finally {
       setLoading(false);
     }

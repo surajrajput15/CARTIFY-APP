@@ -3,6 +3,8 @@ import { useAuth } from '../context/authContext';
 import { useNavigate } from 'react-router-dom';
 import { loginWithPassword, register, sendOtp, verifyOtp, forgotPassword, resetPassword } from '../services/authApi';
 import api from '../api/axios';
+import { isNetworkError } from '../utils/apiError';
+import { useBackendStatus } from '../context/BackendStatusContext';
 import PasswordLoginForm from '../components/LoginFormComponents/PasswordLoginForm';
 import OTPLoginForm from '../components/LoginFormComponents/OTPLoginForm';
 import ForgotPasswordForm from '../components/LoginFormComponents/ForgotPasswordForm';
@@ -11,6 +13,7 @@ import GoogleLoginButton from '../components/LoginFormComponents/GoogleLoginButt
 const LoginPage = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const { isOffline } = useBackendStatus();
 
   const redirectAfterLogin = useCallback(() => {
     const intendedPath = sessionStorage.getItem('redirectAfterLogin');
@@ -54,7 +57,11 @@ const LoginPage = () => {
       setSuccessMsg('Reset OTP sent to your email!');
       setForgotStep(2);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to send OTP.');
+      if (isNetworkError(err)) {
+        setError('Backend is unreachable. Please start the server and try again.');
+      } else {
+        setError(err.response?.data?.message || 'Failed to send OTP.');
+      }
     } finally {
       setLoading(false);
     }
@@ -78,7 +85,11 @@ const LoginPage = () => {
       setPassword('');
       setNewPassword('');
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid OTP or expired.');
+      if (isNetworkError(err)) {
+        setError('Backend is unreachable. Please start the server and try again.');
+      } else {
+        setError(err.response?.data?.message || 'Invalid OTP or expired.');
+      }
     } finally {
       setLoading(false);
     }
@@ -91,7 +102,11 @@ const LoginPage = () => {
       await sendOtp({ email });
       setStep(2);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to send OTP.');
+      if (isNetworkError(err)) {
+        setError('Backend is unreachable. Please start the server and try again.');
+      } else {
+        setError(err.response?.data?.message || 'Failed to send OTP.');
+      }
     } finally {
       setLoading(false);
     }
@@ -109,7 +124,11 @@ const LoginPage = () => {
       login(data.user);
       redirectAfterLogin();
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid or expired OTP.');
+      if (isNetworkError(err)) {
+        setError('Backend is unreachable. Please start the server and try again.');
+      } else {
+        setError(err.response?.data?.message || 'Invalid or expired OTP.');
+      }
     } finally {
       setLoading(false);
     }
@@ -137,13 +156,17 @@ const LoginPage = () => {
         redirectAfterLogin();
       }
     } catch (err) {
-      const msg = err.response?.data?.message || 'Authentication failed.';
-      setError(msg);
-      // The email already has an OTP-login account (passwordless). Surface the claim
-      // flow and auto-send the OTP so the owner can prove ownership and set a password.
-      if (isRegistering && msg.includes('already has an OTP login account')) {
-        setClaimMode(true);
-        sendOtp({ email }).then(() => setClaimOtpSent(true)).catch(() => {});
+      if (isNetworkError(err)) {
+        setError('Backend is unreachable. Please start the server and try again.');
+      } else {
+        const msg = err.response?.data?.message || 'Authentication failed.';
+        setError(msg);
+        // The email already has an OTP-login account (passwordless). Surface the claim
+        // flow and auto-send the OTP so the owner can prove ownership and set a password.
+        if (isRegistering && msg.includes('already has an OTP login account')) {
+          setClaimMode(true);
+          sendOtp({ email }).then(() => setClaimOtpSent(true)).catch(() => {});
+        }
       }
     } finally {
       setLoading(false);
@@ -158,7 +181,11 @@ const LoginPage = () => {
       setClaimOtpSent(true);
       setSuccessMsg('OTP sent to your email. Enter it below to claim this account.');
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to send OTP.');
+      if (isNetworkError(err)) {
+        setError('Backend is unreachable. Please start the server and try again.');
+      } else {
+        setError(err.response?.data?.message || 'Failed to send OTP.');
+      }
     } finally {
       setLoading(false);
     }
@@ -179,7 +206,11 @@ const LoginPage = () => {
       setClaimOtp('');
       setPassword('');
     } catch (err) {
-      setError(err.response?.data?.message || 'Claim failed. Check the OTP and try again.');
+      if (isNetworkError(err)) {
+        setError('Backend is unreachable. Please start the server and try again.');
+      } else {
+        setError(err.response?.data?.message || 'Claim failed. Check the OTP and try again.');
+      }
     } finally {
       setLoading(false);
     }

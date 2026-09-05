@@ -1,5 +1,6 @@
 import { createContext, useState, useContext, useCallback, useEffect, useRef } from 'react';
 import api from '../api/axios';
+import { isNetworkError } from '../utils/apiError';
 
 const AuthContext = createContext();
 
@@ -25,9 +26,16 @@ export const AuthProvider = ({ children }) => {
       const { data } = await api.get('/api/auth/me');
       setUser(data.user);
       localStorage.setItem('user', JSON.stringify(data.user));
-    } catch {
+    } catch (err) {
+      // Network errors (backend down) and 401s (not logged in) are silent.
+      // The BackendStatusBanner already surfaces network failures.
+      if (isNetworkError(err) || err.response?.status === 401) {
+        setUser(null);
+        return;
+      }
+      // Real errors get logged.
+      console.error('Auth /me failed:', err);
       setUser(null);
-      localStorage.removeItem('user');
     }
   }, []);
 
@@ -45,8 +53,11 @@ export const AuthProvider = ({ children }) => {
   const logout = useCallback(async () => {
     try {
       await api.post('/api/auth/logout');
-    } catch (error) {
-      console.error('Logout error:', error);
+    } catch (err) {
+      // Silent for network errors; log only real problems.
+      if (!isNetworkError(err)) {
+        console.error('Logout error:', err);
+      }
     } finally {
       localStorage.removeItem('user');
       setUser(null);

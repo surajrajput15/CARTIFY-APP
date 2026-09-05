@@ -6,10 +6,13 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Spinner from './components/Spinner';
 import InstallButton from './components/InstallButton';
+import BackendStatusBanner from './components/BackendStatusBanner';
 import HomePage from './pages/HomePage';
 import NotFound from './pages/NotFound';
 import { GoogleIdentityProvider } from './context/googleIdentityContext';
 import { useAuth } from './context/authContext';
+import { useBackendStatus } from './context/BackendStatusContext';
+import { onBackendStatusChange } from './api/axios';
 import { registerNavigator } from './utils/navigation';
 import RouteErrorBoundary from './components/RouteErrorBoundary';
 
@@ -46,6 +49,20 @@ function NavigationBridge() {
   return null;
 }
 
+// Bridges the axios event bus (network errors) into the BackendStatusContext.
+// Done this way (instead of importing context inside axios.js) to avoid a
+// circular import.
+function BackendStatusBridge() {
+  const { reportNetworkError, reportNetworkSuccess } = useBackendStatus();
+  useEffect(() => {
+    return onBackendStatusChange((isOffline) => {
+      if (isOffline) reportNetworkError();
+      else reportNetworkSuccess();
+    });
+  }, [reportNetworkError, reportNetworkSuccess]);
+  return null;
+}
+
 function App() {
   const { authLoading } = useAuth();
 
@@ -61,7 +78,7 @@ function App() {
     <Router>
       <GoogleIdentityProvider>
         <div className="min-h-screen bg-gray-50 font-sans pb-10">
-          
+
           <a
             href="#main-content"
             className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[60] focus:bg-white focus:text-teal-600 focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-lg"
@@ -70,6 +87,8 @@ function App() {
           </a>
 
           <NavigationBridge />
+          <BackendStatusBridge />
+          <BackendStatusBanner />
           <Navbar />
           <Toaster
             position="bottom-right"

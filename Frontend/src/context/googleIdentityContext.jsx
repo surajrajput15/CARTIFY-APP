@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { GOOGLE_CLIENT_ID } from '../config';
@@ -36,6 +36,10 @@ import api from '../api/axios';
 //     and the provider double-initializes GIS ("initialize() is called
 //     multiple times"), so we drop the library's auto-init entirely and own
 //     the single initialization here.
+//   - We also guard with an `initializedRef` so React StrictMode's double
+//     effect-run doesn't cause a duplicate `initialize()` call (the warning
+//     you see in dev console: "google.accounts.id.initialize() is called
+//     multiple times").
 
 const GoogleIdentityContext = createContext(null);
 
@@ -63,9 +67,15 @@ let credentialConsumed = false;
 export const GoogleIdentityProvider = ({ children }) => {
   const { login } = useAuth();
   const navigate = useNavigate();
+  // Pre-derive initial state — when no client ID is set we are permanently
+  // disabled (no script load, no init), and we know that synchronously.
   const [status, setStatus] = useState(() =>
     GOOGLE_CLIENT_ID ? 'loading' : 'disabled',
   );
+  // Track whether the GIS library has actually been initialized for this
+  // provider instance — prevents StrictMode's double effect from calling
+  // google.accounts.id.initialize() twice.
+  const initializedRef = useRef(false);
 
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) return;
@@ -112,29 +122,45 @@ export const GoogleIdentityProvider = ({ children }) => {
     // not depend on the GSI script loading.
     consumeHashCredential();
 
+    // Skip re-initialization if React StrictMode invoked this effect twice
+    // (only the first invocation should call google.accounts.id.initialize).
+    if (initializedRef.current) {
+      return () => { cancelled = true; };
+    }
+
     loadGsiScript()
       .then(() => {
         if (cancelled) return;
-        if (import.meta.env.DEV) {
-          // Local dev (`vite dev`) has no Vercel function, so fall back to
-          // popup mode, which delivers the token straight to the callback.
-          window.google.accounts.id.initialize({
-            client_id: GOOGLE_CLIENT_ID,
-            ux_mode: 'popup',
-            callback: handleCredential,
-          });
-        } else {
-          // Production: redirect mode — Google POSTs the ID token to the
-          // serverless function, which bounces the browser back to /login with
-          // the token in the URL fragment. GIS forbids combining `login_uri`
-          // with `callback`, so the token is consumed via fragment parsing.
-          window.google.accounts.id.initialize({
-            client_id: GOOGLE_CLIENT_ID,
-            ux_mode: 'redirect',
-            login_uri: `${window.location.origin}/api/google-auth`,
-          });
+        if (initializedRef.current) return;
+        initializedRef.current = true;
+        try {
+          if (import.meta.env.DEV) {
+            // Local dev (`vite dev`) has no Vercel function, so fall back to
+            // popup mode, which delivers the token straight to the callback.
+            window.google.accounts.id.initialize({
+              client_id: GOOGLE_CLIENT_ID,
+              ux_mode: 'popup',
+              callback: handleCredential,
+            });
+          } else {
+            // Production: redirect mode — Google POSTs the ID token to the
+            // serverless function, which bounces the browser back to /login with
+            // the token in the URL fragment. GIS forbids combining `login_uri`
+            // with `callback`, so the token is consumed via fragment parsing.
+            window.google.accounts.id.initialize({
+              client_id: GOOGLE_CLIENT_ID,
+              ux_mode: 'redirect',
+              login_uri: `${window.location.origin}/api/google-auth`,
+            });
+          }
+          setStatus('ready');
+        } catch (err) {
+          // "The given origin is not allowed for the given client ID" — the
+          // domain isn't registered in Google Cloud Console. Surface a clear
+          // status so the UI can show a helpful notice instead of a dead button.
+          console.warn('Google Identity Services init failed:', err?.message || err);
+          setStatus('origin-blocked');
         }
-        setStatus('ready');
       })
       .catch(() => {
         if (!cancelled) setStatus('script-error');
