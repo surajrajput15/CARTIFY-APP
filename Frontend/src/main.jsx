@@ -9,10 +9,15 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { toast } from 'react-hot-toast';
 import { registerServiceWorker, listenForInstallPrompt } from './utils/pwa';
 import { validateEnv } from './utils/envValidation';
+import { fetchCsrfToken } from './api/axios';
 import * as Sentry from '@sentry/react';
 import { browserTracingIntegration } from '@sentry/browser';
 
 validateEnv();
+
+// Proactively fetch CSRF token on app startup so the cookie is available
+// before any state-changing request (POST/PUT/DELETE) is made.
+fetchCsrfToken();
 
 // Sentry initialization
 if (import.meta.env.VITE_SENTRY_DSN) {

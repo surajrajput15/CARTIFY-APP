@@ -1,0 +1,59 @@
+{
+  "name": "razorpay-test",
+  "description": "Razorpay Test Mode API for Cartify project. Provides order creation, payment verification, and refund operations.",
+  "command": "node",
+  "args": [
+    "./.opencode/mcp/razorpay-server.js"
+  ],
+  "env": {
+    "RAZORPAY_KEY_ID": "rzp_test_T8t3Mky8ruMagX",
+    "RAZORPAY_KEY_SECRET": "DARK0lYFhkbARU01e4CO8RQQ"
+  },
+  "tools": [
+    {
+      "name": "create-order",
+      "description": "Create a Razorpay order for testing",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "amount": { "type": "number", "description": "Amount in paise (e.g., 1000 = ₹10)" },
+          "currency": { "type": "string", "default": "INR" },
+          "receipt": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "fetch-order",
+      "description": "Fetch order details from Razorpay",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "orderId": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "verify-payment",
+      "description": "Verify Razorpay payment signature",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "orderId": { "type": "string" },
+          "paymentId": { "type": "string" },
+          "signature": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "refund",
+      "description": "Issue a refund for a payment",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "paymentId": { "type": "string" },
+          "amount": { "type": "number", "description": "Optional partial refund amount in paise" }
+        }
+      }
+    }
+  ]
+}

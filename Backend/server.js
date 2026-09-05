@@ -137,7 +137,10 @@ app.use((req, res, next) => {
     '/api/auth/login',
     '/api/auth/forgot-password',
     '/api/auth/reset-password',
-    '/api/auth/google'
+    '/api/auth/google',
+    '/api/auth/csrf-token',  // Allow fetching CSRF token without CSRF token
+    '/api/auth/refresh',     // Token refresh needs to work without CSRF
+    '/api/auth/logout'       // Logout should work without CSRF
   ];
   // Only exclude GET /api/cart (cart reads) - mutations need CSRF
   if (req.method === 'GET' && req.path.startsWith('/api/cart')) {

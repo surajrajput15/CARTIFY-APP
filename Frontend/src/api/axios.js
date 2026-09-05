@@ -114,6 +114,24 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    // 403 with CSRF — re-fetch the token (it may have rotated or expired) and
+    // retry the original request once. The `_csrfRetried` guard prevents loops.
+    if (error.response?.status === 403 && originalRequest && !originalRequest._csrfRetried) {
+      originalRequest._csrfRetried = true;
+      try {
+        await api.get('/api/auth/csrf-token');
+        // Re-read the now-fresh cookie and attach it to the retried request.
+        const freshToken = getCsrfToken();
+        if (freshToken) {
+          originalRequest.headers = originalRequest.headers || {};
+          originalRequest.headers['X-CSRF-Token'] = freshToken;
+        }
+        return api(originalRequest);
+      } catch (refreshError) {
+        return Promise.reject(error);
+      }
+    }
+
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
@@ -146,3 +164,15 @@ api.interceptors.response.use(
 );
 
 export default api;
+
+// Helper to proactively fetch CSRF token on app startup.
+// The backend sets a CSRF cookie on the first request to /api/auth/csrf-token.
+// We fetch it once on app load so the cookie is available before any
+// state-changing request (POST/PUT/DELETE) is made.
+export const fetchCsrfToken = async () => {
+  try {
+    await api.get('/api/auth/csrf-token');
+  } catch {
+    // Silent — if backend is down, the user will see the offline banner.
+  }
+};

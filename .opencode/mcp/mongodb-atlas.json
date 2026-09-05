@@ -1,0 +1,76 @@
+{
+  "name": "mongodb-atlas",
+  "description": "MongoDB Atlas connection for Cartify project. Provides query, insert, update, delete operations on the live database.",
+  "command": "node",
+  "args": [
+    "./.opencode/mcp/mongodb-server.js"
+  ],
+  "env": {
+    "MONGO_URI": "mongodb+srv://surajdona2005_db_user:Cartify2026Secure@cluster0.y5fgfty.mongodb.net/cartify?retryWrites=true&w=majority&appName=Cluster0&authSource=admin"
+  },
+  "tools": [
+    {
+      "name": "query",
+      "description": "Run a MongoDB find query on a collection. Returns matching documents.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "collection": { "type": "string", "description": "Collection name (users, products, carts, orders, addresses)" },
+          "filter": { "type": "object", "description": "MongoDB filter object" },
+          "limit": { "type": "number", "default": 10 },
+          "sort": { "type": "object", "description": "Sort spec like { createdAt: -1 }" }
+        }
+      }
+    },
+    {
+      "name": "insert",
+      "description": "Insert a document into a collection",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "collection": { "type": "string" },
+          "document": { "type": "object" }
+        }
+      }
+    },
+    {
+      "name": "update",
+      "description": "Update documents matching a filter",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "collection": { "type": "string" },
+          "filter": { "type": "object" },
+          "update": { "type": "object", "description": "MongoDB update operator like { $set: { ... } }" }
+        }
+      }
+    },
+    {
+      "name": "delete",
+      "description": "Delete documents matching a filter",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "collection": { "type": "string" },
+          "filter": { "type": "object" }
+        }
+      }
+    },
+    {
+      "name": "list-collections",
+      "description": "List all collections in the database",
+      "inputSchema": { "type": "object", "properties": {} }
+    },
+    {
+      "name": "count",
+      "description": "Count documents matching a filter",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "collection": { "type": "string" },
+          "filter": { "type": "object" }
+        }
+      }
+    }
+  ]
+}
