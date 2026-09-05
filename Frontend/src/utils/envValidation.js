@@ -30,11 +30,13 @@ export function validateEnv() {
         ? ` (current origin "${currentOrigin}" is not in the known dev origins list — if Google sign-in fails, add it to Authorized JavaScript origins in Google Cloud Console)`
         : '';
 
-    console.info('[Cartify] Environment validated:', {
-      API_URL: import.meta.env.VITE_API_URL,
-      RAZORPAY_KEY: import.meta.env.VITE_RAZORPAY_KEY ? 'configured' : 'missing',
-      GOOGLE_CLIENT_ID: googleId ? `configured${googleWarning}` : 'missing',
-    });
+    // Use a template string instead of an object literal — some browsers'
+    // DevTools render trailing object args as just `Object`, hiding the values.
+    // Destructured primitive args always expand inline.
+    console.info(
+      '[Cartify] Environment validated:',
+      `API=${import.meta.env.VITE_API_URL} | Razorpay=${import.meta.env.VITE_RAZORPAY_KEY ? 'configured' : 'missing'} | Google=${googleId ? `configured${googleWarning}` : 'missing'}`
+    );
   }
 }
 

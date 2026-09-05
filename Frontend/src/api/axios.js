@@ -6,10 +6,6 @@ import { isNetworkError } from '../utils/apiError';
 let isRefreshing = false;
 let failedQueue = [];
 
-// Track recent network errors for deduplication
-let lastNetworkErrorAt = 0;
-const NETWORK_ERROR_DEDUPE_MS = 2000;
-
 const processQueue = (error, token = null) => {
   failedQueue.forEach((prom) => {
     if (error) {
@@ -39,6 +35,45 @@ const notifyStatus = (isOffline) => {
   });
 };
 
+// Connection-state tracking for clean console output.
+// Goal: instead of logging every failed request, log only on STATE TRANSITIONS
+// (online → offline, and offline → online). The first offline transition
+// shows a one-time help block; subsequent requests stay silent.
+let connectionState = 'online'; // 'online' | 'offline' | 'connecting'
+let hasLoggedFirstOffline = false;
+
+const logOffline = () => {
+  // eslint-disable-next-line no-console
+  console.warn(
+    '%c[API] Backend unreachable',
+    'color:#f59e0b;font-weight:bold',
+  );
+  if (!hasLoggedFirstOffline) {
+    hasLoggedFirstOffline = true;
+    // eslint-disable-next-line no-console
+    console.warn(
+      '%c[Cartify] Backend is unreachable\n' +
+      '  → All API requests are failing (expected when backend isn\'t running)\n' +
+      '  → Start the backend: %ccd Backend && npm run dev\n' +
+      '  → The yellow banner at the top of the page shows the same status\n' +
+      '  → Browser-level %cnet::ERR_*%c errors come from the browser, not our code',
+      'color:#f59e0b;font-weight:bold',
+      'color:#0d9488',
+      'color:#f59e0b',
+      'color:inherit'
+    );
+  }
+};
+
+const logOnline = () => {
+  // eslint-disable-next-line no-console
+  console.log(
+    '%c[API] Backend online',
+    'color:#10b981;font-weight:bold',
+    '— requests resumed'
+  );
+};
+
 const api = axios.create({
   baseURL: API_URL,
   headers: { 'Content-Type': 'application/json' },
@@ -58,27 +93,24 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => {
     // Successful response — backend is reachable
+    if (connectionState !== 'online') {
+      connectionState = 'online';
+      logOnline();
+    }
     notifyStatus(false);
     return response;
   },
   async (error) => {
     const originalRequest = error.config;
 
-    // Network errors (backend down, CORS, DNS) — log as warn, not error.
-    // These are expected during local dev and not real bugs.
+    // Network errors (backend down, CORS, DNS) — only log on STATE TRANSITIONS
+    // (online → offline), not per-request. The yellow banner handles per-request UX.
     if (isNetworkError(error)) {
-      const now = Date.now();
-      if (now - lastNetworkErrorAt > NETWORK_ERROR_DEDUPE_MS) {
-        lastNetworkErrorAt = now;
-        // Yellow warning (not red error) for network failures
-        // eslint-disable-next-line no-console
-        console.warn(
-          '%c[API] Backend unreachable',
-          'color:#f59e0b;font-weight:bold',
-          `→ ${originalRequest?.method?.toUpperCase()} ${originalRequest?.url}`
-        );
-        notifyStatus(true);
+      if (connectionState === 'online') {
+        connectionState = 'offline';
+        logOffline();
       }
+      notifyStatus(true);
       return Promise.reject(error);
     }
 
