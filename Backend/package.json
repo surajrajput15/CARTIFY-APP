@@ -32,7 +32,7 @@
     "ioredis": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
     "migrate-mongo": "^14.0.7",
-    "mongoose": "^9.7.3",
+    "mongoose": "^9.9.4",
     "multer": "^2.2.0",
     "nodemailer": "^9.0.3",
     "pino": "^10.3.1",
