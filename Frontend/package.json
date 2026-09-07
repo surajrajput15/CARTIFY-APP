@@ -21,10 +21,10 @@
     "@types/react-window": "^1.8.8",
     "axios": "^1.18.1",
     "lucide-react": "^1.21.0",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "react-hot-toast": "^2.6.0",
-    "react-router-dom": "^7.18.0",
+    "react-router-dom": "^7.18.3",
     "react-window": "^2.3.0"
   },
   "devDependencies": {
@@ -35,7 +35,7 @@
     "@testing-library/react": "^16.3.2",
     "@types/node": "^26.4.1",
     "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.5",
+    "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.0.2",
     "@vitest/coverage-v8": "^4.1.11",
     "autoprefixer": "^10.5.2",
