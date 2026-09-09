@@ -118,10 +118,13 @@ const generateRefreshToken = (userId) => {
 
 const setAuthCookies = (res, accessToken, refreshToken) => {
   const isProd = process.env.NODE_ENV === 'production';
+  // Split-site production (Vercel -> Render) needs SameSite=None+Secure, or
+  // browsers silently drop auth cookies on cross-site API calls (login looks
+  // successful but every later call 401s). Localhost stays Lax.
   const cookieOptions = {
     httpOnly: true,
     secure: isProd,
-    sameSite: 'lax',
+    sameSite: isProd ? 'none' : 'lax',
     path: '/',
   };
   res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 }); // 15 min
@@ -130,10 +133,11 @@ const setAuthCookies = (res, accessToken, refreshToken) => {
 
 const clearAuthCookies = (res) => {
   const isProd = process.env.NODE_ENV === 'production';
+  // Must match setAuthCookies exactly or the browser keeps the old cookies.
   const cookieOptions = {
     httpOnly: true,
     secure: isProd,
-    sameSite: 'lax',
+    sameSite: isProd ? 'none' : 'lax',
     path: '/',
   };
   res.clearCookie('accessToken', cookieOptions);

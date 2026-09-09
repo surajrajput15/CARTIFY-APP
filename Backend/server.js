@@ -134,7 +134,11 @@ app.post('/api/v1/payment/webhook', express.raw({ type: 'application/json', limi
 app.use(express.json({ limit: "10kb" }));
 
 // CSRF Protection - exclude webhook, auth endpoints that use JWT in body, and cart read operations
-const csrfProtection = csrf({ cookie: { httpOnly: false, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' } });
+// Production serves split-site (Vercel frontend -> Render API): Lax cookies are
+// never sent on cross-site fetch, which would 403 every mutation and 401 every
+// authed call. SameSite=None (+Secure, required) fixes it; localhost stays Lax.
+const csrfCookieSameSite = process.env.NODE_ENV === 'production' ? 'none' : 'lax';
+const csrfProtection = csrf({ cookie: { httpOnly: false, sameSite: csrfCookieSameSite, secure: process.env.NODE_ENV === 'production' } });
 
 // CSRF token endpoint - SINGLE handler that runs csrfProtection once and sends
 // the token directly. Kept ahead of the global CSRF middleware and also listed
@@ -147,7 +151,7 @@ app.get('/api/auth/csrf-token', csrfProtection, (req, res) => {
   // cookie, which is NOT a usable token) and sends it back as X-CSRF-Token.
   // NOTE: appended via raw setHeader because csurf sets its cookie the same
   // way and Express's res.cookie() would overwrite it (verified empirically).
-  const cookieVal = `csrfToken=${token}; Path=/; SameSite=Lax; Max-Age=86400${
+  const cookieVal = `csrfToken=${token}; Path=/; SameSite=${csrfCookieSameSite === 'none' ? 'None' : 'Lax'}; Max-Age=86400${
     process.env.NODE_ENV === 'production' ? '; Secure' : ''
   }`;
   const prev = res.getHeader('Set-Cookie');
