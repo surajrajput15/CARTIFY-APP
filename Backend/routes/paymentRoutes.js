@@ -1,11 +1,23 @@
 const express = require('express');
+const { logger } = require('../utils/logger');
 const router = express.Router();
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const { protect, admin } = require('../middleware/auth');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
+const Coupon = require('../models/Coupon');
 const { finalisePaidOrder } = require('../utils/orderFulfillment');
+const rateLimit = require('express-rate-limit');
+
+// Rate limiting for payment endpoints to prevent abuse
+const paymentLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 20, // limit each IP to 20 requests per windowMs
+  message: { message: "Too many payment requests, please try again later after 5 minutes" },
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
 
 const razerpayInstance = () => {
     if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
@@ -17,6 +29,8 @@ const razerpayInstance = () => {
     });
 };
 
+const { normalizeIndianPhone, normalizePinCode } = require('../utils/normalize');
+
 const validateShippingAddress = (address) => {
     if (!address || typeof address !== 'object') return 'Shipping address is required';
     const required = ['fullName', 'phone', 'street', 'city', 'state', 'pinCode'];
@@ -24,19 +38,44 @@ const validateShippingAddress = (address) => {
     if (missing.length > 0) {
         return `Shipping address missing: ${missing.join(', ')}`;
     }
+    // Friendly formats accepted ("+91 98765 43210", "110 001") — same rules
+    // as the address book, so an order can never be placed with an address
+    // the address book would reject.
+    if (!normalizeIndianPhone(address.phone)) {
+        return 'Phone must be a valid 10-digit Indian number starting with 6, 7, 8 or 9';
+    }
+    if (!normalizePinCode(address.pinCode)) {
+        return 'PIN code must be exactly 6 digits';
+    }
     return null;
+};
+
+// Helper function to handle Razorpay errors.
+// Gateway-side problems (auth, 5xx, network) always surface as 502 so callers
+// can distinguish "our request was bad" (400) / "back off" (429) from
+// "payment provider failed" (502). Full details stay in server logs.
+const handleRazorpayError = (error) => {
+    logger.error({ err: error }, "Razorpay API error");
+
+    if (error?.statusCode === 400) {
+        return { message: "Invalid request to payment gateway", statusCode: 400 };
+    } else if (error?.statusCode === 429) {
+        return { message: "Payment gateway rate limit exceeded. Please try again.", statusCode: 429 };
+    } else {
+        return { message: "Payment gateway error. Please try again.", statusCode: 502 };
+    }
 };
 
 // 1. CREATE PAYMENT ORDER — SERVER-AUTHORITATIVE
 // Recomputes prices from MongoDB, persists a Pending Order, then returns the Razorpay order.
 // The client supplies ONLY product ids + quantities and the shipping address.
-router.post('/create-order', protect, async (req, res, next) => {
+router.post('/create-order', protect, paymentLimiter, async (req, res, next) => {
     try {
         let razorpay;
         try {
             razorpay = razerpayInstance();
         } catch (err) {
-            console.error("RAZORPAY keys are not configured in environment");
+            logger.error("RAZORPAY keys are not configured in environment");
             return res.status(500).json({ message: "Payment service is not configured" });
         }
 
@@ -70,7 +109,7 @@ router.post('/create-order', protect, async (req, res, next) => {
         try {
             products = await Product.find({ _id: { $in: productIdSet } });
         } catch (dbError) {
-            console.error("Product.find() failed:", dbError.name, dbError.message);
+            logger.error({ err: dbError }, "Product.find() failed");
             if (dbError.name === "CastError") {
                 return res.status(400).json({
                     message: "Invalid product ID format in request"
@@ -128,6 +167,44 @@ router.post('/create-order', protect, async (req, res, next) => {
 
         // Round to 2 decimals to guard against floating point drift
         calculatedTotal = Math.round(calculatedTotal * 100) / 100;
+
+        // Optional coupon: fully validated server-side against the live cart
+        // total BEFORE any charge. Rejects fail fast with 400; usage is only
+        // debited later, when the order actually reaches Paid.
+        let couponCode = null;
+        let discountAmount = 0;
+        const rawCoupon = typeof req.body.couponCode === 'string' ? req.body.couponCode.trim().toUpperCase() : '';
+        if (rawCoupon) {
+            const coupon = await Coupon.findOne({ code: rawCoupon });
+            if (!coupon) {
+                return res.status(400).json({ message: 'Invalid coupon code' });
+            }
+            const now = new Date();
+            if (!coupon.isActive || now < coupon.validFrom || now > coupon.validUntil) {
+                return res.status(400).json({ message: 'Coupon is expired or inactive' });
+            }
+            if (coupon.usageLimit != null && coupon.usedCount >= coupon.usageLimit) {
+                return res.status(400).json({ message: 'Coupon usage limit reached' });
+            }
+            // Category check needs live product data (orderItems don't carry it).
+            if (coupon.applicableCategories.length > 0) {
+                const hasCategory = orderItems.some((oi) => {
+                    const cat = productMap[oi.productId.toString()]?.category;
+                    return cat && coupon.applicableCategories.includes(cat);
+                });
+                if (!hasCategory) {
+                    return res.status(400).json({ message: 'Coupon not applicable to items in your cart' });
+                }
+            }
+            const applied = coupon.apply(req.user._id, calculatedTotal, orderItems);
+            if (!applied.valid) {
+                return res.status(400).json({ message: applied.message || 'Coupon cannot be applied' });
+            }
+            couponCode = coupon.code;
+            discountAmount = Math.min(applied.discount, calculatedTotal);
+            calculatedTotal = Math.round((calculatedTotal - discountAmount) * 100) / 100;
+        }
+
         const amountInPaise = Math.round(calculatedTotal * 100);
         const receipt = "rcpt_" + crypto.randomBytes(12).toString('hex');
 
@@ -139,25 +216,43 @@ router.post('/create-order', protect, async (req, res, next) => {
 
         let rzpOrder;
         try {
-            rzpOrder = await razorpay.orders.create(options);
+            // Add timeout for Razorpay API call
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Razorpay API timeout')), 8000)
+            );
+            const createPromise = razorpay.orders.create(options);
+            rzpOrder = await Promise.race([createPromise, timeoutPromise]);
         } catch (razorpayError) {
-            console.error("Razorpay API error:", razorpayError.statusCode, razorpayError.message);
-            return res.status(502).json({
-                message: "Payment gateway error. Please try again."
+            if (razorpayError.message === 'Razorpay API timeout') {
+                return res.status(504).json({
+                    message: "Payment gateway timeout. Please try again."
+                });
+            }
+            const errorResponse = handleRazorpayError(razorpayError);
+            return res.status(errorResponse.statusCode).json({
+                message: errorResponse.message
             });
         }
 
         // Persist a Pending Order BEFORE returning — binds razorpay_order_id, server items,
         // server total, userId and Pending paymentStatus to Mongo. A TTL expiry is attached so
         // abandoned checkouts are auto-purged after 24h instead of accumulating forever.
+        // Store the canonical digits (validation above guarantees non-null).
+        const canonicalAddress = {
+            ...shippingAddress,
+            phone: normalizeIndianPhone(shippingAddress.phone),
+            pinCode: normalizePinCode(shippingAddress.pinCode),
+        };
         const pendingOrder = new Order({
             userId: req.user._id,
             orderItems,
-            shippingAddress,
+            shippingAddress: canonicalAddress,
             razorpayOrderId: rzpOrder.id,
             paymentStatus: 'Pending',
             status: 'Pending',
             totalPrice: calculatedTotal,
+            couponCode,
+            discountAmount,
             expireAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
         });
 
@@ -165,7 +260,7 @@ router.post('/create-order', protect, async (req, res, next) => {
         try {
             savedOrder = await pendingOrder.save();
         } catch (saveError) {
-            console.error("Pending order save failed:", saveError.name, saveError.message);
+            logger.error({ err: saveError }, "Pending order save failed");
             throw saveError;
         }
 
@@ -173,7 +268,8 @@ router.post('/create-order', protect, async (req, res, next) => {
             order: {
                 ...rzpOrder,
                 calculatedAmount: calculatedTotal,
-                items: orderItems
+                items: orderItems,
+                coupon: couponCode ? { code: couponCode, discountAmount } : null
             },
             orderId: savedOrder._id
         });
@@ -181,7 +277,7 @@ router.post('/create-order', protect, async (req, res, next) => {
         if (error.name === 'ValidationError' || error.name === 'CastError') {
             return next(error);
         }
-        console.error("Payment create-order error:", error.name, error.message);
+        logger.error({ err: error }, "Payment create-order error");
         res.status(500).json({ message: "Error creating Razorpay order" });
     }
 });
@@ -194,7 +290,7 @@ router.post('/create-order', protect, async (req, res, next) => {
 //        cannot double-finalise an order.
 //    Only Razorpay-signed payloads are accepted; the amount is re-checked against the
 //    server-persisted total. The client never supplies a price or a payment state.
-router.post('/verify-payment', protect, async (req, res) => {
+router.post('/verify-payment', protect, paymentLimiter, async (req, res) => {
     try {
         const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
@@ -244,10 +340,18 @@ router.post('/verify-payment', protect, async (req, res) => {
         // 4) Amount match — confirm the Razorpay order amount equals the server-persisted total.
         let rzpOrder;
         try {
-            rzpOrder = await razerpayInstance().orders.fetch(razorpay_order_id);
+            // Add timeout for Razorpay API call
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Razorpay API timeout')), 8000)
+            );
+            const fetchPromise = razerpayInstance().orders.fetch(razorpay_order_id);
+            rzpOrder = await Promise.race([fetchPromise, timeoutPromise]);
         } catch (rzpError) {
-            console.error("Razorpay order fetch failed:", rzpError.message);
-            return res.status(502).json({ message: "Payment gateway error. Please try again.", success: false });
+            if (rzpError.message === 'Razorpay API timeout') {
+                return res.status(504).json({ message: "Payment gateway timeout. Please try again.", success: false });
+            }
+            const errorResponse = handleRazorpayError(rzpError);
+            return res.status(errorResponse.statusCode).json({ message: errorResponse.message, success: false });
         }
 
         if (rzpOrder.id !== razorpay_order_id || Number(rzpOrder.amount) !== Math.round(order.totalPrice * 100)) {
@@ -281,7 +385,7 @@ router.post('/verify-payment', protect, async (req, res) => {
             order: result.order
         });
     } catch (error) {
-        console.error("Payment verification error:", error);
+        logger.error({ err: error }, "Payment verification error:");
         res.status(500).json({ message: "Error verifying payment", success: false });
     }
 });
@@ -310,7 +414,7 @@ router.post('/webhook', async (req, res) => {
         }
 
         const event = JSON.parse(req.body.toString('utf8'));
-        console.log(`Webhook received: ${event.event}${event.payload?.payment?.entity?.order_id ? ` for order ${event.payload.payment.entity.order_id}` : ''}`);
+        logger.info(`Webhook received: ${event.event}${event.payload?.payment?.entity?.order_id ? ` for order ${event.payload.payment.entity.order_id}` : ''}`);
 
         if (event.event === 'payment.captured') {
             const payment = event.payload?.payment?.entity;
@@ -331,18 +435,18 @@ router.post('/webhook', async (req, res) => {
 
             // Defense in depth: re-check the captured amount against the server total.
             if (Number(payment.amount) !== Math.round(order.totalPrice * 100)) {
-                console.error(`Webhook amount mismatch for order ${orderId}`);
+                logger.error(`Webhook amount mismatch for order ${orderId}`);
                 return res.status(200).json({ ok: true, skipped: 'amount mismatch' });
             }
 
             const result = await finalisePaidOrder(order, { paymentId: payment.id });
-            console.log(`Webhook processed: payment.captured -> order ${orderId} (${result.transition})`);
+            logger.info(`Webhook processed: payment.captured -> order ${orderId} (${result.transition})`);
             return res.status(200).json({ ok: true, ...result });
         }
 
         return res.status(200).json({ ok: true, skipped: 'unhandled event' });
     } catch (error) {
-        console.error("Webhook processing error:", error);
+        logger.error({ err: error }, "Webhook processing error:");
         return res.status(500).json({ ok: false });
     }
 });
@@ -365,7 +469,7 @@ router.post('/refund/:orderId', protect, admin, async (req, res) => {
         try {
             razorpay = razerpayInstance();
         } catch (err) {
-            console.error("RAZORPAY keys are not configured in environment");
+            logger.error("RAZORPAY keys are not configured in environment");
             return res.status(500).json({ message: "Payment service is not configured" });
         }
 
@@ -381,8 +485,8 @@ router.post('/refund/:orderId', protect, admin, async (req, res) => {
 
         res.status(200).json({ message: 'Refund initiated', refund, order: updated });
     } catch (error) {
-        console.error("Refund error:", error.name, error.message);
-        res.status(500).json({ message: 'Refund failed' });
+        const errorResponse = handleRazorpayError(error);
+        res.status(errorResponse.statusCode).json({ message: errorResponse.message });
     }
 });
 

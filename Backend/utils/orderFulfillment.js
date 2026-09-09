@@ -1,5 +1,7 @@
 const Product = require('../models/Product');
 const Order = require('../models/Order');
+const Coupon = require('../models/Coupon');
+const { logger } = require('./logger');
 
 // Shared order finalisation used by BOTH the client verify-payment endpoint and the
 // Razorpay webhook, so a captured payment is reconciled exactly once no matter which
@@ -75,6 +77,23 @@ async function finalisePaidOrder(order, { paymentId } = {}) {
     }
     await Order.findByIdAndUpdate(order._id, { stockShortfall: true });
     return { finalised: true, order: finalisedOrder, shortfall: true };
+  }
+
+  // Debit coupon usage exactly once, on the clean Paid path only (never on
+  // shortfall — that order goes to refund, not fulfilment). Best-effort: a
+  // debit failure must never roll back an already-captured payment; the
+  // mismatch stays visible in logs for admin reconciliation.
+  if (finalisedOrder.couponCode) {
+    try {
+      const coupon = await Coupon.findOne({ code: finalisedOrder.couponCode });
+      if (coupon) {
+        await coupon.recordUsage(finalisedOrder.userId);
+      } else {
+        logger.warn({ orderId: order._id }, 'Paid order references unknown coupon');
+      }
+    } catch (couponError) {
+      logger.error({ err: couponError, orderId: order._id }, 'Coupon usage debit failed');
+    }
   }
 
   return { finalised: true, order: finalisedOrder, shortfall: false };

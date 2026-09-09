@@ -5,6 +5,7 @@ import { GOOGLE_CLIENT_ID } from '../config';
 import { googleLogin } from '../services/authApi';
 import { useAuth } from './authContext';
 import api from '../api/axios';
+import { logError, logWarn } from '../utils/logger';
 
 // Google Identity Services (GIS) redirect mode, wired up app-wide.
 //
@@ -103,8 +104,10 @@ export const GoogleIdentityProvider = ({ children }) => {
         navigate(intendedPath && intendedPath !== '/login' ? intendedPath : '/');
       } catch (err) {
         credentialConsumed = false; // allow the user to retry
-        console.error('Google Login Error:', err);
-        toast.error('Google login failed. Please try again.');
+        logError('Google Login Error:', err);
+        // Prefer the backend's message so rate-limit (429) tells the user to
+        // wait a minute instead of a generic failure.
+        toast.error(err?.response?.data?.message || 'Google login failed. Please try again.');
       }
     };
 
@@ -158,7 +161,7 @@ export const GoogleIdentityProvider = ({ children }) => {
           // "The given origin is not allowed for the given client ID" — the
           // domain isn't registered in Google Cloud Console. Surface a clear
           // status so the UI can show a helpful notice instead of a dead button.
-          console.warn('Google Identity Services init failed:', err?.message || err);
+          logWarn('Google Identity Services init failed:', err?.message || err);
           setStatus('origin-blocked');
         }
       })

@@ -2,7 +2,10 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { createPaymentOrder, verifyPayment } from '../services/ordersApi';
 import { RAZORPAY_KEY } from '../config';
+import { RAZORPAY_DISPLAY } from '../utils/constants';
+import { formatPrice } from '../utils/format';
 import { handleApiError } from '../utils/apiError';
+import { logError } from '../utils/logger';
 
 const RAZORPAY_SCRIPT_URL = 'https://checkout.razorpay.com/v1/checkout.js';
 
@@ -15,17 +18,33 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
   // into the lazy /profile route; the global <Toaster> keeps it visible.
   const successNotifiedRef = useRef(false);
 
+  // Open Razorpay modal instance, if any — closed on unmount so a stray
+  // modal never outlives the checkout page.
+  const paymentObjectRef = useRef(null);
+
   const loadRazorpayScript = useCallback(() => {
     return new Promise((resolve) => {
-      if (razorpayLoadedRef.current) {
+      if (razorpayLoadedRef.current || window.Razorpay) {
+        razorpayLoadedRef.current = true;
         resolve(true);
         return;
       }
 
       const existingScript = document.querySelector(`script[src="${RAZORPAY_SCRIPT_URL}"]`);
       if (existingScript) {
-        razorpayLoadedRef.current = true;
-        resolve(true);
+        // A previous mount already injected the tag: reuse it instead of
+        // downloading twice. Wait for its load event when still pending.
+        if (existingScript.dataset.loaded === 'true') {
+          razorpayLoadedRef.current = true;
+          resolve(true);
+          return;
+        }
+        existingScript.addEventListener('load', () => {
+          existingScript.dataset.loaded = 'true';
+          razorpayLoadedRef.current = true;
+          resolve(true);
+        }, { once: true });
+        existingScript.addEventListener('error', () => resolve(false), { once: true });
         return;
       }
 
@@ -33,6 +52,7 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
       script.src = RAZORPAY_SCRIPT_URL;
       script.id = 'razorpay-checkout-script';
       script.onload = () => {
+        script.dataset.loaded = 'true';
         razorpayLoadedRef.current = true;
         resolve(true);
       };
@@ -42,12 +62,15 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
   }, []);
 
   useEffect(() => {
+    // The checkout script tag is intentionally kept across mounts (cached,
+    // reused via loadRazorpayScript) — only a live modal is torn down here.
     return () => {
-      const script = document.getElementById('razorpay-checkout-script');
-      if (script && script.parentNode) {
-        script.parentNode.removeChild(script);
+      try {
+        paymentObjectRef.current?.close?.();
+      } catch {
+        // Modal already closed — nothing to do.
       }
-      razorpayLoadedRef.current = false;
+      paymentObjectRef.current = null;
     };
   }, []);
 
@@ -102,7 +125,7 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
         Math.abs(order.calculatedAmount - clientTotal) > 0.01
       ) {
         toast.warn(
-          `Order total refreshed to ₹${order.calculatedAmount.toFixed(2)} (prices were updated since you added items).`
+          `Order total refreshed to ${formatPrice(order.calculatedAmount)} (prices were updated since you added items).`
         );
       }
 
@@ -114,12 +137,13 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
       const options = {
         key: RAZORPAY_KEY,
         amount: order.amount,
-        currency: "INR",
-        name: "Cartify Premium",
-        description: "Secure Checkout",
+        currency: RAZORPAY_DISPLAY.currency,
+        name: RAZORPAY_DISPLAY.name,
+        description: RAZORPAY_DISPLAY.description,
         order_id: order.id,
         handler: async function (response) {
           paymentResultHandled = true;
+          paymentObjectRef.current = null;
           try {
             const verifyRes = await verifyPayment({
               razorpay_order_id: response.razorpay_order_id,
@@ -131,6 +155,13 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
               if (!successNotifiedRef.current) {
                 successNotifiedRef.current = true;
                 toast.success("Payment Successful! 🎉 Order Placed.");
+                // Mark post-order so CheckoutPage's empty-cart guard doesn't
+                // misfire on the cleared cart during the redirect.
+                try {
+                  sessionStorage.setItem('orderJustPlaced', '1');
+                } catch {
+                  // storage unavailable — redirect still proceeds below
+                }
                 clearCart();
                 navigate('/profile');
               }
@@ -138,13 +169,14 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
               toast.error(verifyRes.data.message || "Payment could not be verified");
             }
           } catch (err) {
-            console.error("Verification Error:", err.response?.data || err.message);
+            logError("Verification Error:", err.response?.data || err.message);
             toast.error(handleApiError(err, "Payment verification failed"));
           }
         },
         modal: {
           ondismiss: function () {
             if (paymentResultHandled) return;
+            paymentObjectRef.current = null;
             toast.error("Payment cancelled. You can retry whenever you're ready.");
           },
         },
@@ -154,13 +186,15 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
           contact: selectedAddress.phone
         },
         theme: {
-          color: "#0d9488"
+          color: RAZORPAY_DISPLAY.themeColor
         }
       };
 
       const paymentObject = new window.Razorpay(options);
+      paymentObjectRef.current = paymentObject;
       paymentObject.on('payment.failed', function (response) {
         paymentResultHandled = true;
+        paymentObjectRef.current = null;
         const failureReason = response?.error?.description
           ? `Payment failed: ${response.error.description}`
           : 'Payment failed. Please try again.';
@@ -169,7 +203,7 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
       paymentObject.open();
 
     } catch (error) {
-      console.error("Payment setup failed", error);
+      logError("Payment setup failed", error);
       toast.error(handleApiError(error, "Something went wrong with the payment gateway."));
     } finally {
       setLoading(false);

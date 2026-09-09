@@ -1,4 +1,5 @@
 const express = require('express');
+const { logger } = require('../utils/logger');
 const router = express.Router();
 const path = require('path');
 const fs = require('fs');
@@ -81,8 +82,10 @@ router.get('/', async (req, res) => {
             query.category = category;
         }
 
-        const pageNum = parseInt(page) || 1;
-        const limitNum = parseInt(limit) || 12;
+        // Clamp pagination: page >= 1, limit 1..100 (negative/NaN/huge
+        // values previously produced negative skip or unbounded reads).
+        const pageNum = Math.max(1, parseInt(page) || 1);
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 12));
         const skip = (pageNum - 1) * limitNum;
 
         const products = await Product.find(query).skip(skip).limit(limitNum);
@@ -95,7 +98,7 @@ router.get('/', async (req, res) => {
             pages: Math.ceil(total / limitNum)
         });
     } catch (error) {
-        console.error("❌ Products route error:", error.message);
+        logger.error({ err: error.message }, "❌ Products route error:");
         res.status(500).json({ message: "Failed to fetch products" });
     }
 });
@@ -175,7 +178,7 @@ router.post('/add', protect, admin, auditLogMiddleware('CREATE_PRODUCT', 'Produc
         if (error.name === 'ValidationError') {
             return res.status(400).json({ message: error.message });
         }
-        console.error("❌ Product add error:", error);
+        logger.error({ err: error }, "❌ Product add error:");
         res.status(500).json({ message: "Failed to add product" });
     }
 });
@@ -193,7 +196,7 @@ router.post('/seed', protect, admin, auditLogMiddleware('BULK_CREATE_PRODUCTS', 
         if (error.name === 'ValidationError' || error.name === 'CastError') {
             return next(error);
         }
-        console.error("❌ Products seed error:", error);
+        logger.error({ err: error }, "❌ Products seed error:");
         res.status(500).json({ message: "Failed to seed products" });
     }
 });
@@ -211,7 +214,7 @@ router.get('/:id', async (req, res) => {
         if (error.name === 'CastError') {
             return res.status(400).json({ message: "Invalid product ID format" });
         }
-        console.error("❌ Product fetch by ID error:", error);
+        logger.error({ err: error }, "❌ Product fetch by ID error:");
         res.status(500).json({ message: "Failed to fetch product" });
     }
 });
@@ -222,7 +225,7 @@ router.delete('/clear', protect, admin, auditLogMiddleware('DELETE_ALL_PRODUCTS'
         await Product.deleteMany({});
         res.status(200).json({ message: "Database cleared successfully! 🧹✨" });
     } catch (error) {
-        console.error("❌ Product delete error:", error);
+        logger.error({ err: error }, "❌ Product delete error:");
         res.status(500).json({ message: "Failed to delete product" });
     }
 });
@@ -241,7 +244,7 @@ router.delete('/:id', protect, admin, auditLogMiddleware('DELETE_PRODUCT', 'Prod
         if (error.name === 'CastError') {
             return next(error);
         }
-        console.error("❌ Product delete error:", error);
+        logger.error({ err: error }, "❌ Product delete error:");
         res.status(500).json({ message: "Failed to delete product" });
     }
 });
@@ -338,7 +341,7 @@ router.patch('/:id', protect, admin, auditLogMiddleware('UPDATE_PRODUCT', 'Produ
         if (error.name === 'ValidationError') {
             return res.status(400).json({ message: error.message });
         }
-        console.error("❌ Product update error:", error);
+        logger.error({ err: error }, "❌ Product update error:");
         res.status(500).json({ message: "Failed to update product" });
     }
 });

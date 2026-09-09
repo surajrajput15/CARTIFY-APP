@@ -35,6 +35,17 @@ const CheckoutPage = () => {
       navigate('/login');
       return;
     }
+    // Empty cart = nothing to pay for. Bounce to cart instead of showing a
+    // dead checkout page. The just-paid flag (set on payment success) tells
+    // us this empty cart is post-order, not a dead end — consume it and stop.
+    if (cart.length === 0) {
+      if (sessionStorage.getItem('orderJustPlaced')) {
+        sessionStorage.removeItem('orderJustPlaced');
+      } else {
+        navigate('/cart', { replace: true });
+      }
+      return;
+    }
     let cancelled = false;
     (async () => {
       const data = await fetchAddresses();
@@ -43,7 +54,7 @@ const CheckoutPage = () => {
       }
     })();
     return () => { cancelled = true; };
-  }, [user, navigate, fetchAddresses]);
+  }, [user, cart.length, navigate, fetchAddresses]);
 
   const { loading, handlePayment } = useRazorpayPayment({ user, cart, clearCart, navigate, selectedAddress });
 
@@ -60,7 +71,12 @@ const CheckoutPage = () => {
             loading={addressesLoading}
             selectedAddress={selectedAddress}
             onSelect={setSelectedAddress}
-            onGoToProfile={() => navigate('/profile')}
+            onGoToProfile={() => {
+              // Remember where we came from so Profile can send us back
+              // right after the address is saved.
+              sessionStorage.setItem('postProfileReturn', '/checkout');
+              navigate('/profile?tab=addresses');
+            }}
           />
         </div>
 

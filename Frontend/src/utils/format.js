@@ -48,24 +48,6 @@ export const formatDate = (date, options = {}) => {
 };
 
 /**
- * Format a date string with time.
- * @param {string|Date} date - The date value
- * @returns {string} Formatted date+time string
- */
-export const formatDateTime = (date) => {
-  if (!date) return '';
-  const d = new Date(date);
-  if (isNaN(d.getTime())) return '';
-  return d.toLocaleString('en-IN', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-};
-
-/**
  * Safely extract the first name from a full name string.
  * @param {string} fullName - The full name
  * @returns {string} First name or fallback

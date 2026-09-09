@@ -16,7 +16,7 @@ const OrderSummary = ({ cart, total, loading, canPay, onPay }) => {
       <div className="space-y-3 mb-6 max-h-60 overflow-y-auto pr-2 -mr-2">
         {cart.map((item, index) => (
           <div key={item._id || index} className="flex justify-between items-center text-sm gap-2">
-            <span className="text-gray-600 truncate flex-1">
+            <span className="text-gray-600 truncate flex-1" title={item.title}>
               {item.title} <span className="text-gray-400">×{item.quantity || 1}</span>
             </span>
             <span className="font-semibold text-gray-800 whitespace-nowrap">
@@ -52,7 +52,7 @@ const OrderSummary = ({ cart, total, loading, canPay, onPay }) => {
         className="w-full bg-gray-900 text-white py-3.5 rounded-xl font-bold text-base sm:text-lg hover:bg-teal-600 transition-all shadow-md flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px]"
         aria-label={loading ? 'Processing payment' : `Pay ${formatPrice(finalTotal)} now`}
       >
-        {loading ? <Loader2 className="animate-spin" size={22} /> : (
+        {loading ? <Loader2 className="animate-spin" size={22} aria-hidden="true" /> : (
           <>
             <Lock size={18} aria-hidden="true" />
             Pay {formatPrice(finalTotal)} Now

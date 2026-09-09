@@ -1,5 +1,38 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
+const { logger } = require('../utils/logger');
 const router = express.Router();
+
+// Scoped rate limits (shared across /api and /api/v1 mounts since the same
+// middleware instances + store are used, keyed by IP):
+// - credentialLimiter (5/min): credential-guessing targets — login, register,
+//   OTP send/verify, Google login, password reset. Tight on purpose.
+// - sessionLimiter (60/min): authenticated session upkeep (/me, /refresh,
+//   /logout, profile ops) that fires on every page load — must never starve
+//   real logins the way a blanket 5/min router limiter did (429 on /google).
+const credentialLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 5,
+  message: { message: 'Too many attempts. Please try again after a minute.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+const sessionLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 60,
+  message: { message: 'Too many requests. Please slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+// Test suites fire dozens of logins from a single IP and would instantly hit
+// the credential budget. Bypass is evaluated per-request (not at module load)
+// because jest sets NODE_ENV=test in beforeAll, after requires run.
+const rateLimitUnlessTest = (limiter) => (req, res, next) => {
+  if (process.env.NODE_ENV === 'test') return next();
+  return limiter(req, res, next);
+};
+const credentialGuard = rateLimitUnlessTest(credentialLimiter);
+const sessionGuard = rateLimitUnlessTest(sessionLimiter);
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
@@ -112,7 +145,7 @@ const clearAuthCookies = (res) => {
 // ==========================================
 
 // 1. SEND OTP API (Send 6-digit code to the email)
-router.post('/send-otp', async (req, res) => {
+router.post('/send-otp', credentialGuard, async (req, res) => {
     try {
         const email = normalizeEmail(req.body.email);
         if (!email) return res.status(400).json({ message: "Please enter your email." });
@@ -150,13 +183,13 @@ router.post('/send-otp', async (req, res) => {
 
         res.status(200).json({ message: "OTP sent successfully to your email! 📩" });
     } catch (error) {
-        console.error(error);
+        logger.error(error);
         res.status(500).json({ message: "Error sending OTP. Please try again." });
     }
 });
 
 // 2. VERIFY OTP API (Check the email and OTP)
-router.post('/verify-otp', async (req, res) => {
+router.post('/verify-otp', credentialGuard, async (req, res) => {
     try {
         const email = normalizeEmail(req.body.email);
         const otp = req.body.otp;
@@ -199,7 +232,7 @@ router.post('/verify-otp', async (req, res) => {
             user: { id: user._id, name: user.name, email: user.email, isAdmin: user.isAdmin }
         });
     } catch (error) {
-        console.error("❌ OTP verify error:", error);
+        logger.error({ err: error }, "❌ OTP verify error:");
         res.status(500).json({ message: "Error verifying OTP." });
     }
 });
@@ -209,7 +242,7 @@ router.post('/verify-otp', async (req, res) => {
 // 🗝️ OLD: PASSWORD BASED LOGIN (Fallback)
 // ==========================================
 
-router.post('/register', async (req, res) => {
+router.post('/register', credentialGuard, async (req, res) => {
     try {
         const { name, email: rawEmail, password } = req.body;
         if (!name || !rawEmail || !password) return res.status(400).json({ message: "Please fill in all fields." });
@@ -280,12 +313,12 @@ router.post('/register', async (req, res) => {
             user: { id: newUser._id, name: newUser.name, email: newUser.email, isAdmin: newUser.isAdmin }
         });
     } catch (error) {
-        console.error("❌ Registration error:", error);
+        logger.error({ err: error }, "❌ Registration error:");
         res.status(500).json({ message: "Server error during registration." });
     }
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', credentialGuard, async (req, res) => {
     try {
         const email = normalizeEmail(req.body.email);
         const { password } = req.body;
@@ -315,7 +348,7 @@ router.post('/login', async (req, res) => {
             user: { id: user._id, name: user.name, email: user.email, isAdmin: user.isAdmin }
         });
     } catch (error) {
-        console.error("❌ Login error:", error);
+        logger.error({ err: error }, "❌ Login error:");
         res.status(500).json({ message: "Server error during login." });
     }
 });
@@ -325,7 +358,7 @@ router.post('/login', async (req, res) => {
 // ==========================================
 
 // Refresh access token using refresh token (with rotation)
-router.post('/refresh', async (req, res) => {
+router.post('/refresh', sessionGuard, async (req, res) => {
     try {
         const refreshToken = req.cookies?.refreshToken;
         if (!refreshToken) {
@@ -372,14 +405,14 @@ router.post('/refresh', async (req, res) => {
 
         res.status(200).json({ message: 'Token refreshed' });
     } catch (error) {
-        console.error("❌ Token refresh error:", error);
+        logger.error({ err: error }, "❌ Token refresh error:");
         clearAuthCookies(res);
         res.status(500).json({ message: "Error refreshing token." });
     }
 });
 
 // Logout - clear cookies and invalidate refresh token
-router.post('/logout', async (req, res) => {
+router.post('/logout', sessionGuard, async (req, res) => {
     try {
         const refreshToken = req.cookies?.refreshToken;
         if (refreshToken) {
@@ -398,7 +431,7 @@ router.post('/logout', async (req, res) => {
         clearAuthCookies(res);
         res.status(200).json({ message: "Logged out successfully" });
     } catch (error) {
-        console.error("❌ Logout error:", error);
+        logger.error({ err: error }, "❌ Logout error:");
         clearAuthCookies(res);
         res.status(200).json({ message: "Logged out successfully" });
     }
@@ -409,7 +442,7 @@ router.post('/logout', async (req, res) => {
 // ==========================================
 
 // 1. SEND RESET OTP
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', credentialGuard, async (req, res) => {
     try {
         const email = normalizeEmail(req.body.email);
 
@@ -445,13 +478,13 @@ router.post('/forgot-password', async (req, res) => {
 
         res.status(200).json({ message: "If this email is registered, a password reset OTP has been sent." });
     } catch (error) {
-        console.error("❌ Forgot password OTP error:", error);
+        logger.error({ err: error }, "❌ Forgot password OTP error:");
         res.status(500).json({ message: "Error sending reset OTP." });
     }
 });
 
 // 2. VERIFY OTP AND SET NEW PASSWORD
-router.post('/reset-password', async (req, res) => {
+router.post('/reset-password', credentialGuard, async (req, res) => {
     try {
         const email = normalizeEmail(req.body.email);
         const { otp, newPassword } = req.body;
@@ -499,7 +532,7 @@ router.post('/reset-password', async (req, res) => {
 
         res.status(200).json({ message: "Password reset successful! You can now login." });
     } catch (error) {
-        console.error("❌ Reset password error:", error);
+        logger.error({ err: error }, "❌ Reset password error:");
         res.status(500).json({ message: "Error resetting password." });
     }
 });
@@ -509,7 +542,7 @@ router.post('/reset-password', async (req, res) => {
 // ==========================================
 
 // 1. UPDATE PROFILE (Name change)
-router.put('/update/:id', protect, async (req, res) => {
+router.put('/update/:id', sessionGuard, protect, async (req, res) => {
     try {
         if (req.user._id.toString() !== req.params.id) {
             return res.status(403).json({ message: "You can only update your own profile." });
@@ -533,13 +566,13 @@ router.put('/update/:id', protect, async (req, res) => {
             user: { id: updatedUser._id, name: updatedUser.name, email: updatedUser.email, isAdmin: updatedUser.isAdmin } 
         });
     } catch (error) {
-        console.error("❌ Profile update error:", error);
+        logger.error({ err: error }, "❌ Profile update error:");
         res.status(500).json({ message: "Error updating profile." });
     }
 });
 
 // 2. DELETE ACCOUNT
-router.delete('/delete/:id', protect, async (req, res) => {
+router.delete('/delete/:id', sessionGuard, protect, async (req, res) => {
     try {
         if (req.user._id.toString() !== req.params.id) {
             return res.status(403).json({ message: "You can only delete your own account." });
@@ -554,7 +587,7 @@ router.delete('/delete/:id', protect, async (req, res) => {
         clearAuthCookies(res);
         res.status(200).json({ message: "Account deleted permanently." });
     } catch (error) {
-        console.error("❌ Account delete error:", error);
+        logger.error({ err: error }, "❌ Account delete error:");
         res.status(500).json({ message: "Error deleting account." });
     }
 });
@@ -562,7 +595,7 @@ router.delete('/delete/:id', protect, async (req, res) => {
 // ==========================================
 // 🌐 GOOGLE LOGIN ROUTE
 // ==========================================
-router.post('/google', async (req, res) => {
+router.post('/google', credentialGuard, async (req, res) => {
     try {
         const { credential } = req.body;
 
@@ -621,7 +654,7 @@ router.post('/google', async (req, res) => {
             user: { id: user._id, name: user.name, email: user.email, isAdmin: user.isAdmin }
         });
     } catch (error) {
-        console.error("Google Login Error:", error);
+        logger.error({ err: error }, "Google Login Error:");
         res.status(500).json({ message: "Google login failed" });
     }
 });
@@ -636,13 +669,13 @@ router.get('/csrf-token', (req, res) => {
 // ==========================================
 // 👤 GET CURRENT USER (/me)
 // ==========================================
-router.get('/me', protect, async (req, res) => {
+router.get('/me', sessionGuard, protect, async (req, res) => {
     try {
         res.status(200).json({
             user: { id: req.user._id, name: req.user.name, email: req.user.email, isAdmin: req.user.isAdmin }
         });
     } catch (error) {
-        console.error("❌ /me error:", error);
+        logger.error({ err: error }, "❌ /me error:");
         res.status(500).json({ message: "Error fetching user" });
     }
 });

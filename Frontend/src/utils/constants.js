@@ -1,4 +1,5 @@
 // Product categories — single source of truth used across the app
+import { formatPrice } from './format';
 
 export const PRODUCT_CATEGORIES = [
   'electronics',
@@ -17,7 +18,15 @@ export const ORDER_STATUSES = [
   'Cancelled',
 ];
 
-export const PAYMENT_STATUSES = ['Pending', 'Paid', 'Refunded'];
+export const SUPPORT_EMAIL = 'support@cartify.com';
+
+// Razorpay checkout display details (business identity shown in the modal)
+export const RAZORPAY_DISPLAY = {
+  name: 'Cartify',
+  description: 'Secure Checkout',
+  currency: 'INR',
+  themeColor: '#0d9488',
+};
 
 export const SHIPPING_CONFIG = {
   // Free shipping threshold in INR
@@ -53,7 +62,7 @@ export const getShippingMessage = (total) => {
   }
   const remaining = SHIPPING_CONFIG.FREE_SHIPPING_THRESHOLD - total;
   return {
-    text: `Add ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(remaining)} for free shipping`,
+    text: `Add ${formatPrice(remaining, { showDecimals: false })} for free shipping`,
     className: 'text-gray-500',
   };
 };

@@ -58,7 +58,7 @@ const ProfileInfo = ({ user, isEditing, editName, updateLoading, onToggleEdit, o
         <label className="block text-sm font-medium text-gray-500 mb-2">
           Email Address <span className="text-xs text-gray-400">(cannot be changed)</span>
         </label>
-        <p className="text-gray-500 font-medium bg-gray-100 p-3 rounded-lg border border-gray-200 cursor-not-allowed select-all" title={user?.email}>
+        <p className="text-gray-500 font-medium bg-gray-100 p-3 rounded-lg border border-gray-200 cursor-not-allowed select-all break-all" title={user?.email}>
           {user?.email || 'Not set'}
         </p>
       </div>

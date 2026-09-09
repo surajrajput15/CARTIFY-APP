@@ -1,6 +1,6 @@
 const SettingsTab = ({ onDeleteAccount }) => (
   <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 animate-fade-in-up">
-    <h2 className="text-xl font-bold text-gray-800 mb-6 border-b border-gray-100 pb-4">Account Settings</h2>
+    <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-6 border-b border-gray-100 pb-4">Account Settings</h2>
     <div className="space-y-6">
       <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg border border-red-100">
         <div>

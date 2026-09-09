@@ -44,7 +44,7 @@ const cache = {
   async get(key) {
     try {
       const client = getRedisClient();
-      if (!client?.status === 'ready') return null;
+      if (client?.status !== 'ready') return null;
       const value = await client.get(key);
       return value ? JSON.parse(value) : null;
     } catch (error) {
@@ -57,7 +57,7 @@ const cache = {
   async set(key, value, ttlSeconds = 60) {
     try {
       const client = getRedisClient();
-      if (!client?.status === 'ready') return false;
+      if (client?.status !== 'ready') return false;
       await client.setex(key, ttlSeconds, JSON.stringify(value));
       return true;
     } catch (error) {
@@ -70,7 +70,7 @@ const cache = {
   async del(key) {
     try {
       const client = getRedisClient();
-      if (!client?.status === 'ready') return false;
+      if (client?.status !== 'ready') return false;
       await client.del(key);
       return true;
     } catch (error) {
@@ -83,7 +83,7 @@ const cache = {
   async delPattern(pattern) {
     try {
       const client = getRedisClient();
-      if (!client?.status === 'ready') return false;
+      if (client?.status !== 'ready') return false;
       const keys = await client.keys(pattern);
       if (keys.length > 0) {
         await client.del(...keys);
@@ -99,7 +99,7 @@ const cache = {
   async incr(key, ttlSeconds = 60) {
     try {
       const client = getRedisClient();
-      if (!client?.status === 'ready') return null;
+      if (client?.status !== 'ready') return null;
       const count = await client.incr(key);
       if (count === 1) {
         await client.expire(key, ttlSeconds);
@@ -115,7 +115,7 @@ const cache = {
   async healthCheck() {
     try {
       const client = getRedisClient();
-      if (!client?.status === 'ready') return false;
+      if (client?.status !== 'ready') return false;
       const result = await client.ping();
       return result === 'PONG';
     } catch {

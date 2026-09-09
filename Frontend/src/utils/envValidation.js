@@ -39,11 +39,3 @@ export function validateEnv() {
     );
   }
 }
-
-export function getEnv(key, defaultValue = '') {
-  const value = import.meta.env[key];
-  if (value === undefined || value === '') {
-    return defaultValue;
-  }
-  return value;
-}

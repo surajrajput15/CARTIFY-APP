@@ -4,6 +4,8 @@
 // capture it the first time it fires and expose a trigger so a component can
 // show an "Install App" button whenever the browser allows it.
 
+import { logWarn } from './logger';
+
 let deferredPrompt = null;
 const canInstallListeners = new Set();
 let listenersAttached = false;
@@ -22,10 +24,10 @@ export function registerServiceWorker() {
       registration.catch((err) => {
         // Warn rather than error — PWA is optional and not having it shouldn't
         // disrupt the rest of the app.
-        console.warn('Service worker registration failed:', err?.message || err);
+        logWarn('Service worker registration failed:', err?.message || err);
       });
     } catch (err) {
-      console.warn('Service worker registration threw:', err?.message || err);
+      logWarn('Service worker registration threw:', err?.message || err);
     }
   });
 }

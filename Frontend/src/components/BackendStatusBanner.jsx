@@ -34,8 +34,8 @@ const BackendStatusBanner = () => {
         <WifiOff className="text-amber-600 flex-shrink-0 mt-0.5 sm:mt-0" size={20} aria-hidden="true" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-amber-900">Backend unavailable</p>
-          <p className="text-xs text-amber-800 mt-0.5">
-            We can't reach the API at <span className="font-mono">{import.meta.env.VITE_API_URL || 'http://localhost:5000'}</span>.
+          <p className="text-xs text-amber-800 mt-0.5 break-words">
+            We can't reach the API at <span className="font-mono break-all">{import.meta.env.VITE_API_URL || 'http://localhost:5000'}</span>.
             Start the backend server (<span className="font-mono">cd Backend &amp;&amp; npm run dev</span>) and try again.
           </p>
         </div>
@@ -44,7 +44,7 @@ const BackendStatusBanner = () => {
             onClick={handleRetry}
             disabled={checking}
             aria-label="Retry connection"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 text-white text-xs font-bold rounded-md hover:bg-amber-700 transition-colors disabled:opacity-50 min-h-[36px]"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 text-white text-xs font-bold rounded-md hover:bg-amber-700 transition-colors disabled:opacity-50 min-h-[44px]"
           >
             <RefreshCw size={14} className={checking ? 'animate-spin' : ''} aria-hidden="true" />
             {checking ? 'Checking…' : 'Retry'}
@@ -52,7 +52,7 @@ const BackendStatusBanner = () => {
           <button
             onClick={() => setDismissed(true)}
             aria-label="Dismiss notification"
-            className="p-1.5 text-amber-700 hover:bg-amber-100 rounded-md transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center"
+            className="p-1.5 text-amber-700 hover:bg-amber-100 rounded-md transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
           >
             <X size={16} aria-hidden="true" />
           </button>

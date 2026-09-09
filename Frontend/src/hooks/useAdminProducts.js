@@ -1,22 +1,26 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import * as productsApi from '../services/productsApi';
-import toast from 'react-hot-toast';
 import seedProductData from '../data/seedProducts';
-import { handleApiError } from '../utils/apiError';
+import { logError } from '../utils/logger';
 
+// NOTE: this hook never toasts and always rethrows — all user-facing feedback
+// lives with the callers (AdminPage), so success/error messages appear exactly
+// once and failures never look like successes.
 export const useAdminProducts = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
 
   const fetchProducts = useCallback(async () => {
     try {
       const { data } = await productsApi.fetchProducts({ limit: 100 });
-      setProducts(Array.isArray(data) ? data : data.products);
+      if (mountedRef.current) setProducts(Array.isArray(data) ? data : data.products);
     } catch (err) {
-      console.error('Failed to fetch products', err);
-      toast.error(handleApiError(err, 'Failed to fetch products'));
+      logError('Failed to fetch products', err);
+      throw err;
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   }, []);
 
@@ -30,15 +34,13 @@ export const useAdminProducts = () => {
     try {
       if (editingProduct) {
         await productsApi.updateProduct(editingProduct._id, payload);
-        toast.success('Product updated successfully');
       } else {
         await productsApi.addProduct(payload);
-        toast.success('Product saved successfully');
       }
       await fetchProducts();
     } catch (err) {
-      console.error('Failed to save product', err);
-      toast.error(handleApiError(err, 'Failed to save product'));
+      logError('Failed to save product', err);
+      throw err;
     }
   }, [fetchProducts]);
 
@@ -46,21 +48,20 @@ export const useAdminProducts = () => {
     try {
       await productsApi.deleteProduct(id);
       await fetchProducts();
-      toast.success('Product deleted');
     } catch (err) {
-      console.error('Failed to delete product', err);
-      toast.error(handleApiError(err, 'Failed to delete product'));
+      logError('Failed to delete product', err);
+      throw err;
     }
   }, [fetchProducts]);
 
   const seedProducts = useCallback(async () => {
     try {
       const { data } = await productsApi.seedProducts(seedProductData);
-      toast.success(`${data.count} products seeded successfully!`);
       await fetchProducts();
+      return data;
     } catch (err) {
-      console.error('Failed to seed products', err);
-      toast.error(handleApiError(err, 'Failed to seed products'));
+      logError('Failed to seed products', err);
+      throw err;
     }
   }, [fetchProducts]);
 
@@ -68,10 +69,9 @@ export const useAdminProducts = () => {
     try {
       await productsApi.clearAllProducts();
       await fetchProducts();
-      toast.success('All products cleared');
     } catch (err) {
-      console.error('Failed to clear products', err);
-      toast.error(handleApiError(err, 'Failed to clear products'));
+      logError('Failed to clear products', err);
+      throw err;
     }
   }, [fetchProducts]);
 

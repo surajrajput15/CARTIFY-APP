@@ -34,7 +34,7 @@ const AddressManager = ({ addresses, addressesLoading, onSaveAddress, onDeleteAd
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 animate-fade-in-up">
       <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
-        <h2 className="text-xl font-bold text-gray-800">Manage Addresses</h2>
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Manage Addresses</h2>
         {!showAddressForm && (
           <button onClick={() => setShowAddressForm(true)} className="flex items-center gap-1 text-sm font-bold text-teal-600 hover:text-teal-700">
             <Plus size={16} aria-hidden="true" /> Add New
@@ -46,15 +46,15 @@ const AddressManager = ({ addresses, addressesLoading, onSaveAddress, onDeleteAd
         <form onSubmit={handleSave} className="mb-8 bg-gray-50 p-6 rounded-xl border border-gray-200">
           <h3 className="font-bold text-gray-800 mb-4">Add a new address</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input type="text" placeholder="Full Name" required value={newAddress.fullName} onChange={(e) => setNewAddress({...newAddress, fullName: e.target.value})} className="p-3 rounded-lg border focus:ring-teal-500 focus:border-teal-500" />
+            <input type="text" placeholder="Full Name" aria-label="Full Name" required value={newAddress.fullName} onChange={(e) => setNewAddress({...newAddress, fullName: e.target.value})} className="p-3 rounded-lg border focus:ring-teal-500 focus:border-teal-500" />
             <div>
-              <input type="text" placeholder="Phone Number" required value={newAddress.phone} onChange={(e) => { setNewAddress({...newAddress, phone: e.target.value}); setPhoneError(''); }} className={`p-3 rounded-lg border w-full focus:ring-teal-500 focus:border-teal-500 ${phoneError ? 'border-red-400' : ''}`} />
-              {phoneError && <p className="text-red-500 text-xs mt-1">{phoneError}</p>}
+              <input type="text" placeholder="Phone Number" aria-label="Phone Number" required value={newAddress.phone} onChange={(e) => { setNewAddress({...newAddress, phone: e.target.value}); setPhoneError(''); }} aria-invalid={Boolean(phoneError)} aria-describedby={phoneError ? 'phone-error' : undefined} className={`p-3 rounded-lg border w-full focus:ring-teal-500 focus:border-teal-500 ${phoneError ? 'border-red-400' : ''}`} />
+              {phoneError && <p id="phone-error" role="alert" className="text-red-500 text-xs mt-1">{phoneError}</p>}
             </div>
-            <input type="text" placeholder="Street / Flat / Area" required value={newAddress.street} onChange={(e) => setNewAddress({...newAddress, street: e.target.value})} className="p-3 rounded-lg border focus:ring-teal-500 focus:border-teal-500 md:col-span-2" />
-            <input type="text" placeholder="City" required value={newAddress.city} onChange={(e) => setNewAddress({...newAddress, city: e.target.value})} className="p-3 rounded-lg border focus:ring-teal-500 focus:border-teal-500" />
-            <input type="text" placeholder="State" required value={newAddress.state} onChange={(e) => setNewAddress({...newAddress, state: e.target.value})} className="p-3 rounded-lg border focus:ring-teal-500 focus:border-teal-500" />
-            <input type="text" placeholder="PIN Code" required value={newAddress.pinCode} onChange={(e) => setNewAddress({...newAddress, pinCode: e.target.value})} className="p-3 rounded-lg border focus:ring-teal-500 focus:border-teal-500" />
+            <input type="text" placeholder="Street / Flat / Area" aria-label="Street, Flat or Area" required value={newAddress.street} onChange={(e) => setNewAddress({...newAddress, street: e.target.value})} className="p-3 rounded-lg border focus:ring-teal-500 focus:border-teal-500 md:col-span-2" />
+            <input type="text" placeholder="City" aria-label="City" required value={newAddress.city} onChange={(e) => setNewAddress({...newAddress, city: e.target.value})} className="p-3 rounded-lg border focus:ring-teal-500 focus:border-teal-500" />
+            <input type="text" placeholder="State" aria-label="State" required value={newAddress.state} onChange={(e) => setNewAddress({...newAddress, state: e.target.value})} className="p-3 rounded-lg border focus:ring-teal-500 focus:border-teal-500" />
+            <input type="text" placeholder="PIN Code" aria-label="PIN Code" required value={newAddress.pinCode} onChange={(e) => setNewAddress({...newAddress, pinCode: e.target.value})} className="p-3 rounded-lg border focus:ring-teal-500 focus:border-teal-500" />
           </div>
           <div className="mt-4 flex gap-3">
             <button type="submit" disabled={addressSaving} className="bg-teal-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-teal-700 disabled:opacity-50">
@@ -82,9 +82,9 @@ const AddressManager = ({ addresses, addressesLoading, onSaveAddress, onDeleteAd
         ) : null}
         {addresses.map((address) => (
           <div key={address._id} className="p-5 border border-gray-200 rounded-xl relative group hover:border-teal-500 transition-colors">
-            <h3 className="font-bold text-gray-800">{address.fullName} <span className="text-sm text-gray-500 font-normal ml-2">{address.phone}</span></h3>
+            <h3 className="font-bold text-gray-800 pr-16 break-words">{address.fullName} <span className="text-sm text-gray-500 font-normal ml-2">{address.phone}</span></h3>
             <p className="text-gray-600 text-sm mt-2">{address.street}, {address.city}, {address.state} - {address.pinCode}</p>
-            <button onClick={() => onDeleteAddress(address._id)} className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors p-2 bg-gray-50 rounded-full" aria-label={`Delete address for ${address.fullName}`}>
+            <button onClick={() => onDeleteAddress(address._id)} className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors p-2 bg-gray-50 rounded-full min-w-[44px] min-h-[44px] inline-flex items-center justify-center" aria-label={`Delete address for ${address.fullName}`}>
               <Trash2 size={18} aria-hidden="true" />
             </button>
           </div>

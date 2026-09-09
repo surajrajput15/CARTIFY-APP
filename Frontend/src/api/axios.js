@@ -17,10 +17,20 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
-// Helper to get CSRF token from cookie
+// In-memory fallback for the CSRF token, populated from the token endpoint's
+// JSON body. Primary source is the `csrfToken` cookie (set by the backend);
+// the cache covers cookie-blocked/cleared edge cases so payment-grade
+// requests don't depend on a single storage mechanism.
+let cachedCsrfToken = null;
+
+// Helper to get CSRF token: readable cookie first, memory cache as fallback
 const getCsrfToken = () => {
   const match = document.cookie.match(/(^| )csrfToken=([^;]+)/);
-  return match ? match[2] : null;
+  if (match) {
+    cachedCsrfToken = match[2];
+    return match[2];
+  }
+  return cachedCsrfToken;
 };
 
 // Event bus for backend status changes (avoids circular imports)
@@ -119,8 +129,14 @@ api.interceptors.response.use(
     if (error.response?.status === 403 && originalRequest && !originalRequest._csrfRetried) {
       originalRequest._csrfRetried = true;
       try {
-        await api.get('/api/auth/csrf-token');
-        // Re-read the now-fresh cookie and attach it to the retried request.
+        const tokenRes = await api.get('/api/auth/csrf-token');
+        // Cache the JSON token too — if the cookie write didn't stick,
+        // the retry still carries a valid token via the memory fallback.
+        if (tokenRes?.data?.csrfToken) {
+          cachedCsrfToken = tokenRes.data.csrfToken;
+        }
+        // Re-read the now-fresh token (cookie first, cache fallback) and
+        // attach it to the retried request.
         const freshToken = getCsrfToken();
         if (freshToken) {
           originalRequest.headers = originalRequest.headers || {};
@@ -133,6 +149,21 @@ api.interceptors.response.use(
     }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
+      const failedUrl = originalRequest?.url || '';
+      const isRefreshCall = failedUrl.includes('/api/auth/refresh');
+      // Session hint: httpOnly cookies are invisible to JS, so localStorage
+      // 'user' tells us whether a session could plausibly exist.
+      let hasSessionHint = false;
+      try {
+        hasSessionHint = !!localStorage.getItem('user');
+      } catch {
+        hasSessionHint = false;
+      }
+      // Guest (no session possible): never fire refresh, never redirect.
+      // This keeps guest browsing silent — no /refresh 401 noise, no login bounce.
+      if (isRefreshCall || !hasSessionHint) {
+        return Promise.reject(error);
+      }
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -168,10 +199,14 @@ export default api;
 // Helper to proactively fetch CSRF token on app startup.
 // The backend sets a CSRF cookie on the first request to /api/auth/csrf-token.
 // We fetch it once on app load so the cookie is available before any
-// state-changing request (POST/PUT/DELETE) is made.
+// state-changing request (POST/PUT/DELETE) is made. The JSON token is also
+// cached in memory as a fallback if the cookie can't be read later.
 export const fetchCsrfToken = async () => {
   try {
-    await api.get('/api/auth/csrf-token');
+    const res = await api.get('/api/auth/csrf-token');
+    if (res?.data?.csrfToken) {
+      cachedCsrfToken = res.data.csrfToken;
+    }
   } catch {
     // Silent — if backend is down, the user will see the offline banner.
   }

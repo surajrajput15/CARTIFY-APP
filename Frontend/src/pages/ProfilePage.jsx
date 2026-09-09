@@ -51,6 +51,24 @@ const ProfilePage = () => {
     setSearchParams({ tab });
   };
 
+  // Checkout return-path: when the user came from checkout to add an address,
+  // send them straight back after the save instead of stranding them here.
+  const handleSaveAddressAndReturn = async (address) => {
+    const saved = await saveAddress(address);
+    let returnTo = null;
+    try {
+      returnTo = sessionStorage.getItem('postProfileReturn');
+      if (returnTo) sessionStorage.removeItem('postProfileReturn');
+    } catch {
+      returnTo = null;
+    }
+    if (returnTo) {
+      toast.success('Address saved — back to checkout');
+      navigate(returnTo);
+    }
+    return saved;
+  };
+
   const handleDeleteAccount = () => {
     setConfirmModal({
       show: true,
@@ -111,7 +129,7 @@ const ProfilePage = () => {
             <AddressManager
               addresses={addresses}
               addressesLoading={addressesLoading}
-              onSaveAddress={saveAddress}
+              onSaveAddress={handleSaveAddressAndReturn}
               onDeleteAddress={handleDeleteAddress}
             />
           )}

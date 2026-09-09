@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
-import { ShoppingBag, Mail, Globe, Code2 } from 'lucide-react';
+import { ShoppingBag, Mail, Code2 } from 'lucide-react';
 import { PACKAGE_VERSION } from '../version';
+import { SUPPORT_EMAIL } from '../utils/constants';
 
 const Footer = () => {
   const year = new Date().getFullYear();
@@ -35,10 +36,10 @@ const Footer = () => {
             <ul className="space-y-2 text-sm">
               <li>
                 <a
-                  href="mailto:support@cartify.com"
+                  href={`mailto:${SUPPORT_EMAIL}`}
                   className="hover:text-teal-400 transition-colors inline-flex items-center gap-1.5"
                 >
-                  <Mail size={14} aria-hidden="true" /> support@cartify.com
+                  <Mail size={14} aria-hidden="true" /> {SUPPORT_EMAIL}
                 </a>
               </li>
               <li>
@@ -88,28 +89,7 @@ const Footer = () => {
                   <Code2 size={16} aria-hidden="true" /> GitHub
                 </a>
               </li>
-              <li>
-                <a
-                  href="https://twitter.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Twitter"
-                  className="flex items-center gap-2 hover:text-teal-400 transition-colors"
-                >
-                  <Globe size={16} aria-hidden="true" /> Twitter
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://linkedin.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="LinkedIn"
-                  className="flex items-center gap-2 hover:text-teal-400 transition-colors"
-                >
-                  <Globe size={16} aria-hidden="true" /> LinkedIn
-                </a>
-              </li>
+
             </ul>
           </div>
         </div>

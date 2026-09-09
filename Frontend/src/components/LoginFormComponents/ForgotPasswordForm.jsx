@@ -73,9 +73,9 @@ const ForgotPasswordForm = ({
             <h2 className="text-xl font-extrabold text-gray-900 mb-2">Verify & Reset</h2>
             <p className="text-gray-500 text-sm mb-4">OTP sent to <span className="font-bold text-gray-800">{email}</span></p>
           </div>
-          <div className="flex justify-between gap-1 sm:gap-2">
+          <div className="flex justify-between gap-2">
             {otp.map((digit, index) => (
-              <input key={index} ref={(el) => (inputRefs.current[index] = el)} type="text" inputMode="numeric" maxLength={1} value={digit} onChange={(e) => handleOtpChange(index, e.target.value)} onKeyDown={(e) => handleKeyDown(index, e)} className="w-10 h-12 sm:w-14 sm:h-16 text-center text-xl sm:text-2xl font-extrabold text-gray-900 border-2 border-gray-200 rounded-xl focus:border-teal-500 focus:ring-0 bg-gray-50" />
+              <input key={index} ref={(el) => (inputRefs.current[index] = el)} type="text" inputMode="numeric" maxLength={1} aria-label={`Digit ${index + 1} of 6`} value={digit} onChange={(e) => handleOtpChange(index, e.target.value)} onKeyDown={(e) => handleKeyDown(index, e)} className="w-9 h-12 min-w-0 flex-1 sm:flex-none sm:w-14 sm:h-16 text-center text-xl sm:text-2xl font-extrabold text-gray-900 border-2 border-gray-200 rounded-xl focus:border-teal-500 focus:ring-0 bg-gray-50" />
             ))}
           </div>
           <div>

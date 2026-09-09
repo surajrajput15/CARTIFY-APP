@@ -1,22 +1,25 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { fetchMyOrders } from '../services/ordersApi';
 import toast from 'react-hot-toast';
 import { handleApiError } from '../utils/apiError';
+import { logError } from '../utils/logger';
 
 export const useOrders = (userId) => {
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
 
   const fetchOrders = useCallback(async () => {
-    setLoadingOrders(true);
+    if (mountedRef.current) setLoadingOrders(true);
     try {
       const response = await fetchMyOrders(userId);
-      setOrders(response.data);
+      if (mountedRef.current) setOrders(response.data);
     } catch (error) {
-      console.error("Failed to fetch orders", error);
+      logError("Failed to fetch orders", error);
       toast.error(handleApiError(error, "Failed to load orders"));
     } finally {
-      setLoadingOrders(false);
+      if (mountedRef.current) setLoadingOrders(false);
     }
   }, [userId]);
 

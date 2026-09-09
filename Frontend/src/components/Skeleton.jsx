@@ -1,7 +1,7 @@
 // Reusable skeleton loader components for loading states
 
 export const SkeletonCard = () => (
-  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-full animate-pulse">
+  <div role="status" aria-label="Loading product" className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-full animate-pulse">
     <div className="h-56 bg-gray-200" style={{ aspectRatio: '1 / 1' }} />
     <div className="p-5 space-y-3 flex flex-col flex-grow">
       <div className="h-4 bg-gray-200 rounded w-3/4" />
@@ -24,7 +24,7 @@ export const SkeletonList = ({ count = 8 }) => (
 );
 
 export const SkeletonTable = ({ rows = 5, cols = 5 }) => (
-  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+  <div role="status" aria-label="Loading table" className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden overflow-x-auto">
     <div className="bg-gray-50 border-b border-gray-100 p-4">
       <div className="flex gap-4">
         {Array.from({ length: cols }).map((_, i) => (
@@ -45,7 +45,7 @@ export const SkeletonTable = ({ rows = 5, cols = 5 }) => (
 );
 
 export const SkeletonText = ({ lines = 3, className = '' }) => (
-  <div className={`space-y-2 ${className}`}>
+  <div role="status" aria-label="Loading content" className={`space-y-2 ${className}`}>
     {Array.from({ length: lines }).map((_, i) => (
       <div
         key={i}

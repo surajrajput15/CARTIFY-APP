@@ -46,7 +46,7 @@ const GoogleLoginButton = () => {
           {STATUS_HINT[status] || STATUS_HINT.loading}
         </div>
       ) : (
-        <div ref={buttonContainerRef} className="w-full max-w-[288px]" />
+        <div ref={buttonContainerRef} className="w-full max-w-full sm:max-w-[288px]" />
       )}
     </div>
   );

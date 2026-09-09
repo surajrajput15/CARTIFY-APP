@@ -1,3 +1,5 @@
+import { formatPrice, formatDate } from '../../utils/format';
+
 const OrdersTab = ({ orders, loading }) => {
   const getPaymentLabel = (status) => {
     if (status === 'Paid') return { label: 'Paid', className: 'bg-green-50 text-green-700' };
@@ -12,7 +14,7 @@ const OrdersTab = ({ orders, loading }) => {
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 animate-fade-in-up">
-      <h2 className="text-xl font-bold text-gray-800 mb-6 border-b border-gray-100 pb-4">Recent Orders</h2>
+      <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-6 border-b border-gray-100 pb-4">Recent Orders</h2>
       {loading ? (
         <div className="space-y-4 animate-pulse">
           {[...Array(3)].map((_, i) => (
@@ -38,9 +40,9 @@ const OrdersTab = ({ orders, loading }) => {
                     <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${orderStatus.className}`}>{orderStatus.label}</span>
                   </div>
                 </div>
-                <p className="text-teal-600 font-bold">Total: ₹{order.totalPrice}</p>
+                <p className="text-teal-600 font-bold">Total: {formatPrice(order.totalPrice)}</p>
                 {order.paidAt && (
-                  <p className="text-gray-500 text-xs mt-1">Paid on {new Date(order.paidAt).toLocaleDateString()}</p>
+                  <p className="text-gray-500 text-xs mt-1">Paid on {formatDate(order.paidAt)}</p>
                 )}
               </div>
             );

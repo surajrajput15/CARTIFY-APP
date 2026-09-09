@@ -68,14 +68,40 @@ const AdminPage = () => {
     }
   };
 
+  const resetForm = () => {
+    setShowForm(false);
+    setEditingProduct(null);
+    setForm(EMPTY_PRODUCT_FORM);
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
+    // JS guards mirror the HTML attrs — never trust the DOM alone.
+    if (!form.title?.trim()) {
+      toast.error('Product title is required');
+      return;
+    }
+    const price = Number(form.price);
+    if (!Number.isFinite(price) || price <= 0) {
+      toast.error('Price must be greater than 0');
+      return;
+    }
+    const stock = Number(form.countInStock);
+    if (!Number.isInteger(stock) || stock < 0) {
+      toast.error('Stock must be a whole number 0 or above');
+      return;
+    }
+    const rate = Number(form.rating?.rate ?? 0);
+    if (rate < 0 || rate > 5) {
+      toast.error('Rating must be between 0 and 5');
+      return;
+    }
+    const wasEditing = Boolean(editingProduct);
     setSaving(true);
     try {
       await saveProduct({ product: form, editingProduct });
-      setShowForm(false);
-      setEditingProduct(null);
-      setForm(EMPTY_PRODUCT_FORM);
+      resetForm();
+      toast.success(wasEditing ? 'Product updated' : 'Product added');
     } catch (err) {
       if (isNetworkError(err)) {
         toast.error('Backend is unreachable. Please start the server and try again.');
@@ -111,6 +137,7 @@ const AdminPage = () => {
         setConfirmModal(prev => ({ ...prev, loading: true }));
         try {
           await deleteProduct(id);
+          toast.success('Product deleted');
         } catch (err) {
           if (isNetworkError(err)) {
             toast.error('Backend is unreachable. Please start the server and try again.');
@@ -133,7 +160,8 @@ const AdminPage = () => {
       onConfirm: async () => {
         setConfirmModal(prev => ({ ...prev, loading: true }));
         try {
-          await seedProducts();
+          const data = await seedProducts();
+          toast.success(data?.count ? `${data.count} products seeded` : 'Products seeded');
         } catch (err) {
           if (isNetworkError(err)) {
             toast.error('Backend is unreachable. Please start the server and try again.');
@@ -157,6 +185,7 @@ const AdminPage = () => {
         setConfirmModal(prev => ({ ...prev, loading: true }));
         try {
           await clearAllProducts();
+          toast.success('All products cleared');
         } catch (err) {
           if (isNetworkError(err)) {
             toast.error('Backend is unreachable. Please start the server and try again.');
@@ -228,7 +257,7 @@ const AdminPage = () => {
               isEditing={Boolean(editingProduct)}
               onImageUpload={handleImageUpload}
               onSubmit={handleSave}
-              onClose={() => setShowForm(false)}
+              onClose={resetForm}
             />
           )}
 

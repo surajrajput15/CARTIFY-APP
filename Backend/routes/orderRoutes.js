@@ -1,4 +1,5 @@
 const express = require('express');
+const { logger } = require('../utils/logger');
 const router = express.Router();
 const Order = require('../models/Order');
 const { protect, admin } = require('../middleware/auth');
@@ -18,7 +19,7 @@ router.get('/myorders/:userId', protect, async (req, res) => {
         const orders = await Order.find({ userId: req.params.userId }).sort({ createdAt: -1 });
         res.status(200).json(orders);
     } catch (error) {
-        console.error("Orders fetch error:", error);
+        logger.error({ err: error }, "Orders fetch error:");
         res.status(500).json({ message: "Failed to fetch orders." });
     }
 });
@@ -55,7 +56,7 @@ router.get('/admin', protect, admin, async (req, res) => {
             pages: Math.ceil(total / limitNum)
         });
     } catch (error) {
-        console.error("Admin orders error:", error);
+        logger.error({ err: error }, "Admin orders error:");
         res.status(500).json({ message: "Failed to fetch orders." });
     }
 });
@@ -81,7 +82,7 @@ router.patch('/:id/status', protect, admin, async (req, res) => {
         if (error.name === 'CastError') {
             return res.status(400).json({ message: "Invalid order id" });
         }
-        console.error("Order status update error:", error);
+        logger.error({ err: error }, "Order status update error:");
         res.status(500).json({ message: "Failed to update order status" });
     }
 });

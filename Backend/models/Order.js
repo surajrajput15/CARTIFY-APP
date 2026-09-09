@@ -39,6 +39,19 @@ const orderSchema = new mongoose.Schema({
         type: Number, 
         required: true 
     },
+    // Coupon applied at checkout (code as typed + discount granted). Discount is
+    // recomputed and validated server-side; usage is debited on Paid only.
+    couponCode: {
+        type: String,
+        default: null,
+        uppercase: true,
+        trim: true,
+    },
+    discountAmount: {
+        type: Number,
+        default: 0,
+        min: 0,
+    },
     // Order lifecycle status (orderStatus): Pending -> Processing (Paid) -> Delivered
     status: { 
         type: String, 

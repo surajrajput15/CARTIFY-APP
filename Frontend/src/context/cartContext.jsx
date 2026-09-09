@@ -142,7 +142,11 @@ export const CartProvider = ({ children }) => {
         if (item._id === productId) {
           let currentQuantity = item.quantity || 1;
           if (action === 'increase') {
-            currentQuantity += 1;
+            // Never exceed tracked stock — matches the PDP cap and prevents
+            // a guaranteed 409 shortfall at payment time.
+            const stock = Number(item.countInStock);
+            const cap = Number.isInteger(stock) && stock >= 0 ? stock : Infinity;
+            currentQuantity = Math.min(currentQuantity + 1, cap);
           } else if (action === 'decrease' && currentQuantity > 1) {
             currentQuantity -= 1;
           }

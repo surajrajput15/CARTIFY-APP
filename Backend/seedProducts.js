@@ -1,60 +1,24 @@
-const mongoose = require('mongoose');
-const dotenv = require('dotenv');
-const Product = require('./models/Product'); 
-
-dotenv.config();
-
-// MONGODB CONNECTION (Fixed for newer versions)
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('MongoDB Connected for Seeding...'))
-  .catch(err => console.log('Connection Error:', err));
-
-// PREMIUM DUMMY PRODUCTS DATA
-const premiumProducts = [
-    // electronics - Laptops & Mobiles
-    { title: "MacBook Pro 16-inch (M3 Max)", price: 319900, countInStock: 20, category: "electronics", image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800&q=80", description: "Supercharged by M3 Max, 36GB RAM, 1TB SSD. The ultimate pro laptop." },
-    { title: "iPhone 15 Pro Max", price: 159900, countInStock: 20, category: "electronics", image: "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=800&q=80", description: "Titanium design, A17 Pro chip, 48MP camera system." },
-    { title: "Samsung Galaxy S24 Ultra", price: 129999, countInStock: 20, category: "electronics", image: "https://images.unsplash.com/photo-1706697850027-4f40f095d3e0?w=800&q=80", description: "Galaxy AI is here. Titanium exterior, 200MP camera." },
-    { title: "Sony PlayStation 5 Console", price: 54990, countInStock: 20, category: "electronics", image: "https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=800&q=80", description: "Experience lightning-fast loading with an ultra-high speed SSD." },
-    { title: "Dell XPS 15 OLED", price: 185000, countInStock: 20, category: "electronics", image: "https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=800&q=80", description: "Stunning 3.5K OLED display, Intel Core i9, NVIDIA RTX 4070." },
-    
-    // Audio & Wearables
-    { title: "AirPods Pro (2nd Generation)", price: 24900, countInStock: 20, category: "accessories", image: "https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?w=800&q=80", description: "Active Noise Cancellation, Adaptive Audio, USB-C." },
-    { title: "Sony WH-1000XM5 Headphones", price: 29990, countInStock: 20, category: "accessories", image: "https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?w=800&q=80", description: "Industry-leading noise canceling overhead headphones." },
-    { title: "Apple Watch Series 9", price: 41900, countInStock: 20, category: "accessories", image: "https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?w=800&q=80", description: "Smarter. Brighter. Mightier. Double tap gesture." },
-    
-    // Fashion - Men
-    { title: "Men's Classic Leather Jacket", price: 5999, countInStock: 20, category: "clothing", image: "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=800&q=80", description: "Premium genuine leather biker jacket in black." },
-    { title: "Nike Air Jordan 1 Retro", price: 14995, countInStock: 20, category: "clothing", image: "https://images.unsplash.com/photo-1597045566677-8cf032ed6634?w=800&q=80", description: "Iconic high-top sneakers, Chicago colorway." },
-    { title: "Premium Cotton Slim Fit Shirt", price: 1899, countInStock: 20, category: "clothing", image: "https://images.unsplash.com/photo-1596755094514-f87e32f85e2c?w=800&q=80", description: "Breathable pure cotton, perfect for office or casual wear." },
-    { title: "Levi's 511 Slim Fit Jeans", price: 2599, countInStock: 20, category: "clothing", image: "https://images.unsplash.com/photo-1542272604-787c3835535d?w=800&q=80", description: "Modern slim fit with room to move. Dark wash." },
-    
-    // Fashion - Women
-    { title: "Floral Summer Maxi Dress", price: 2499, countInStock: 20, category: "clothing", image: "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=800&q=80", description: "Lightweight, breathable floral dress perfect for summer." },
-    { title: "Designer Leather Handbag", price: 8500, countInStock: 20, category: "clothing", image: "https://images.unsplash.com/photo-1584916201218-f4242ceb4809?w=800&q=80", description: "Elegant tote bag with premium leather finish." },
-    { title: "Women's Running Shoes", price: 4999, countInStock: 20, category: "clothing", image: "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=800&q=80", description: "Lightweight mesh sneakers for everyday comfort." },
-    { title: "Gold Plated Minimalist Necklace", price: 1299, countInStock: 20, category: "clothing", image: "https://images.unsplash.com/photo-1599643478514-4a4208035ed8?w=800&q=80", description: "18k gold plated dainty chain with pendant." },
-    
-    // Home & Living
-    { title: "Modern Velvet Sofa", price: 45000, countInStock: 20, category: "furniture", image: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800&q=80", description: "Mid-century modern 3-seater sofa in emerald green velvet." },
-    { title: "Smart LED Table Lamp", price: 2100, countInStock: 20, category: "furniture", image: "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=800&q=80", description: "WiFi enabled, app controlled adjustable lighting." },
-    { title: "Ceramic Coffee Mug Set", price: 899, countInStock: 20, category: "furniture", image: "https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=800&q=80", description: "Set of 4 artisan crafted ceramic mugs." },
-    
-    // Extra electronics
-    { title: "Canon EOS R5 Camera", price: 339990, countInStock: 20, category: "electronics", image: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=800&q=80", description: "45MP full-frame mirrorless camera with 8K video." },
-    { title: "Logitech MX Master 3S Mouse", price: 9495, countInStock: 20, category: "electronics", image: "https://images.unsplash.com/photo-1615663245857-ac9310d5b1ff?w=800&q=80", description: "Advanced wireless mouse with ultra-fast scrolling." }
+const seedProductData = [
+  { title: "MacBook Pro 14\" M3", price: 199999, description: "Apple M3 chip, 18GB RAM, 512GB SSD, Space Black", category: "electronics", image: "https://res.cloudinary.com/ojvhy6qp/image/upload/v1725000000/cartify/macbook-pro-14-m3.jpg", countInStock: 12, rating: { rate: 4.8, count: 342 } },
+  { title: "iPhone 15 Pro Max", price: 159999, description: "A17 Pro chip, 256GB, Natural Titanium", category: "electronics", image: "https://res.cloudinary.com/ojvhy6qp/image/upload/v1725000000/cartify/iphone-15-pro-max.jpg", countInStock: 18, rating: { rate: 4.7, count: 891 } },
+  { title: "Sony WH-1000XM5", price: 29999, description: "Wireless Noise Cancelling Headphones, 30hr battery", category: "electronics", image: "https://res.cloudinary.com/ojvhy6qp/image/upload/v1725000000/cartify/sony-wh1000xm5.jpg", countInStock: 25, rating: { rate: 4.6, count: 2341 } },
+  { title: "Samsung Galaxy S24 Ultra", price: 134999, description: "Snapdragon 8 Gen 3, 256GB, S Pen, Titanium Gray", category: "electronics", image: "https://res.cloudinary.com/ojvhy6qp/image/upload/v1725000000/cartify/samsung-s24-ultra.jpg", countInStock: 15, rating: { rate: 4.5, count: 567 } },
+  { title: "Apple AirPods Pro 2", price: 24999, description: "Active Noise Cancellation, USB-C, Adaptive Transparency", category: "electronics", image: "https://res.cloudinary.com/ojvhy6qp/image/upload/v1725000000/cartify/airpods-pro-2.jpg", countInStock: 30, rating: { rate: 4.8, count: 3201 } },
+  { title: "Nike Air Force 1 '07", price: 11995, description: "Classic white leather sneakers, men's size 9", category: "footwear", image: "https://res.cloudinary.com/ojvhy6qp/image/upload/v1725000000/cartify/nike-air-force-1.jpg", countInStock: 8, rating: { rate: 4.4, count: 1892 } },
+  { title: "Adidas Ultraboost Light", price: 15999, description: "Ultra-lightweight running shoes, Core Black", category: "footwear", image: "https://res.cloudinary.com/ojvhy6qp/image/upload/v1725000000/cartify/adidas-ultraboost-light.jpg", countInStock: 14, rating: { rate: 4.5, count: 982 } },
+  { title: "Levi's 501 Original Jeans", price: 5499, description: "Regular fit straight leg jeans, Rigid Dragon", category: "clothing", image: "https://res.cloudinary.com/ojvhy6qp/image/upload/v1725000000/cartify/levis-501.jpg", countInStock: 22, rating: { rate: 4.3, count: 4501 } },
+  { title: "Puma Hoodie", price: 3999, description: "Cotton-blend fleece hoodie, Black, Size M", category: "clothing", image: "https://res.cloudinary.com/ojvhy6qp/image/upload/v1725000000/cartify/puma-hoodie.jpg", countInStock: 35, rating: { rate: 4.2, count: 672 } },
+  { title: "Ray-Ban Aviator Sunglasses", price: 8999, description: "Gold frame, green classic lens G-15, 58mm", category: "accessories", image: "https://res.cloudinary.com/ojvhy6qp/image/upload/v1725000000/cartify/rayban-aviator.jpg", countInStock: 20, rating: { rate: 4.6, count: 2783 } },
+  { title: "Titan Smart Watch", price: 14995, description: "AMOLED display, 100+ sport modes, 7 day battery", category: "accessories", image: "https://res.cloudinary.com/ojvhy6qp/image/upload/v1725000000/cartify/titan-smartwatch.jpg", countInStock: 16, rating: { rate: 4.3, count: 1245 } },
+  { title: "Wooden Study Table", price: 12999, description: "Premium engineered wood, 120x60cm, Walnut finish", category: "furniture", image: "https://res.cloudinary.com/ojvhy6qp/image/upload/v1725000000/cartify/wooden-study-table.jpg", countInStock: 5, rating: { rate: 4.1, count: 234 } },
+  { title: "Ergonomic Office Chair", price: 18999, description: "Mesh back, lumbar support, adjustable height, Black", category: "furniture", image: "https://res.cloudinary.com/ojvhy6qp/image/upload/v1725000000/cartify/ergonomic-chair.jpg", countInStock: 7, rating: { rate: 4.4, count: 876 } },
+  { title: "Maybelline Fit Me Foundation", price: 799, description: "Natural finish liquid foundation, Shade 128 Warm Nude", category: "beauty", image: "https://res.cloudinary.com/ojvhy6qp/image/upload/v1725000000/cartify/maybelline-fit-me.jpg", countInStock: 45, rating: { rate: 4.2, count: 4321 } },
+  { title: "Lakme Absolute Lipstick", price: 949, description: "Matte finish, long-lasting, Shade Red Alert", category: "beauty", image: "https://res.cloudinary.com/ojvhy6qp/image/upload/v1725000000/cartify/lakme-lipstick.jpg", countInStock: 50, rating: { rate: 4.1, count: 2987 } },
+  { title: "Sony PlayStation 5 Slim", price: 54999, description: "Slim disk edition, DualSense controller, 1TB SSD", category: "electronics", image: "https://res.cloudinary.com/ojvhy6qp/image/upload/v1725000000/cartify/ps5-slim.jpg", countInStock: 3, rating: { rate: 4.9, count: 4502 } },
+  { title: "Dell UltraSharp 27\" 4K", price: 44999, description: "IPS panel, USB-C hub, HDR400, Silver", category: "electronics", image: "https://res.cloudinary.com/ojvhy6qp/image/upload/v1725000000/cartify/dell-ultrasharp-27.jpg", countInStock: 9, rating: { rate: 4.7, count: 543 } },
+  { title: "JBL Flip 6 Speaker", price: 12999, description: "Portable Bluetooth speaker, IP67 waterproof, Grey", category: "electronics", image: "https://res.cloudinary.com/ojvhy6qp/image/upload/v1725000000/cartify/jbl-flip6.jpg", countInStock: 11, rating: { rate: 4.5, count: 1876 } },
+  { title: "Zara Formal Blazer", price: 7999, description: "Slim fit, single-breasted blazer, Navy Blue, Size M", category: "clothing", image: "https://res.cloudinary.com/ojvhy6qp/image/upload/v1725000000/cartify/zara-blazer.jpg", countInStock: 10, rating: { rate: 4.0, count: 432 } },
+  { title: "Noise Cancelling Earbuds", price: 3999, description: "BT 5.3, 40hr battery, ENC, Transparency mode", category: "electronics", image: "https://res.cloudinary.com/ojvhy6qp/image/upload/v1725000000/cartify/noise-earbuds.jpg", countInStock: 28, rating: { rate: 4.3, count: 1543 } }
 ];
 
-// FUNCTION TO SEED DATABASE
-const seedDatabase = async () => {
-    try {
-        await Product.insertMany(premiumProducts);
-        console.log(`✅ Success! Added ${premiumProducts.length} Premium Products!`);
-        process.exit(); 
-    } catch (error) {
-        console.error('Error seeding data:', error);
-        process.exit(1);
-    }
-};
-
-seedDatabase();
+export default seedProductData;

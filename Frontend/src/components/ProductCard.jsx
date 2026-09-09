@@ -29,14 +29,18 @@ const ProductCard = memo(({ product }) => {
         style={{ aspectRatio: '1 / 1' }}
         aria-label={`View ${product.title}`}
       >
-        {stock && (
-          <span className={`absolute top-3 left-3 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider z-10 shadow-sm ${stock.bgColor} ${stock.textColor}`}>
-            {stock.label}
-          </span>
-        )}
-        {product.category && (
-          <span className="absolute top-3 right-3 bg-teal-50 text-teal-700 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider z-10 shadow-sm max-w-[60%] truncate">
-            {product.category}
+        {(stock || product.category) && (
+          <span className="absolute top-3 inset-x-3 z-10 flex items-start justify-between gap-2 pointer-events-none">
+            {stock ? (
+              <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm whitespace-nowrap ${stock.bgColor} ${stock.textColor}`}>
+                {stock.label}
+              </span>
+            ) : <span />}
+            {product.category && (
+              <span className="bg-teal-50 text-teal-700 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm max-w-[55%] truncate">
+                {product.category}
+              </span>
+            )}
           </span>
         )}
         <img
@@ -58,7 +62,7 @@ const ProductCard = memo(({ product }) => {
           </h3>
         </Link>
 
-        <div className="flex items-center space-x-1.5 mb-4">
+        <div className="flex items-center gap-1.5 mb-4">
           <div className="flex items-center text-yellow-400">
             <Star className="fill-current" size={14} aria-hidden="true" />
           </div>

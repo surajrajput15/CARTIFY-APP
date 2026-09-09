@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../context/cartContext';
 import { ShoppingCart, Star, ArrowLeft, RefreshCw, AlertTriangle, Minus, Plus, Lock } from 'lucide-react';
 import { getStockStatus } from '../utils/stockStatus';
@@ -10,6 +10,7 @@ import StockBadge from '../components/StockBadge';
 import { SkeletonCard } from '../components/Skeleton';
 import { ErrorIllustration } from '../components/illustrations/EmptyStateIllustrations';
 import toast from 'react-hot-toast';
+import { logError } from '../utils/logger';
 import { fetchProductById, fetchProducts } from '../services/productsApi';
 import ProductCard from '../components/ProductCard';
 
@@ -22,19 +23,26 @@ const ProductDetailsPage = () => {
   const [error, setError] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [relatedProducts, setRelatedProducts] = useState(null);
+  const [justAdded, setJustAdded] = useState(false);
+  // Guards against out-of-order responses when the user jumps between
+  // products faster than the API replies — only the latest request applies.
+  const requestIdRef = useRef(0);
   const { addToCart } = useCart();
 
   const loading = product === null;
   const relatedLoading = relatedProducts === null;
 
   const fetchProduct = useCallback(() => {
+    const myRequest = ++requestIdRef.current;
     fetchProductById(id)
       .then((response) => {
+        if (requestIdRef.current !== myRequest) return;
         setProduct(response.data);
         setError(null);
       })
       .catch((err) => {
-        console.error('Error fetching product:', err);
+        if (requestIdRef.current !== myRequest) return;
+        logError('Error fetching product:', err);
         const message = err.response?.data?.message || 'Failed to load product details';
         setError(message);
         toast.error(message);
@@ -43,16 +51,21 @@ const ProductDetailsPage = () => {
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    setJustAdded(false);
+    setQuantity(1);
     fetchProduct();
   }, [fetchProduct]);
 
   const fetchRelated = useCallback((category, excludeId) => {
+    const myRequest = ++requestIdRef.current;
     fetchProducts({ category, limit: 5 })
       .then((response) => {
+        if (requestIdRef.current !== myRequest) return;
         const data = Array.isArray(response.data) ? response.data : response.data.products || [];
         setRelatedProducts(data.filter((p) => p._id !== excludeId).slice(0, 4));
       })
       .catch(() => {
+        if (requestIdRef.current !== myRequest) return;
         setRelatedProducts([]);
       });
   }, []);
@@ -126,6 +139,7 @@ const ProductDetailsPage = () => {
 
   const handleAddToCart = () => {
     addToCart(product, quantity);
+    setJustAdded(true);
     toast.success(`Added ${quantity} ${quantity === 1 ? 'item' : 'items'} to cart`);
   };
 
@@ -212,7 +226,7 @@ const ProductDetailsPage = () => {
           <button
             onClick={handleAddToCart}
             disabled={stockStatus?.disabled}
-            className={`w-full py-3.5 sm:py-4 rounded-xl font-bold text-base sm:text-lg transition-colors shadow-lg flex justify-center items-center gap-2 min-h-[52px] ${
+            className={`w-full py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg transition-colors shadow-lg flex justify-center items-center gap-2 min-h-[52px] ${
               stockStatus?.disabled
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-60 shadow-gray-200'
                 : 'bg-teal-600 text-white hover:bg-teal-700 shadow-teal-200'
@@ -223,6 +237,15 @@ const ProductDetailsPage = () => {
               ? 'Out of Stock'
               : <span className="inline-flex items-center gap-2">Add to Cart · {formatPrice(product.price * quantity)}</span>}
           </button>
+
+          {justAdded && !stockStatus?.disabled && (
+            <Link
+              to="/cart"
+              className="w-full mt-3 py-3 rounded-xl font-bold text-base text-center border-2 border-teal-600 text-teal-700 hover:bg-teal-50 transition-colors min-h-[52px] inline-flex justify-center items-center"
+            >
+              View Cart & Checkout
+            </Link>
+          )}
 
           <p className="text-xs text-center text-gray-500 mt-3 flex items-center justify-center gap-1">
             <Lock size={12} aria-hidden="true" /> Secure checkout · {getShippingMessage(product.price).text} shipping

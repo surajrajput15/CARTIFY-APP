@@ -5,7 +5,7 @@ import { Trash2, Plus, Minus, Lock } from 'lucide-react';
 import { useCart } from '../context/cartContext';
 import { resolveImageUrl } from '../utils/imageUrl';
 import { formatPrice, truncate } from '../utils/format';
-import { getShippingCost, getShippingMessage } from '../utils/constants';
+import { getShippingCost, getShippingMessage, SHIPPING_CONFIG } from '../utils/constants';
 import { EmptyCartIllustration } from '../components/illustrations/EmptyStateIllustrations';
 
 const PLACEHOLDER_IMG = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzeXN0ZW0tdWkiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5Y2EzYWYiPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg==';
@@ -37,7 +37,7 @@ const CartPage = () => {
     return (
       <div className="max-w-7xl mx-auto p-4 md:p-6 mt-4 min-h-[60vh] flex flex-col items-center justify-center">
         <EmptyCartIllustration className="w-48 h-48 sm:w-56 sm:h-56 mb-6" />
-        <h1 className="text-3xl font-bold text-gray-800 mb-4">Your Cart is Empty</h1>
+        <h1 className="text-3xl sm:text-4xl font-bold text-gray-800 mb-4">Your Cart is Empty</h1>
         <p className="text-gray-500 mb-6 text-center max-w-md">
           Looks like you haven't added anything yet. Browse our collection and find something you love.
         </p>
@@ -54,7 +54,7 @@ const CartPage = () => {
   // Populated cart state
   return (
     <div className="max-w-7xl mx-auto p-4 md:p-6 mt-4 lg:pb-0 pb-28">
-      <h1 className="text-2xl font-bold text-gray-800 mb-8">
+      <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-8">
         Shopping Cart ({totalItems} {totalItems === 1 ? 'item' : 'items'})
       </h1>
 
@@ -83,7 +83,7 @@ const CartPage = () => {
               <div className="flex items-center gap-3 bg-gray-50 p-2 rounded-lg border">
                 <button
                   onClick={() => updateQuantity(item._id || item.id, 'decrease')}
-                  className="p-2 hover:bg-white rounded shadow-sm text-gray-600 min-w-[36px] min-h-[36px] flex items-center justify-center"
+                  className="p-2 hover:bg-white rounded shadow-sm text-gray-600 min-w-[44px] min-h-[44px] flex items-center justify-center"
                   aria-label="Decrease quantity"
                 >
                   <Minus size={16} aria-hidden="true" />
@@ -93,7 +93,9 @@ const CartPage = () => {
                 </span>
                 <button
                   onClick={() => updateQuantity(item._id || item.id, 'increase')}
-                  className="p-2 hover:bg-white rounded shadow-sm text-gray-600 min-w-[36px] min-h-[36px] flex items-center justify-center"
+                  disabled={Number.isInteger(Number(item.countInStock)) && (item.quantity || 1) >= Number(item.countInStock)}
+                  title={Number.isInteger(Number(item.countInStock)) && (item.quantity || 1) >= Number(item.countInStock) ? `Only ${item.countInStock} available in stock` : undefined}
+                  className="p-2 hover:bg-white rounded shadow-sm text-gray-600 min-w-[44px] min-h-[44px] flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                   aria-label="Increase quantity"
                 >
                   <Plus size={16} aria-hidden="true" />
@@ -142,7 +144,7 @@ const CartPage = () => {
             </Link>
 
             <p className="text-xs text-center text-gray-500 mt-3">
-              Estimated delivery: 3–5 business days
+              Estimated delivery: {SHIPPING_CONFIG.ESTIMATED_DELIVERY_DAYS} business days
             </p>
           </div>
         </div>

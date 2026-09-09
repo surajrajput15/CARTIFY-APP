@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { fetchProducts } from '../services/productsApi';
+import { formatNumber } from '../utils/format';
 import { isNetworkError } from '../utils/apiError';
 import { HeroIllustration } from './illustrations/EmptyStateIllustrations';
-
-const FALLBACK_COUNT = 1000; // reasonable estimate when API is unreachable
 
 const HeroBanner = () => {
   const [productCount, setProductCount] = useState(null);
@@ -22,12 +21,12 @@ const HeroBanner = () => {
       })
       .catch((err) => {
         if (cancelled) return;
-        // Network errors: fall back to a sensible default so the UI is never broken.
+        // Offline: never invent a number. Show neutral copy with no count.
         if (isNetworkError(err)) {
-          setProductCount(FALLBACK_COUNT);
+          setProductCount(null);
           setApiOk(false);
         }
-        // Other errors: silently set 0 (will show "Loading…" until next mount)
+        // Other errors: keep neutral copy until next mount.
       });
     return () => { cancelled = true; };
   }, []);
@@ -36,11 +35,12 @@ const HeroBanner = () => {
     document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Copy adapts based on whether we got a real count, are loading, or fell back.
+  // Only render a number when it came from the real API. Offline/loading
+  // shows neutral copy — no fabricated counts.
   const productCountText =
-    productCount === null
-      ? 'top-quality products'
-      : `${productCount.toLocaleString('en-IN')}${apiOk ? '+ products' : '+ curated products'}`;
+    apiOk && productCount !== null
+      ? `${formatNumber(productCount)}+ products`
+      : 'top-quality products';
 
   return (
     <div className="relative bg-gradient-to-r from-teal-700 via-teal-600 to-teal-500 rounded-3xl overflow-hidden shadow-xl mb-10 border border-teal-500/20">
@@ -51,24 +51,24 @@ const HeroBanner = () => {
 
         {/* Left Side: Text and Button */}
         <div className="text-white space-y-4 md:space-y-5 md:w-3/5 z-10 text-center md:text-left">
-          <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/20">
+          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
             </span>
             <span className="text-xs font-bold uppercase tracking-wider text-orange-200">
-              Mega Sale Active
+              New Arrivals
             </span>
           </div>
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black leading-tight tracking-tight drop-shadow-sm">
             Upgrade Your <span className="text-teal-200">Tech</span> &amp; <span className="text-orange-200">Lifestyle</span>
           </h1>
           <p className="text-teal-100 text-sm sm:text-base md:text-lg max-w-xl font-medium leading-relaxed">
-            Get up to <span className="font-bold text-white text-base sm:text-lg">50% off</span> on top electronics, premium accessories, and home essentials. Limited time offer on <span className="font-bold text-white">{productCountText}</span>!
+            Explore top electronics, premium accessories, and home essentials across <span className="font-bold text-white">{productCountText}</span>.
           </p>
           <button
             onClick={handleShopNow}
-            className="mt-4 md:mt-6 inline-flex items-center gap-2 bg-white text-teal-700 font-extrabold py-3.5 px-8 sm:px-9 rounded-xl shadow-lg hover:bg-teal-50 hover:text-teal-800 hover:-translate-y-0.5 hover:shadow-xl transition-all duration-300 active:translate-y-0 cursor-pointer min-h-[44px]"
+            className="mt-4 md:mt-6 inline-flex items-center gap-2 bg-white text-teal-700 font-extrabold py-3 px-8 sm:px-10 rounded-xl shadow-lg hover:bg-teal-50 hover:text-teal-800 hover:-translate-y-0.5 hover:shadow-xl transition-all duration-300 active:translate-y-0 cursor-pointer min-h-[44px]"
             aria-label="Shop now and browse products"
           >
             Shop Now

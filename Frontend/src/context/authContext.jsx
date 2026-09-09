@@ -1,6 +1,7 @@
 import { createContext, useState, useContext, useCallback, useEffect, useRef } from 'react';
 import api from '../api/axios';
 import { isNetworkError } from '../utils/apiError';
+import { logError } from '../utils/logger';
 
 const AuthContext = createContext();
 
@@ -22,6 +23,18 @@ export const AuthProvider = ({ children }) => {
   const initializedRef = useRef(false);
 
   const fetchUser = useCallback(async () => {
+    // Fresh guest (no stored session hint): skip /me entirely — no request,
+    // no 401 noise, no wasted refresh attempt.
+    let hasSessionHint = false;
+    try {
+      hasSessionHint = !!localStorage.getItem('user');
+    } catch {
+      hasSessionHint = false;
+    }
+    if (!hasSessionHint) {
+      setUser(null);
+      return;
+    }
     try {
       const { data } = await api.get('/api/auth/me');
       setUser(data.user);
@@ -31,10 +44,16 @@ export const AuthProvider = ({ children }) => {
       // The BackendStatusBanner already surfaces network failures.
       if (isNetworkError(err) || err.response?.status === 401) {
         setUser(null);
+        // Clear the stale hint so reloads don't refetch /me + cart in a loop.
+        try {
+          localStorage.removeItem('user');
+        } catch {
+          // ignore storage errors
+        }
         return;
       }
       // Real errors get logged.
-      console.error('Auth /me failed:', err);
+      logError('Auth /me failed:', err);
       setUser(null);
     }
   }, []);
@@ -56,7 +75,7 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       // Silent for network errors; log only real problems.
       if (!isNetworkError(err)) {
-        console.error('Logout error:', err);
+        logError('Logout error:', err);
       }
     } finally {
       localStorage.removeItem('user');

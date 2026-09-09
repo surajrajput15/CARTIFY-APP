@@ -9,7 +9,7 @@ const ConfirmModal = ({ title, message, confirmLabel, cancelLabel, loading, onCo
           <div className="bg-red-50 p-2 rounded-full flex-shrink-0">
             <AlertTriangle size={24} className="text-red-500" aria-hidden="true" />
           </div>
-          <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+          <h3 className="text-lg sm:text-xl font-bold text-gray-900">{title}</h3>
         </div>
         <button
           onClick={onCancel}
@@ -20,13 +20,13 @@ const ConfirmModal = ({ title, message, confirmLabel, cancelLabel, loading, onCo
         </button>
       </div>
       <p className="text-gray-600 text-sm mb-6">{message}</p>
-      <div className="flex gap-3">
+      <div className="flex flex-col-reverse sm:flex-row gap-3">
         <button
           onClick={onConfirm}
           disabled={loading}
           className="flex-1 bg-red-500 text-white py-2.5 rounded-lg font-bold hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[44px]"
         >
-          {loading ? <Loader2 size={18} className="animate-spin" /> : null}
+          {loading ? <Loader2 size={18} className="animate-spin" aria-hidden="true" /> : null}
           {confirmLabel || 'Confirm'}
         </button>
         <button

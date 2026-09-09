@@ -1,4 +1,5 @@
 const AuditLog = require('../models/AuditLog');
+const { logger } = require('../utils/logger');
 
 // Middleware to log admin actions
 const auditLogMiddleware = (action, resource) => {
@@ -105,7 +106,7 @@ async function logAudit({
     });
   } catch (error) {
     // Don't let audit logging failures affect the main request
-    console.error('Audit log error:', error);
+    logger.error({ err: error }, 'Audit log error:');
   }
 }
 

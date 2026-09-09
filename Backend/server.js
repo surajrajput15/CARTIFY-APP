@@ -7,8 +7,14 @@ const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 const csrf = require('csurf');
 const crypto = require('crypto');
+const dns = require('dns');
 const Sentry = require('@sentry/node');
 require('dotenv').config();
+
+// Force Node.js to use Google DNS for SRV resolution
+dns.setServers(['8.8.8.8', '8.8.4.4']);
+dns.setDefaultResultOrder('ipv4first');
+
 const { logger, createChildLogger } = require('./utils/logger');
 const { cache, getRedisClient } = require('./utils/redisCache');
 
@@ -74,6 +80,7 @@ const addressRoutes = require('./routes/addressRoutes');
 const cartRoutes = require('./routes/cartRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const couponRoutes = require('./routes/couponRoutes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -82,14 +89,10 @@ const app = express();
 // Without this, rate-limit logs "ERR_ERL_UNEXPECTED_X_FORWARDED_FOR" warnings
 app.set('trust proxy', 1);
 
-// Rate Limiting - Auth endpoints (5 requests per minute)
-const authLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000,
-  max: 5,
-  message: { message: "Too many requests. Please try again after a minute." }
-});
-
 // Rate Limiting - General API (200 requests per minute, burst of 300)
+// NOTE: auth routes carry their own scoped limiters (credential 5/min,
+// session 60/min) inside routes/authRoutes.js, so no blanket limiter here —
+// a router-wide 5/min budget starved /me + /refresh and 429'd real logins.
 const generalLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
   max: 200,
@@ -123,34 +126,62 @@ app.use(cookieParser());
 // the stream and replace req.body with a parsed object). The actual handler lives in
 // paymentRoutes.js (/api/payment/webhook).
 app.post('/api/payment/webhook', express.raw({ type: 'application/json', limit: '50kb' }));
+// Same trap for the versioned mount: /api/v1/payment/* is served by the same
+// router, so its webhook must also bypass express.json() or signature checks
+// always fail (raw Buffer required).
+app.post('/api/v1/payment/webhook', express.raw({ type: 'application/json', limit: '50kb' }));
 
 app.use(express.json({ limit: "10kb" }));
 
 // CSRF Protection - exclude webhook, auth endpoints that use JWT in body, and cart read operations
 const csrfProtection = csrf({ cookie: { httpOnly: false, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' } });
-app.use((req, res, next) => {
-  const excludedPaths = [
-    '/api/payment/webhook',
-    '/api/auth/send-otp',
-    '/api/auth/verify-otp',
-    '/api/auth/register',
-    '/api/auth/login',
-    '/api/auth/forgot-password',
-    '/api/auth/reset-password',
-    '/api/auth/google',
-    '/api/auth/csrf-token',  // Allow fetching CSRF token without CSRF token
-    '/api/auth/refresh',     // Token refresh needs to work without CSRF
-    '/api/auth/logout'       // Logout should work without CSRF
-  ];
-  // Only exclude GET /api/cart (cart reads) - mutations need CSRF
-  if (req.method === 'GET' && req.path.startsWith('/api/cart')) {
-    return next();
-  }
-  if (excludedPaths.some(p => req.path.startsWith(p))) {
-    return next();
-  }
-  csrfProtection(req, res, next);
+
+// CSRF token endpoint - SINGLE handler that runs csrfProtection once and sends
+// the token directly. Kept ahead of the global CSRF middleware and also listed
+// in excludedPaths below so the global middleware never double-invokes csurf
+// for this path (double-invoke was the cause of "req.csrfToken is not a function").
+app.get('/api/auth/csrf-token', csrfProtection, (req, res) => {
+  const token = req.csrfToken();
+  // Mirror the token into a readable cookie. The frontend's axios interceptor
+  // reads the `csrfToken` cookie (csurf itself only sets the `_csrf` secret
+  // cookie, which is NOT a usable token) and sends it back as X-CSRF-Token.
+  // NOTE: appended via raw setHeader because csurf sets its cookie the same
+  // way and Express's res.cookie() would overwrite it (verified empirically).
+  const cookieVal = `csrfToken=${token}; Path=/; SameSite=Lax; Max-Age=86400${
+    process.env.NODE_ENV === 'production' ? '; Secure' : ''
+  }`;
+  const prev = res.getHeader('Set-Cookie');
+  res.setHeader('Set-Cookie', prev ? [].concat(prev, cookieVal) : cookieVal);
+  res.status(200).json({ csrfToken: token });
 });
+
+app.use((req, res, next) => {
+   const excludedPaths = [
+     '/api/payment/webhook',
+     '/api/auth/send-otp',
+     '/api/auth/verify-otp',
+     '/api/auth/register',
+     '/api/auth/login',
+     '/api/auth/forgot-password',
+     '/api/auth/reset-password',
+     '/api/auth/google',
+     '/api/auth/csrf-token',  // Served by the single handler above - skip global csurf
+     '/api/auth/refresh',     // Token refresh needs to work without CSRF
+     '/api/coupons/validate'  // Coupon validation during checkout
+   ];
+   // Version-agnostic matching: /api/v1/* routers serve the same handlers as
+   // /api/*, so exclusions must apply to both (e.g. GET /api/v1/cart reads and
+   // POST /api/v1/coupons/validate previously missed CSRF handling).
+   const normalizedPath = req.path.replace(/^\/api\/v1(\/|$)/, '/api$1');
+   // Only exclude GET /api/cart (cart reads) - mutations need CSRF
+   if (req.method === 'GET' && normalizedPath.startsWith('/api/cart')) {
+     return next();
+   }
+   if (excludedPaths.some(p => normalizedPath.startsWith(p))) {
+     return next();
+   }
+   csrfProtection(req, res, next);
+ });
 
 // Helmet with CSP
 app.use(helmet({
@@ -237,12 +268,13 @@ app.use('/api', v1Routes); // Backward compatibility (defaults to v1)
 
 // Legacy routes (kept for backward compatibility - will be deprecated)
 app.use('/api/products', productRoutes);
-app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/addresses', addressRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/upload', uploadRoutes.router);
+app.use('/api/coupons', couponRoutes);
 
 // Swagger API Documentation
 const { setupSwagger } = require('./utils/swagger');

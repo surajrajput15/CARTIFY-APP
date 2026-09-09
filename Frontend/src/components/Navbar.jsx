@@ -68,7 +68,7 @@ const Navbar = () => {
             </button>
           </form>
 
-          <div className="flex items-center space-x-1 sm:space-x-3 lg:space-x-4 flex-shrink-0">
+          <div className="flex items-center gap-1 sm:gap-3 lg:gap-4 flex-shrink-0">
 
             <button
               type="button"
@@ -81,7 +81,7 @@ const Navbar = () => {
             </button>
 
             {user ? (
-              <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-3">
+              <div className="flex items-center gap-1 sm:gap-2 lg:gap-3">
                 <NavLink to="/profile" aria-label="Profile" className={({ isActive }) =>
                   `${linkBase} font-bold ${isActive ? `${linkActiveBase} border-b-2 border-teal-500 pb-0.5` : 'text-teal-700 hover:text-teal-800'}`
                 }>

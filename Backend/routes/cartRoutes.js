@@ -1,4 +1,5 @@
 const express = require('express');
+const { logger } = require('../utils/logger');
 const router = express.Router();
 const Cart = require('../models/Cart');
 const Product = require('../models/Product');
@@ -40,7 +41,7 @@ router.get('/', protect, async (req, res) => {
     const products = await Product.find({ _id: { $in: productIds } }).lean();
     res.status(200).json({ items: hydrateItems(cart.items, products) });
   } catch (error) {
-    console.error('Cart fetch error:', error);
+    logger.error({ err: error }, 'Cart fetch error:');
     res.status(500).json({ message: 'Failed to fetch cart' });
   }
 });
@@ -50,10 +51,13 @@ router.get('/', protect, async (req, res) => {
 router.post('/merge', protect, async (req, res) => {
   try {
     const localItems = Array.isArray(req.body.items) ? req.body.items : [];
+    // Caps mirror the payment limit (qty 1-20) so a stored cart can never
+    // hold a quantity that checkout would reject; 100 items bounds the write.
     const normalized = localItems
+      .slice(0, 100)
       .map((item) => ({
         productId: item.productId || item._id || item.id,
-        quantity: Math.max(1, Math.floor(Number(item.quantity)) || 1),
+        quantity: Math.min(20, Math.max(1, Math.floor(Number(item.quantity)) || 1)),
       }))
       .filter((item) => item.productId);
 
@@ -83,7 +87,8 @@ router.post('/merge', protect, async (req, res) => {
       const key = item.productId.toString();
       const existing = mergedMap.get(key);
       if (existing) {
-        existing.quantity += item.quantity;
+        // Keep the merged total within the payment limit (qty <= 20).
+        existing.quantity = Math.min(20, existing.quantity + item.quantity);
       } else {
         mergedMap.set(key, { productId: item.productId, quantity: item.quantity });
       }
@@ -95,7 +100,7 @@ router.post('/merge', protect, async (req, res) => {
     const products = await Product.find({ _id: { $in: cart.items.map((i) => i.productId) } }).lean();
     res.status(200).json({ items: hydrateItems(cart.items, products) });
   } catch (error) {
-    console.error('Cart merge error:', error);
+    logger.error({ err: error }, 'Cart merge error:');
     res.status(500).json({ message: 'Failed to sync cart' });
   }
 });
@@ -105,10 +110,13 @@ router.post('/merge', protect, async (req, res) => {
 router.put('/', protect, async (req, res) => {
   try {
     const localItems = Array.isArray(req.body.items) ? req.body.items : [];
+    // Caps mirror the payment limit (qty 1-20) so a stored cart can never
+    // hold a quantity that checkout would reject; 100 items bounds the write.
     const normalized = localItems
+      .slice(0, 100)
       .map((item) => ({
         productId: item.productId || item._id || item.id,
-        quantity: Math.max(1, Math.floor(Number(item.quantity)) || 1),
+        quantity: Math.min(20, Math.max(1, Math.floor(Number(item.quantity)) || 1)),
       }))
       .filter((item) => item.productId);
 
@@ -125,7 +133,7 @@ router.put('/', protect, async (req, res) => {
 
     res.status(200).json({ items: hydrateItems(validItems, products) });
   } catch (error) {
-    console.error('Cart sync error:', error);
+    logger.error({ err: error }, 'Cart sync error:');
     res.status(500).json({ message: 'Failed to sync cart' });
   }
 });
@@ -136,7 +144,7 @@ router.delete('/', protect, async (req, res) => {
     await Cart.deleteOne({ userId: req.user._id });
     res.status(200).json({ message: 'Cart cleared' });
   } catch (error) {
-    console.error('Cart clear error:', error);
+    logger.error({ err: error }, 'Cart clear error:');
     res.status(500).json({ message: 'Failed to clear cart' });
   }
 });

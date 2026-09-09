@@ -49,8 +49,14 @@ const LoginPage = () => {
   const [claimOtp, setClaimOtp] = useState('');
   const [claimOtpSent, setClaimOtpSent] = useState(false);
 
+  const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test((value || '').trim());
+
   const handleSendResetOtp = useCallback(async (e) => {
     e.preventDefault();
+    if (!isValidEmail(email)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
     setError(''); setSuccessMsg(''); setLoading(true);
     try {
       await forgotPassword({ email });
@@ -97,6 +103,10 @@ const LoginPage = () => {
 
   const handleSendOtp = useCallback(async (e) => {
     e.preventDefault();
+    if (!isValidEmail(email)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
     setError(''); setSuccessMsg(''); setLoading(true);
     try {
       await sendOtp({ email });

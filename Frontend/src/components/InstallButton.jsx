@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Download } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { subscribeCanInstall, promptInstall, isStandalone } from '../utils/pwa';
+import { logError } from '../utils/logger';
 
 const InstallButton = () => {
   const [visible, setVisible] = useState(false);
@@ -25,7 +26,7 @@ const InstallButton = () => {
         setVisible(false);
       }
     } catch (err) {
-      console.error('Install prompt error:', err);
+      logError('Install prompt error:', err);
       toast.error('Could not install the app. Try again later.');
     }
   };

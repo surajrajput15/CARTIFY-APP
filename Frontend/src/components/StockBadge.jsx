@@ -12,7 +12,8 @@ const StockBadge = memo(({ countInStock, size = 'md', className = '' }) => {
 
   return (
     <span className={`${SIZE_CLASSES[size]} ${status.bgColor} ${status.textColor} ${className}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${status.dotColor}`} />
+      <span className={`w-1.5 h-1.5 rounded-full ${status.dotColor}`} aria-hidden="true" />
+      <span className="sr-only">Availability: </span>
       {status.label}
     </span>
   );

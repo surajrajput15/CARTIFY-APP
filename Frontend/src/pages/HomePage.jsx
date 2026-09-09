@@ -7,6 +7,7 @@ import { SkeletonList } from '../components/Skeleton';
 import { SearchEmptyIllustration } from '../components/illustrations/EmptyStateIllustrations';
 import { isNetworkError } from '../utils/apiError';
 import { formatNumber, truncate } from '../utils/format';
+import { logError } from '../utils/logger';
 import { PRODUCT_CATEGORIES } from '../utils/constants';
 
 const getPageNumbers = (current, total) => {
@@ -33,6 +34,7 @@ const HomePage = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('search') || '';
@@ -75,14 +77,14 @@ const HomePage = () => {
           setProducts([]);
           setTotal(0);
         } else {
-          console.error('Failed to fetch products:', error);
+          logError('Failed to fetch products:', error);
           setFetchError('server');
         }
       })
       .finally(() => { if (!cancelled) setLoading(false); });
 
     return () => { cancelled = true; };
-  }, [page, selectedCategory, searchQuery]);
+  }, [page, selectedCategory, searchQuery, retryKey]);
 
   const handleCategoryChange = (cat) => {
     setSelectedCategory(cat);
@@ -91,6 +93,12 @@ const HomePage = () => {
   const goToPage = (p) => {
     setPage(p);
     document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const handleRetry = () => {
+    setFetchError(null);
+    setLoading(true);
+    setRetryKey((k) => k + 1);
   };
 
   const heading = searchQuery
@@ -146,6 +154,20 @@ const HomePage = () => {
           <p className="text-gray-500 max-w-md mx-auto text-sm sm:text-base">
             The backend is unreachable. Check the yellow banner at the top of the page for details, or refresh once the server is back online.
           </p>
+        </div>
+      ) : fetchError === 'server' ? (
+        <div className="text-center py-12 sm:py-20 bg-gray-50 rounded-2xl border border-gray-100 px-4">
+          <SearchEmptyIllustration className="w-24 h-24 sm:w-32 sm:h-32 mx-auto mb-4" />
+          <h3 className="text-xl sm:text-2xl font-bold text-gray-700 mb-2">Something went wrong</h3>
+          <p className="text-gray-500 max-w-md mx-auto text-sm sm:text-base mb-6">
+            We couldn't load products just now. Please try again.
+          </p>
+          <button
+            onClick={handleRetry}
+            className="bg-teal-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-teal-700 transition-colors min-h-[44px] inline-flex items-center"
+          >
+            Try Again
+          </button>
         </div>
       ) : products.length > 0 ? (
         <>

@@ -1,4 +1,5 @@
 const express = require('express');
+const { logger } = require('../utils/logger');
 const router = express.Router();
 const multer = require('multer');
 const crypto = require('crypto');
@@ -86,7 +87,7 @@ router.post('/', protect, admin, (req, res) => {
         { public_id: publicId, resource_type: 'image' },
         (cloudErr, result) => {
           if (cloudErr || !result?.secure_url) {
-            console.error('Cloudinary upload error:', cloudErr?.message || 'no url returned');
+            logger.error({ err: cloudErr }, 'Cloudinary upload error');
             return res.status(500).json({ message: 'Failed to save image' });
           }
           finishUpload(result.secure_url);
@@ -103,7 +104,7 @@ router.post('/', protect, admin, (req, res) => {
 
     fs.writeFile(filePath, req.file.buffer, (writeErr) => {
       if (writeErr) {
-        console.error('Upload write error:', writeErr.message);
+        logger.error({ err: writeErr.message }, 'Upload write error:');
         return res.status(500).json({ message: 'Failed to save image' });
       }
       const baseUrl = `${req.protocol}://${req.get('host')}`;
