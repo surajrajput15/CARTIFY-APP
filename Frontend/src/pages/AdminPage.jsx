@@ -13,6 +13,7 @@ import AdminFilterBar from '../components/admin/AdminFilterBar';
 import ProductTable from '../components/admin/ProductTable';
 import ProductFormModal from '../components/admin/ProductFormModal';
 import AdminOrdersTab from '../components/admin/AdminOrdersTab';
+import AdminCouponsTab from '../components/admin/AdminCouponsTab';
 import { isNetworkError } from '../utils/apiError';
 
 const CLOSED_CONFIRM = { show: false, title: '', message: '', onConfirm: null, loading: false };
@@ -56,6 +57,18 @@ const AdminPage = () => {
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      e.target.value = '';
+      return;
+    }
+    const MAX_IMAGE_SIZE_MB = 5;
+    if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
+      toast.error(`Image must be under ${MAX_IMAGE_SIZE_MB}MB`);
+      e.target.value = '';
+      return;
+    }
+    e.target.value = '';
     try {
       const { data } = await uploadImage(file);
       setForm({ ...form, image: data.image });
@@ -96,6 +109,11 @@ const AdminPage = () => {
       toast.error('Rating must be between 0 and 5');
       return;
     }
+    const reviewCount = Number(form.rating?.count ?? 0);
+    if (!Number.isInteger(reviewCount) || reviewCount < 0) {
+      toast.error('Review count must be a whole number 0 or above');
+      return;
+    }
     const wasEditing = Boolean(editingProduct);
     setSaving(true);
     try {
@@ -106,7 +124,7 @@ const AdminPage = () => {
       if (isNetworkError(err)) {
         toast.error('Backend is unreachable. Please start the server and try again.');
       } else {
-        toast.error('Failed to save product');
+        toast.error(err?.message || err?.response?.data?.message || 'Failed to save product');
       }
     } finally {
       setSaving(false);
@@ -211,13 +229,13 @@ const AdminPage = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
-      <nav className="flex gap-2 mb-6" role="tablist" aria-label="Admin sections">
-        {['products', 'orders'].map((tab) => (
+      <nav className="flex gap-2 mb-6" role="group" aria-label="Admin sections">
+        {['products', 'orders', 'coupons'].map((tab) => (
           <button
             key={tab}
+            type="button"
             onClick={() => setAdminTab(tab)}
-            aria-selected={adminTab === tab}
-            role="tab"
+            aria-pressed={adminTab === tab}
             className={`px-4 sm:px-5 py-2 rounded-full text-sm font-bold capitalize transition-colors min-h-[44px] ${
               adminTab === tab
                 ? 'bg-teal-600 text-white shadow-md'
@@ -275,6 +293,8 @@ const AdminPage = () => {
       )}
 
       {adminTab === 'orders' && <AdminOrdersTab />}
+
+      {adminTab === 'coupons' && <AdminCouponsTab />}
 
       {confirmModal.show && (
         <ConfirmModal

@@ -17,6 +17,14 @@ const getInitialUser = () => {
   return null;
 };
 
+const hasStoredUser = () => {
+  try {
+    return !!localStorage.getItem('user');
+  } catch {
+    return false;
+  }
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(getInitialUser);
   const [authLoading, setAuthLoading] = useState(true);
@@ -25,13 +33,7 @@ export const AuthProvider = ({ children }) => {
   const fetchUser = useCallback(async () => {
     // Fresh guest (no stored session hint): skip /me entirely — no request,
     // no 401 noise, no wasted refresh attempt.
-    let hasSessionHint = false;
-    try {
-      hasSessionHint = !!localStorage.getItem('user');
-    } catch {
-      hasSessionHint = false;
-    }
-    if (!hasSessionHint) {
+    if (!hasStoredUser()) {
       setUser(null);
       return;
     }

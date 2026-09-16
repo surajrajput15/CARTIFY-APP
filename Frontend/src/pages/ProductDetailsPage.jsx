@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../context/cartContext';
-import { ShoppingCart, Star, ArrowLeft, RefreshCw, AlertTriangle, Minus, Plus, Lock } from 'lucide-react';
+import { ShoppingCart, ArrowLeft, RefreshCw, Minus, Plus, Lock } from 'lucide-react';
 import { getStockStatus } from '../utils/stockStatus';
 import { resolveImageUrl } from '../utils/imageUrl';
-import { formatPrice, formatNumber, calculateDiscount } from '../utils/format';
+import { formatPrice, formatNumber } from '../utils/format';
 import { getShippingMessage } from '../utils/constants';
 import StockBadge from '../components/StockBadge';
+import StarRating from '../components/StarRating';
 import { SkeletonCard } from '../components/Skeleton';
 import { ErrorIllustration } from '../components/illustrations/EmptyStateIllustrations';
 import toast from 'react-hot-toast';
@@ -49,8 +50,11 @@ const ProductDetailsPage = () => {
       });
   }, [id]);
 
+  // Per-product UI reset when navigating between products (route-driven, so
+  // there is no local handler to hang it on) — one-shot, intentional.
   useEffect(() => {
     window.scrollTo(0, 0);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset on product id change
     setJustAdded(false);
     setQuantity(1);
     fetchProduct();
@@ -172,23 +176,26 @@ const ProductDetailsPage = () => {
             {product.title}
           </h1>
 
-          <div className="flex items-center gap-4 mb-6">
-            <div className="flex items-center bg-yellow-50 px-3 py-1 rounded-full border border-yellow-100">
-              <Star className="text-yellow-400 fill-current mr-1" size={18} aria-hidden="true" />
+          <div className="flex items-center gap-3 mb-6">
+            <div className="flex items-center gap-2 bg-yellow-50 px-3 py-1 rounded-full border border-yellow-100">
+              <StarRating rating={product.rating?.rate} size={16} />
               <span className="font-bold text-gray-700">{Number(product.rating?.rate) || 0}</span>
-              <span className="text-gray-500 text-sm ml-1">({formatNumber(product.rating?.count || 0)} reviews)</span>
             </div>
+            <span className="text-sm text-gray-500">
+              {Number(product.rating?.count) || 0
+                ? `Based on ${formatNumber(product.rating.count)} reviews`
+                : 'No reviews yet'}
+            </span>
           </div>
 
           <p className="text-gray-600 text-base sm:text-lg mb-8 leading-relaxed">
             {product.description}
           </p>
 
-          <div className="mt-auto flex flex-col sm:flex-row items-start sm:items-center gap-4 pb-4 border-b border-gray-100 mb-6">
+          <div className="mt-auto flex items-center gap-4 pb-4 border-b border-gray-100 mb-6">
             <span className="text-3xl sm:text-4xl font-extrabold text-gray-900">
               {formatPrice(product.price)}
             </span>
-            <span className="text-sm text-gray-500">Inclusive of all taxes</span>
           </div>
 
           <StockBadge countInStock={product.countInStock} className="mb-4" />
@@ -200,7 +207,7 @@ const ProductDetailsPage = () => {
                 <button
                   onClick={decreaseQty}
                   disabled={quantity <= 1}
-                  className="p-2 rounded-md hover:bg-white hover:shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 min-w-[36px] min-h-[36px] flex items-center justify-center"
+                  className="p-2 rounded-md hover:bg-white hover:shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 min-w-[44px] min-h-[44px] flex items-center justify-center"
                   aria-label="Decrease quantity"
                 >
                   <Minus size={18} aria-hidden="true" />
@@ -211,7 +218,7 @@ const ProductDetailsPage = () => {
                 <button
                   onClick={increaseQty}
                   disabled={quantity >= maxQty}
-                  className="p-2 rounded-md hover:bg-white hover:shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 min-w-[36px] min-h-[36px] flex items-center justify-center"
+                  className="p-2 rounded-md hover:bg-white hover:shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 min-w-[44px] min-h-[44px] flex items-center justify-center"
                   aria-label="Increase quantity"
                 >
                   <Plus size={18} aria-hidden="true" />

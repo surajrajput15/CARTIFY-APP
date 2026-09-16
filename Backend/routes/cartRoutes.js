@@ -1,9 +1,12 @@
 const express = require('express');
 const { logger } = require('../utils/logger');
+const mongoose = require('mongoose');
 const router = express.Router();
 const Cart = require('../models/Cart');
 const Product = require('../models/Product');
 const { protect } = require('../middleware/auth');
+
+const isValidId = (id) => mongoose.Types.ObjectId.isValid(String(id));
 
 // Server-side cart sync. Items are stored as { productId, quantity } and enriched
 // with live product data on read, so the client always renders current prices and
@@ -59,17 +62,17 @@ router.post('/merge', protect, async (req, res) => {
         productId: item.productId || item._id || item.id,
         quantity: Math.min(20, Math.max(1, Math.floor(Number(item.quantity)) || 1)),
       }))
-      .filter((item) => item.productId);
+      .filter((item) => item.productId && isValidId(item.productId));
 
     if (normalized.length === 0) {
       return res.status(200).json({ items: [] });
     }
 
     // Reject unknown product ids before they pollute the stored cart.
-    const validIds = await Product.find({ _id: { $in: normalized.map((i) => i.productId) } })
-      .select('_id')
+    // Single fetch reused for both validation and hydration (no double query).
+    const fetchedProducts = await Product.find({ _id: { $in: normalized.map((i) => i.productId) } })
       .lean();
-    const validSet = new Set(validIds.map((p) => p._id.toString()));
+    const validSet = new Set(fetchedProducts.map((p) => p._id.toString()));
     const validItems = normalized.filter((i) => validSet.has(i.productId.toString()));
 
     const cart = await Cart.findOneAndUpdate(
@@ -97,8 +100,18 @@ router.post('/merge', protect, async (req, res) => {
     cart.items = Array.from(mergedMap.values());
     await cart.save();
 
-    const products = await Product.find({ _id: { $in: cart.items.map((i) => i.productId) } }).lean();
-    res.status(200).json({ items: hydrateItems(cart.items, products) });
+    // Reuse the validation fetch; only fetch cart items not already loaded
+    // (pre-existing items absent from this merge request).
+    const loadedMap = new Map(fetchedProducts.map((p) => [p._id.toString(), p]));
+    const missingIds = cart.items
+      .map((i) => i.productId.toString())
+      .filter((id) => !loadedMap.has(id));
+    let allProducts = fetchedProducts;
+    if (missingIds.length > 0) {
+      const missing = await Product.find({ _id: { $in: missingIds } }).lean();
+      allProducts = [...fetchedProducts, ...missing];
+    }
+    res.status(200).json({ items: hydrateItems(cart.items, allProducts) });
   } catch (error) {
     logger.error({ err: error }, 'Cart merge error:');
     res.status(500).json({ message: 'Failed to sync cart' });
@@ -118,7 +131,7 @@ router.put('/', protect, async (req, res) => {
         productId: item.productId || item._id || item.id,
         quantity: Math.min(20, Math.max(1, Math.floor(Number(item.quantity)) || 1)),
       }))
-      .filter((item) => item.productId);
+      .filter((item) => item.productId && isValidId(item.productId));
 
     // Drop items whose products no longer exist.
     const products = await Product.find({ _id: { $in: normalized.map((i) => i.productId) } }).lean();

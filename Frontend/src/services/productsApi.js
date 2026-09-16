@@ -17,7 +17,8 @@ export const clearAllProducts = () => api.delete('/api/products/clear');
 export const uploadImage = (file) => {
   const fd = new FormData();
   fd.append('image', file);
-  return api.post('/api/upload', fd, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  });
+  // Do NOT set Content-Type here. Axios v1 erases the instance default for
+  // FormData bodies and lets the browser emit the full multipart header —
+  // including the boundary, without which the server can't parse the upload.
+  return api.post('/api/upload', fd);
 };

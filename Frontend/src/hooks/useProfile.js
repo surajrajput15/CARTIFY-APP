@@ -31,7 +31,7 @@ export const useProfile = () => {
     if (mountedRef.current) setUpdateLoading(true);
     try {
       const response = await updateProfile(user.id, { name: editName.trim() });
-      login(response.data.user, localStorage.getItem('token'));
+      login(response.data.user);
       if (mountedRef.current) setIsEditing(false);
       toast.success('Profile updated');
     } catch (error) {

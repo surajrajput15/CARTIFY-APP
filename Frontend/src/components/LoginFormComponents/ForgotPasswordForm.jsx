@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef } from 'react';
 import { Mail, ArrowLeft, Loader2 } from 'lucide-react';
 import PasswordInput from '../PasswordInput';
 
@@ -12,18 +12,41 @@ const ForgotPasswordForm = ({
   handleSendResetOtp, handleResetPassword
 }) => {
   const inputRefs = useRef([]);
-  const resetPasswordRef = useRef(handleResetPassword);
-
-  useEffect(() => {
-    resetPasswordRef.current = handleResetPassword;
-  });
 
   const handleOtpChange = (index, value) => {
-    if (isNaN(value)) return;
+    const digits = value.replace(/\D/g, '');
+    if (!digits) return;
+    if (digits.length === 1) {
+      const newOtp = [...otp];
+      newOtp[index] = digits;
+      setOtp(newOtp);
+      if (index < 5) inputRefs.current[index + 1]?.focus();
+      return;
+    }
+    handleOtpPasteFallback(index, digits);
+  };
+
+  const handleOtpPaste = (e) => {
+    e.preventDefault();
+    const pasted = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+    if (!pasted) return;
+    const firstEmpty = otp.findIndex((d) => d === '');
+    const start = firstEmpty === -1 ? 0 : firstEmpty;
     const newOtp = [...otp];
-    newOtp[index] = value.substring(value.length - 1);
+    for (let i = 0; i < pasted.length && start + i <= 5; i++) {
+      newOtp[start + i] = pasted[i];
+    }
     setOtp(newOtp);
-    if (value !== '' && index < 5) inputRefs.current[index + 1]?.focus();
+    inputRefs.current[Math.min(start + pasted.length, 5)]?.focus();
+  };
+
+  const handleOtpPasteFallback = (index, digits) => {
+    const newOtp = [...otp];
+    for (let i = 0; i < digits.length && index + i <= 5; i++) {
+      newOtp[index + i] = digits[i];
+    }
+    setOtp(newOtp);
+    inputRefs.current[Math.min(index + digits.length, 5)]?.focus();
   };
 
   const handleKeyDown = (index, e) => {
@@ -31,15 +54,6 @@ const ForgotPasswordForm = ({
       inputRefs.current[index - 1]?.focus();
     }
   };
-
-  useEffect(() => {
-    if (forgotStep === 2 && otp.every(d => d !== '') && newPassword.length >= 6) {
-      const timer = setTimeout(() => {
-        resetPasswordRef.current(new Event('submit'));
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [otp, newPassword, forgotStep]);
 
   const handleBack = () => {
     setIsForgotPassword(false);
@@ -73,7 +87,7 @@ const ForgotPasswordForm = ({
             <h2 className="text-xl font-extrabold text-gray-900 mb-2">Verify & Reset</h2>
             <p className="text-gray-500 text-sm mb-4">OTP sent to <span className="font-bold text-gray-800">{email}</span></p>
           </div>
-          <div className="flex justify-between gap-2">
+          <div className="flex justify-between gap-2" onPaste={handleOtpPaste}>
             {otp.map((digit, index) => (
               <input key={index} ref={(el) => (inputRefs.current[index] = el)} type="text" inputMode="numeric" maxLength={1} aria-label={`Digit ${index + 1} of 6`} value={digit} onChange={(e) => handleOtpChange(index, e.target.value)} onKeyDown={(e) => handleKeyDown(index, e)} className="w-9 h-12 min-w-0 flex-1 sm:flex-none sm:w-14 sm:h-16 text-center text-xl sm:text-2xl font-extrabold text-gray-900 border-2 border-gray-200 rounded-xl focus:border-teal-500 focus:ring-0 bg-gray-50" />
             ))}

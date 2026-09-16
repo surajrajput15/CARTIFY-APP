@@ -43,7 +43,7 @@ const InstallButton = () => {
       <button
         type="button"
         onClick={handleInstall}
-        className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+        className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors min-h-[44px]"
       >
         <Download size={16} aria-hidden="true" />
         Install App
@@ -51,7 +51,7 @@ const InstallButton = () => {
       <button
         type="button"
         onClick={handleDismiss}
-        className="text-gray-400 hover:text-gray-600 text-sm font-medium px-1 transition-colors"
+        className="text-gray-400 hover:text-gray-600 text-sm font-medium min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors"
         aria-label="Dismiss install prompt"
       >
         ✕

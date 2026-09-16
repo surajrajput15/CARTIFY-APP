@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { loginWithPassword, register, sendOtp, verifyOtp, forgotPassword, resetPassword } from '../services/authApi';
 import api from '../api/axios';
 import { isNetworkError } from '../utils/apiError';
-import { useBackendStatus } from '../context/BackendStatusContext';
 import PasswordLoginForm from '../components/LoginFormComponents/PasswordLoginForm';
 import OTPLoginForm from '../components/LoginFormComponents/OTPLoginForm';
 import ForgotPasswordForm from '../components/LoginFormComponents/ForgotPasswordForm';
@@ -13,7 +12,6 @@ import GoogleLoginButton from '../components/LoginFormComponents/GoogleLoginButt
 const LoginPage = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const { isOffline } = useBackendStatus();
 
   const redirectAfterLogin = useCallback(() => {
     const intendedPath = sessionStorage.getItem('redirectAfterLogin');

@@ -1,16 +1,21 @@
 import { formatPrice, formatDate } from '../../utils/format';
 
+const ORDER_STATUS_STYLES = {
+  Pending: { label: 'Pending', className: 'bg-gray-100 text-gray-600' },
+  Processing: { label: 'Processing', className: 'bg-blue-50 text-blue-700' },
+  Shipped: { label: 'Shipped', className: 'bg-indigo-50 text-indigo-700' },
+  Delivered: { label: 'Delivered', className: 'bg-teal-50 text-teal-700' },
+  Cancelled: { label: 'Cancelled', className: 'bg-red-50 text-red-700' },
+};
+
 const OrdersTab = ({ orders, loading }) => {
   const getPaymentLabel = (status) => {
     if (status === 'Paid') return { label: 'Paid', className: 'bg-green-50 text-green-700' };
     return { label: 'Payment Pending', className: 'bg-yellow-50 text-yellow-700' };
   };
 
-  const getOrderLabel = (status) => {
-    if (status === 'Delivered') return { label: 'Delivered', className: 'bg-teal-50 text-teal-700' };
-    if (status === 'Processing') return { label: 'Processing', className: 'bg-blue-50 text-blue-700' };
-    return { label: 'Pending', className: 'bg-gray-100 text-gray-600' };
-  };
+  const getOrderLabel = (status) =>
+    ORDER_STATUS_STYLES[status] || { label: status || 'Unknown', className: 'bg-gray-100 text-gray-600' };
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 animate-fade-in-up">
@@ -40,7 +45,20 @@ const OrdersTab = ({ orders, loading }) => {
                     <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${orderStatus.className}`}>{orderStatus.label}</span>
                   </div>
                 </div>
-                <p className="text-teal-600 font-bold">Total: {formatPrice(order.totalPrice)}</p>
+                {order.discountAmount > 0 ? (
+                  <div className="text-sm">
+                    {(() => {
+                      const mrp = Number(order.originalTotal || (order.totalPrice + order.discountAmount)) || 0;
+                      return mrp > 0 ? (
+                        <p className="text-gray-500 line-through">MRP: {formatPrice(mrp)}</p>
+                      ) : null;
+                    })()}
+                    <p className="text-green-700 font-bold">Discount {order.couponCode ? `(${order.couponCode})` : ''}: −{formatPrice(order.discountAmount)}</p>
+                    <p className="text-teal-600 font-bold">Paid: {formatPrice(order.totalPrice)}</p>
+                  </div>
+                ) : (
+                  <p className="text-teal-600 font-bold">Total: {formatPrice(order.totalPrice)}</p>
+                )}
                 {order.paidAt && (
                   <p className="text-gray-500 text-xs mt-1">Paid on {formatDate(order.paidAt)}</p>
                 )}

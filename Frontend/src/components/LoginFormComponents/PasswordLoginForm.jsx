@@ -47,8 +47,16 @@ const PasswordLoginForm = ({
             </button>
           )}
         </div>
-        <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min. 8 characters" required minLength="8" />
-        {isRegistering && <PasswordStrengthMeter password={password} />}
+        <PasswordInput
+          id="register-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Min. 8 characters"
+          required
+          minLength="8"
+          aria-describedby={isRegistering ? 'password-strength' : undefined}
+        />
+        {isRegistering && <PasswordStrengthMeter password={password} id="password-strength" />}
       </div>
 
       <button type="submit" disabled={loading} className="w-full flex items-center justify-center bg-gray-900 text-white py-4 rounded-xl font-bold text-lg hover:bg-teal-600 transition-all shadow-md mt-4">

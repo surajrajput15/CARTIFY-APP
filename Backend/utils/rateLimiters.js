@@ -1,3 +1,6 @@
+// DEPRECATED / DO NOT WIRE without adding `rate-limit-redis` to package.json —
+// it is not installed, so requiring this file crashes. Inline MemoryStore limiters
+// in authRoutes/paymentRoutes/uploadRoutes are canonical (single-instance Render).
 const rateLimit = require('express-rate-limit');
 const RedisStore = require('rate-limit-redis');
 const { getRedisClient } = require('./redisCache');

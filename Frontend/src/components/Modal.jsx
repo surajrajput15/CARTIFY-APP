@@ -3,9 +3,20 @@ import { useEffect, useRef } from 'react';
 const FOCUSABLE =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-const Modal = ({ title, labelledBy, onClose, children, className = '' }) => {
+const Modal = ({ title, labelledBy, onClose, blockClose = false, children, className = '' }) => {
   const dialogRef = useRef(null);
   const previousFocusRef = useRef(null);
+
+  // Held in refs so the mount effect below runs once — inline arrow `onClose`
+  // props from parents would otherwise tear down and re-run the effect (and
+  // re-lock scroll / yank focus) on every parent re-render.
+  const onCloseRef = useRef(onClose);
+  const blockCloseRef = useRef(Boolean(blockClose));
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+    blockCloseRef.current = Boolean(blockClose);
+  });
 
   useEffect(() => {
     previousFocusRef.current = document.activeElement;
@@ -23,7 +34,7 @@ const Modal = ({ title, labelledBy, onClose, children, className = '' }) => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
-        onClose();
+        if (!blockCloseRef.current) onCloseRef.current();
         return;
       }
       if (e.key !== 'Tab' || !dialog) return;
@@ -48,13 +59,16 @@ const Modal = ({ title, labelledBy, onClose, children, className = '' }) => {
       document.body.style.overflow = originalOverflow;
       previousFocusRef.current?.focus?.();
     };
-  }, [onClose]);
+  }, []);
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 overflow-y-auto"
-      onClick={onClose}
+      onClick={() => {
+        if (!blockCloseRef.current) onCloseRef.current();
+      }}
       role="presentation"
+      aria-hidden="true"
     >
       <div
         ref={dialogRef}

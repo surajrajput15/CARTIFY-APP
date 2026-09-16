@@ -5,25 +5,38 @@ import toast from 'react-hot-toast';
 const EMPTY_ADDRESS = { fullName: '', phone: '', street: '', city: '', state: '', pinCode: '' };
 
 const isValidIndianPhone = (phone) => /^[6-9]\d{9}$/.test(phone);
+const isValidPinCode = (pinCode) => /^[1-9][0-9]{5}$/.test(pinCode);
 
 const AddressManager = ({ addresses, addressesLoading, onSaveAddress, onDeleteAddress }) => {
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [addressSaving, setAddressSaving] = useState(false);
   const [phoneError, setPhoneError] = useState('');
+  const [pinError, setPinError] = useState('');
   const [newAddress, setNewAddress] = useState(EMPTY_ADDRESS);
+
+  const resetForm = () => {
+    setShowAddressForm(false);
+    setNewAddress(EMPTY_ADDRESS);
+    setPhoneError('');
+    setPinError('');
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
     setPhoneError('');
+    setPinError('');
     if (!isValidIndianPhone(newAddress.phone)) {
       setPhoneError('Enter a valid 10-digit Indian phone number starting with 6, 7, 8, or 9');
+      return;
+    }
+    if (!isValidPinCode(newAddress.pinCode)) {
+      setPinError('Enter a valid 6-digit PIN code');
       return;
     }
     setAddressSaving(true);
     try {
       await onSaveAddress(newAddress);
-      setShowAddressForm(false);
-      setNewAddress(EMPTY_ADDRESS);
+      resetForm();
     } catch {
       toast.error("Failed to save address");
     } finally {
@@ -48,19 +61,22 @@ const AddressManager = ({ addresses, addressesLoading, onSaveAddress, onDeleteAd
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <input type="text" placeholder="Full Name" aria-label="Full Name" required value={newAddress.fullName} onChange={(e) => setNewAddress({...newAddress, fullName: e.target.value})} className="p-3 rounded-lg border focus:ring-teal-500 focus:border-teal-500" />
             <div>
-              <input type="text" placeholder="Phone Number" aria-label="Phone Number" required value={newAddress.phone} onChange={(e) => { setNewAddress({...newAddress, phone: e.target.value}); setPhoneError(''); }} aria-invalid={Boolean(phoneError)} aria-describedby={phoneError ? 'phone-error' : undefined} className={`p-3 rounded-lg border w-full focus:ring-teal-500 focus:border-teal-500 ${phoneError ? 'border-red-400' : ''}`} />
+              <input type="tel" placeholder="Phone Number" aria-label="Phone Number" inputMode="numeric" maxLength={10} required value={newAddress.phone} onChange={(e) => { setNewAddress({...newAddress, phone: e.target.value.replace(/\D/g, '').slice(0, 10)}); setPhoneError(''); }} aria-invalid={Boolean(phoneError)} aria-describedby={phoneError ? 'phone-error' : undefined} className={`p-3 rounded-lg border w-full focus:ring-teal-500 focus:border-teal-500 ${phoneError ? 'border-red-400' : ''}`} />
               {phoneError && <p id="phone-error" role="alert" className="text-red-500 text-xs mt-1">{phoneError}</p>}
             </div>
             <input type="text" placeholder="Street / Flat / Area" aria-label="Street, Flat or Area" required value={newAddress.street} onChange={(e) => setNewAddress({...newAddress, street: e.target.value})} className="p-3 rounded-lg border focus:ring-teal-500 focus:border-teal-500 md:col-span-2" />
             <input type="text" placeholder="City" aria-label="City" required value={newAddress.city} onChange={(e) => setNewAddress({...newAddress, city: e.target.value})} className="p-3 rounded-lg border focus:ring-teal-500 focus:border-teal-500" />
             <input type="text" placeholder="State" aria-label="State" required value={newAddress.state} onChange={(e) => setNewAddress({...newAddress, state: e.target.value})} className="p-3 rounded-lg border focus:ring-teal-500 focus:border-teal-500" />
-            <input type="text" placeholder="PIN Code" aria-label="PIN Code" required value={newAddress.pinCode} onChange={(e) => setNewAddress({...newAddress, pinCode: e.target.value})} className="p-3 rounded-lg border focus:ring-teal-500 focus:border-teal-500" />
+            <div>
+              <input type="text" placeholder="PIN Code" aria-label="PIN Code" inputMode="numeric" maxLength={6} required value={newAddress.pinCode} onChange={(e) => { setNewAddress({...newAddress, pinCode: e.target.value.replace(/\D/g, '').slice(0, 6)}); setPinError(''); }} aria-invalid={Boolean(pinError)} aria-describedby={pinError ? 'pin-error' : undefined} className={`p-3 rounded-lg border w-full focus:ring-teal-500 focus:border-teal-500 ${pinError ? 'border-red-400' : ''}`} />
+              {pinError && <p id="pin-error" role="alert" className="text-red-500 text-xs mt-1">{pinError}</p>}
+            </div>
           </div>
           <div className="mt-4 flex gap-3">
             <button type="submit" disabled={addressSaving} className="bg-teal-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-teal-700 disabled:opacity-50">
               {addressSaving ? 'Saving...' : 'Save Address'}
             </button>
-            <button type="button" onClick={() => setShowAddressForm(false)} className="px-6 py-2 rounded-lg font-bold text-gray-600 bg-gray-200 hover:bg-gray-300">
+            <button type="button" onClick={resetForm} className="px-6 py-2 rounded-lg font-bold text-gray-600 bg-gray-200 hover:bg-gray-300">
               Cancel
             </button>
           </div>

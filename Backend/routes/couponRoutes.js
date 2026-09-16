@@ -2,9 +2,12 @@ const express = require('express');
 const { logger } = require('../utils/logger');
 const router = express.Router();
 const Coupon = require('../models/Coupon');
+const Product = require('../models/Product');
 const { protect, admin } = require('../middleware/auth');
+const { auditLogMiddleware } = require('../middleware/auditLog');
 
 // Validation helper
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const validateCoupon = (body, isUpdate = false) => {
     const errors = [];
     
@@ -12,17 +15,37 @@ const validateCoupon = (body, isUpdate = false) => {
         if (!body.code || body.code.trim().length < 3) {
             errors.push('Code must be at least 3 characters');
         }
+        if (!body.type) {
+            errors.push('Type is required ("percentage" or "fixed")');
+        }
+        if (body.value === undefined) {
+            errors.push('Value is required');
+        }
+        if (!body.validUntil) {
+            errors.push('Valid until date is required');
+        }
     }
-    
+
+    if (Array.isArray(body.applicableCategories) && body.applicableCategories.some(c => typeof c !== 'string' || !c.trim())) {
+        errors.push('Applicable categories must be non-empty strings');
+    }
+    for (const field of ['applicableProducts', 'excludedProducts']) {
+        if (body[field] !== undefined && (!Array.isArray(body[field]) || body[field].some(id => typeof id !== 'string' || !/^[0-9a-fA-F]{24}$/.test(id)))) {
+            errors.push(`${field} must be an array of product IDs`);
+        }
+    }
+
     if (body.type && !['percentage', 'fixed'].includes(body.type)) {
         errors.push('Type must be either "percentage" or "fixed"');
     }
     
-    if (body.value !== undefined && (typeof body.value !== 'number' || body.value < 0)) {
-        errors.push('Value must be a positive number');
+    if (body.value !== undefined && (typeof body.value !== 'number' || !(body.value > 0) || body.value > 10000000)) {
+        errors.push('Value must be a positive number up to 10000000');
     }
     
-    if (body.type === 'percentage' && body.value !== undefined && body.value > 100) {
+    if (body.value !== undefined && body.value > 100 && (body.type === 'percentage' || (!body.type && isUpdate))) {
+        // On update without explicit type, validate against the stored type at handler level;
+        // this pre-check catches the common create + explicit-type update cases.
         errors.push('Percentage value cannot exceed 100');
     }
     
@@ -34,11 +57,11 @@ const validateCoupon = (body, isUpdate = false) => {
         errors.push('Maximum discount must be a positive number');
     }
     
-    if (body.usageLimit !== undefined && body.usageLimit !== null && (typeof body.usageLimit !== 'number' || body.usageLimit < 1)) {
+    if (body.usageLimit !== undefined && body.usageLimit !== null && (!Number.isInteger(body.usageLimit) || body.usageLimit < 1)) {
         errors.push('Usage limit must be a positive integer');
     }
     
-    if (body.userLimit !== undefined && (typeof body.userLimit !== 'number' || body.userLimit < 1)) {
+    if (body.userLimit !== undefined && (!Number.isInteger(body.userLimit) || body.userLimit < 1)) {
         errors.push('User limit must be a positive integer');
     }
     
@@ -49,12 +72,20 @@ const validateCoupon = (body, isUpdate = false) => {
     if (body.validFrom && isNaN(new Date(body.validFrom).getTime())) {
         errors.push('Valid from date is invalid');
     }
+
+    if (body.validFrom && body.validUntil) {
+        const from = new Date(body.validFrom);
+        const until = new Date(body.validUntil);
+        if (!isNaN(from.getTime()) && !isNaN(until.getTime()) && from >= until) {
+            errors.push('Valid from date must be before valid until date');
+        }
+    }
     
     return errors;
 };
 
 // 1. CREATE COUPON (Admin only)
-router.post('/', protect, admin, async (req, res) => {
+router.post('/', protect, admin, auditLogMiddleware('CREATE_COUPON', 'Coupon'), async (req, res) => {
     try {
         const errors = validateCoupon(req.body);
         if (errors.length > 0) {
@@ -83,7 +114,7 @@ router.post('/', protect, admin, async (req, res) => {
         res.status(201).json({ message: 'Coupon created successfully', coupon });
     } catch (error) {
         if (error.code === 11000) {
-            return res.status(400).json({ message: 'Coupon code already exists' });
+            return res.status(409).json({ message: 'Coupon code already exists' });
         }
         if (error.name === 'ValidationError') {
             return res.status(400).json({ message: error.message });
@@ -104,11 +135,12 @@ router.get('/', protect, admin, async (req, res) => {
         }
         
         if (search) {
-            query.code = { $regex: search.trim().toUpperCase(), $options: 'i' };
+            const term = search.trim().toUpperCase().slice(0, 20);
+            if (term) query.code = { $regex: escapeRegex(term), $options: 'i' };
         }
         
-        const pageNum = parseInt(page) || 1;
-        const limitNum = Math.min(parseInt(limit) || 20, 100);
+        const pageNum = Math.max(1, parseInt(page) || 1);
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 20));
         const skip = (pageNum - 1) * limitNum;
         
         const [coupons, total] = await Promise.all([
@@ -189,13 +221,18 @@ router.post('/validate', protect, async (req, res) => {
             });
         }
         
-        // Check applicable categories/products if specified
+        // Check applicable categories — server-lookup so preview matches
+        // charge-time (paymentRoutes uses productMap categories, not client data).
         if (coupon.applicableCategories.length > 0 && items.length > 0) {
-            // Note: This requires items to have category info
-            // We'll do a basic check - items should have category field
-            const hasValidCategory = items.some(item => 
-                item.category && coupon.applicableCategories.includes(item.category)
-            );
+            const ids = items.map(i => i.productId).filter(Boolean);
+            let cats = [];
+            if (ids.length > 0) {
+                const prods = await Product.find({ _id: { $in: ids } }).select('category').lean();
+                cats = prods.map(p => p.category);
+            } else {
+                cats = items.map(i => i.category).filter(Boolean);
+            }
+            const hasValidCategory = cats.some(c => coupon.applicableCategories.includes(c));
             if (!hasValidCategory) {
                 return res.status(400).json({ 
                     message: 'Coupon not applicable to items in your cart' 
@@ -227,18 +264,20 @@ router.post('/validate', protect, async (req, res) => {
             }
         }
         
-        // Calculate discount
-        let discount = 0;
+        // Calculate discount in integer paise — identical formula to charge-time
+        // (paymentRoutes create-order) so preview never drifts by 1p.
+        const orderPaise = Math.round(orderAmount * 100);
+        let discountPaise = 0;
         if (coupon.type === 'percentage') {
-            discount = Math.round(orderAmount * (coupon.value / 100));
-            if (coupon.maxDiscount && discount > coupon.maxDiscount) {
-                discount = coupon.maxDiscount;
+            discountPaise = Math.round(orderPaise * (coupon.value / 100));
+            if (coupon.maxDiscount) {
+                discountPaise = Math.min(discountPaise, Math.round(coupon.maxDiscount * 100));
             }
         } else {
-            discount = coupon.value;
+            discountPaise = Math.min(Math.round(coupon.value * 100), orderPaise);
         }
-        
-        const finalAmount = Math.max(0, orderAmount - discount);
+        const discount = discountPaise / 100;
+        const finalAmount = (orderPaise - discountPaise) / 100;
         
         res.status(200).json({
             valid: true,
@@ -257,7 +296,7 @@ router.post('/validate', protect, async (req, res) => {
 });
 
 // 5. UPDATE COUPON (Admin only)
-router.put('/:id', protect, admin, async (req, res) => {
+router.put('/:id', protect, admin, auditLogMiddleware('UPDATE_COUPON', 'Coupon'), async (req, res) => {
     try {
         const coupon = await Coupon.findById(req.params.id);
         if (!coupon) {
@@ -268,9 +307,15 @@ router.put('/:id', protect, admin, async (req, res) => {
         if (errors.length > 0) {
             return res.status(400).json({ message: 'Validation failed', errors });
         }
+        // Effective-type guard: a value>100 update on a stored percentage coupon
+        // must fail even when `type` is omitted from the body (free-order prevention).
+        const effectiveType = req.body.type || coupon.type;
+        if (req.body.value !== undefined && effectiveType === 'percentage' && req.body.value > 100) {
+            return res.status(400).json({ message: 'Validation failed', errors: ['Percentage value cannot exceed 100'] });
+        }
         
         const allowedUpdates = [
-            'type', 'value', 'minOrderAmount', 'maxDiscount', 
+            'code', 'type', 'value', 'minOrderAmount', 'maxDiscount', 
             'usageLimit', 'userLimit', 'applicableCategories',
             'applicableProducts', 'excludedProducts', 'validFrom',
             'validUntil', 'isActive'
@@ -301,7 +346,7 @@ router.put('/:id', protect, admin, async (req, res) => {
             return res.status(400).json({ message: "Invalid coupon ID" });
         }
         if (error.code === 11000) {
-            return res.status(400).json({ message: 'Coupon code already exists' });
+            return res.status(409).json({ message: 'Coupon code already exists' });
         }
         if (error.name === 'ValidationError') {
             return res.status(400).json({ message: error.message });
@@ -312,7 +357,7 @@ router.put('/:id', protect, admin, async (req, res) => {
 });
 
 // 6. DELETE COUPON (Admin only)
-router.delete('/:id', protect, admin, async (req, res) => {
+router.delete('/:id', protect, admin, auditLogMiddleware('DELETE_COUPON', 'Coupon'), async (req, res) => {
     try {
         const coupon = await Coupon.findByIdAndDelete(req.params.id);
         if (!coupon) {

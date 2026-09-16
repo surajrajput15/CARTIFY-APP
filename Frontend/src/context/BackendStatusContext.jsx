@@ -41,11 +41,13 @@ export const BackendStatusProvider = ({ children }) => {
     setRetryCount((c) => c + 1);
   }, []);
 
-  // Auto-clear "offline" status after 8s of silence (someone fixed the backend)
+  // Auto-clear "offline" status after 8s of silence (someone fixed the backend).
+  // The network-error report() dedupe window means a healthy backend produces no
+  // reports, so after 8s without one we assume connectivity returned.
   useEffect(() => {
     if (!isOffline || !lastErrorAt) return;
     const t = setTimeout(() => {
-      // next request will set it again if still down
+      setIsOffline(false);
     }, 8000);
     return () => clearTimeout(t);
   }, [lastErrorAt, isOffline]);

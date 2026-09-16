@@ -4,7 +4,7 @@ import { useBackendStatus } from '../context/BackendStatusContext';
 import api from '../api/axios';
 
 const BackendStatusBanner = () => {
-  const { isOffline, retry, retryCount } = useBackendStatus();
+  const { isOffline, retry } = useBackendStatus();
   const [dismissed, setDismissed] = useState(false);
   const [checking, setChecking] = useState(false);
 

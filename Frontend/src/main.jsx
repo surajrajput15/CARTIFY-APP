@@ -34,12 +34,6 @@ if (import.meta.env.VITE_SENTRY_DSN) {
   });
 }
 
-// Track recent network errors so we don't spam the user with duplicate toasts.
-// A network failure is expected when the backend is down — we surface it once
-// via the BackendStatusBanner instead of a toast for every request.
-let lastNetworkErrorToastAt = 0;
-const NETWORK_ERROR_TOAST_COOLDOWN_MS = 10000;
-
 // Surface otherwise-uncaught async errors instead of failing silently.
 window.addEventListener('unhandledrejection', (event) => {
   event.preventDefault();
@@ -80,6 +74,3 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </ErrorBoundary>
   </React.StrictMode>,
 )
-
-// Export the cooldown helper for use in axios interceptor
-export { lastNetworkErrorToastAt, NETWORK_ERROR_TOAST_COOLDOWN_MS };

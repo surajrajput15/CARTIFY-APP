@@ -22,8 +22,17 @@ router.post('/add', protect, async (req, res, next) => {
                 if (!val) {
                     return res.status(400).json({ message: `${field} is required and must be non-empty` });
                 }
+                if (val.length > 200) {
+                    return res.status(400).json({ message: `${field} must be at most 200 characters` });
+                }
                 sanitized[field] = val;
             }
+        }
+
+        // Bound address-book growth per user.
+        const existingCount = await Address.countDocuments({ userId: req.user._id });
+        if (existingCount >= 10) {
+            return res.status(400).json({ message: 'Address limit reached (maximum 10 addresses)' });
         }
 
         // Accept friendly formats ("+91 ...", spaces, dashes) but store
@@ -64,7 +73,7 @@ router.post('/add', protect, async (req, res, next) => {
 });
 
 // 2. GET USER ADDRESSES
-router.get('/:userId', protect, async (req, res) => {
+router.get('/:userId', protect, async (req, res, next) => {
     try {
         if (req.user._id.toString() !== req.params.userId) {
             return res.status(403).json({ message: "You can only view your own addresses." });
@@ -72,6 +81,10 @@ router.get('/:userId', protect, async (req, res) => {
         const addresses = await Address.find({ userId: req.params.userId });
         res.status(200).json(addresses);
     } catch (error) {
+        // Malformed userId (CastError) is a 400 via the central handler.
+        if (error.name === 'ValidationError' || error.name === 'CastError') {
+            return next(error);
+        }
         logger.error({ err: error }, "❌ Address fetch error:");
         res.status(500).json({ message: "Error fetching addresses" });
     }
@@ -92,11 +105,22 @@ router.put('/:id', protect, async (req, res, next) => {
         for (const field of allowedFields) {
             const raw = req.body[field];
             if (field === 'isDefault') {
-                sanitized[field] = Boolean(raw);
+                // Only touch default flag when explicitly provided — omitting it must
+                // never clear an existing default.
+                if (raw !== undefined) sanitized[field] = Boolean(raw);
             } else if (raw !== undefined) {
                 const val = typeof raw === 'string' ? raw.trim() : '';
-                if (val) sanitized[field] = val;
+                if (!val) continue;
+                if (val.length > 200) {
+                    return res.status(400).json({ message: `${field} must be at most 200 characters` });
+                }
+                sanitized[field] = val;
             }
+        }
+
+        // Empty/unknown-only bodies would silently no-op with 200 — reject them.
+        if (Object.keys(sanitized).length === 0) {
+            return res.status(400).json({ message: 'No valid fields to update' });
         }
 
         if (sanitized.phone) {

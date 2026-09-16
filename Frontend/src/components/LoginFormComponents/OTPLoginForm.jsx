@@ -13,11 +13,42 @@ const OTPLoginForm = ({
   const formRef = useRef(null);
 
   const handleOtpChange = (index, value) => {
-    if (isNaN(value)) return;
+    const digits = value.replace(/\D/g, '');
+    if (!digits) return;
+    if (digits.length === 1) {
+      const newOtp = [...otp];
+      newOtp[index] = digits;
+      setOtp(newOtp);
+      if (index < 5) inputRefs.current[index + 1]?.focus();
+      return;
+    }
+    // Multi-digit value (defensive — the onPaste handler normally covers paste)
+    handleOtpPasteFallback(index, digits);
+  };
+
+  // Paste a (partial) code anywhere in the row: spread it across the remaining
+  // slots and focus the slot after the last filled one.
+  const handleOtpPaste = (e) => {
+    e.preventDefault();
+    const pasted = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+    if (!pasted) return;
+    const firstEmpty = otp.findIndex((d) => d === '');
+    const start = firstEmpty === -1 ? 0 : firstEmpty;
     const newOtp = [...otp];
-    newOtp[index] = value.substring(value.length - 1);
+    for (let i = 0; i < pasted.length && start + i <= 5; i++) {
+      newOtp[start + i] = pasted[i];
+    }
     setOtp(newOtp);
-    if (value !== '' && index < 5) inputRefs.current[index + 1]?.focus();
+    inputRefs.current[Math.min(start + pasted.length, 5)]?.focus();
+  };
+
+  const handleOtpPasteFallback = (index, digits) => {
+    const newOtp = [...otp];
+    for (let i = 0; i < digits.length && index + i <= 5; i++) {
+      newOtp[index + i] = digits[i];
+    }
+    setOtp(newOtp);
+    inputRefs.current[Math.min(index + digits.length, 5)]?.focus();
   };
 
   const handleKeyDown = (index, e) => {
@@ -67,7 +98,7 @@ const OTPLoginForm = ({
             <h2 className="text-3xl font-extrabold text-gray-900 mb-2">Enter OTP</h2>
             <p className="text-gray-500 mb-6">Sent to <span className="font-bold text-gray-800">{email}</span></p>
           </div>
-          <div className="flex justify-between gap-2">
+          <div className="flex justify-between gap-2" onPaste={handleOtpPaste}>
             {otp.map((digit, index) => (
               <input key={index} ref={(el) => (inputRefs.current[index] = el)} type="text" inputMode="numeric" maxLength={1} aria-label={`Digit ${index + 1} of 6`} value={digit} onChange={(e) => handleOtpChange(index, e.target.value)} onKeyDown={(e) => handleKeyDown(index, e)} className="w-9 h-12 min-w-0 flex-1 sm:flex-none sm:w-14 sm:h-16 text-center text-xl sm:text-2xl font-extrabold text-gray-900 border-2 border-gray-200 rounded-xl focus:border-teal-500 focus:ring-0 bg-gray-50" />
             ))}

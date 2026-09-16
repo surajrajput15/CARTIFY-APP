@@ -8,7 +8,7 @@ const PLACEHOLDER_IMG = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3d
 
 const ProductTable = ({ products, onEdit, onDelete }) => (
   <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto" role="region" aria-label="Products table (scroll horizontally)" tabIndex={0}>
       <table className="w-full text-sm min-w-[800px]">
         <thead className="bg-gray-50 border-b border-gray-100">
           <tr>
@@ -28,7 +28,7 @@ const ProductTable = ({ products, onEdit, onDelete }) => (
               <tr key={p._id} className="hover:bg-gray-50 transition-colors">
                 <td className="p-4">
                   <img
-                    src={resolveImageUrl(p.image)}
+                    src={p.image ? resolveImageUrl(p.image) : PLACEHOLDER_IMG}
                     alt={p.title || 'Product'}
                     loading="lazy"
                     onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMG; }}

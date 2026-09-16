@@ -41,8 +41,17 @@ export const onBackendStatusChange = (cb) => {
 };
 const notifyStatus = (isOffline) => {
   statusListeners.forEach((cb) => {
-    try { cb(isOffline); } catch {}
+    try { cb(isOffline); } catch { /* listener error must not break status flow */ }
   });
+};
+
+// localStorage can throw in privacy/iframe contexts; treat that as "no session".
+const readSessionHint = () => {
+  try {
+    return !!localStorage.getItem('user');
+  } catch {
+    return false;
+  }
 };
 
 // Connection-state tracking for clean console output.
@@ -53,14 +62,12 @@ let connectionState = 'online'; // 'online' | 'offline' | 'connecting'
 let hasLoggedFirstOffline = false;
 
 const logOffline = () => {
-  // eslint-disable-next-line no-console
   console.warn(
     '%c[API] Backend unreachable',
     'color:#f59e0b;font-weight:bold',
   );
   if (!hasLoggedFirstOffline) {
     hasLoggedFirstOffline = true;
-    // eslint-disable-next-line no-console
     console.warn(
       '%c[Cartify] Backend is unreachable\n' +
       '  → All API requests are failing (expected when backend isn\'t running)\n' +
@@ -76,7 +83,6 @@ const logOffline = () => {
 };
 
 const logOnline = () => {
-  // eslint-disable-next-line no-console
   console.log(
     '%c[API] Backend online',
     'color:#10b981;font-weight:bold',
@@ -143,7 +149,7 @@ api.interceptors.response.use(
           originalRequest.headers['X-CSRF-Token'] = freshToken;
         }
         return api(originalRequest);
-      } catch (refreshError) {
+      } catch {
         return Promise.reject(error);
       }
     }
@@ -153,12 +159,7 @@ api.interceptors.response.use(
       const isRefreshCall = failedUrl.includes('/api/auth/refresh');
       // Session hint: httpOnly cookies are invisible to JS, so localStorage
       // 'user' tells us whether a session could plausibly exist.
-      let hasSessionHint = false;
-      try {
-        hasSessionHint = !!localStorage.getItem('user');
-      } catch {
-        hasSessionHint = false;
-      }
+      const hasSessionHint = readSessionHint();
       // Guest (no session possible): never fire refresh, never redirect.
       // This keeps guest browsing silent — no /refresh 401 noise, no login bounce.
       if (isRefreshCall || !hasSessionHint) {

@@ -5,7 +5,7 @@ import { API_URL } from '../config';
 // q_auto: automatic quality optimization
 const CLOUDINARY_DEFAULTS = 'f_auto,q_auto';
 
-export function resolveImageUrl(src, options = {}) {
+export function resolveImageUrl(src) {
   if (!src) return src;
 
   // Local upload paths
@@ -37,9 +37,4 @@ export function generateSrcSet(src, widths = [320, 640, 960, 1280]) {
       return `${url} ${w}w`;
     })
     .join(', ');
-}
-
-// Get optimal image size based on container width
-export function getOptimalImageSize(containerWidth, breakpoints = [320, 640, 960, 1280, 1920]) {
-  return breakpoints.find((bp) => bp >= containerWidth) || breakpoints[breakpoints.length - 1];
 }

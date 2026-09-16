@@ -52,15 +52,38 @@ const orderSchema = new mongoose.Schema({
         default: 0,
         min: 0,
     },
+    // Snapshot so history survives coupon deletion/rename and can show
+    // strikethrough savings. Always set (equals totalPrice when no coupon).
+    // Not strictly required for backward compat (old orders/tests lack it) —
+    // auto-filled to totalPrice on save when missing.
+    originalTotal: {
+        type: Number,
+        min: 0,
+    },
+    couponSnapshot: {
+        code: { type: String },
+        type: { type: String, enum: ['percentage', 'fixed'] },
+        value: { type: Number },
+        maxDiscount: { type: Number, default: null },
+        minOrderAmount: { type: Number, default: 0 },
+    },
     // Order lifecycle status (orderStatus): Pending -> Processing (Paid) -> Delivered
     status: { 
         type: String, 
+        enum: ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'],
         default: 'Pending' 
     },
     // TTL expiry — set only on Pending (never-paid) orders so abandoned checkouts
     // are purged automatically and cannot grow the orders collection unbounded.
     expireAt: { type: Date, default: undefined }
 }, { timestamps: true });
+
+// Backfill originalTotal for legacy orders / tests that omit it.
+orderSchema.pre('validate', function () {
+  if (this.originalTotal == null && this.totalPrice != null) {
+    this.originalTotal = this.totalPrice;
+  }
+});
 
 // Auto-purge Pending orders one day after they were created (never applies to Paid orders).
 orderSchema.index({ expireAt: 1 }, { expireAfterSeconds: 0 });

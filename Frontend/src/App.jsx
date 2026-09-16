@@ -14,7 +14,7 @@ import { useAuth } from './context/authContext';
 import { useBackendStatus } from './context/BackendStatusContext';
 import { onBackendStatusChange } from './api/axios';
 import { registerNavigator } from './utils/navigation';
-import RouteErrorBoundary from './components/RouteErrorBoundary';
+import ErrorBoundary from './components/ErrorBoundary';
 
 const CartPage = lazy(() => import('./pages/CartPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -26,9 +26,9 @@ const AdminPage = lazy(() => import('./pages/AdminPage'));
 function withErrorBoundary(Component) {
   return function WithErrorBoundary() {
     return (
-      <RouteErrorBoundary>
+      <ErrorBoundary>
         <Component />
-      </RouteErrorBoundary>
+      </ErrorBoundary>
     );
   };
 }

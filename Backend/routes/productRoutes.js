@@ -50,6 +50,17 @@ const unlinkUploadedImage = (imageUrl) => {
 // causing catastrophic backtracking that freezes the Node.js event loop.
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+// Image URLs must be authentic retrievable locations only: https, local /uploads,
+// or Cloudinary. Rejects javascript:/data:/internal schemes that could be stored
+// and later rendered by clients.
+const isAllowedImageUrl = (val) => {
+  if (typeof val !== 'string' || !val.trim()) return false;
+  const v = val.trim();
+  if (v.startsWith('/uploads/')) return true;
+  if (v.includes('/image/upload/cartify/')) return true;
+  return /^https:\/\/[^/\s]+\/\S*$/i.test(v);
+};
+
 // 1. GET API: Products with search, category filter & pagination
 router.get('/', async (req, res) => {
     try {
@@ -88,8 +99,10 @@ router.get('/', async (req, res) => {
         const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 12));
         const skip = (pageNum - 1) * limitNum;
 
-        const products = await Product.find(query).skip(skip).limit(limitNum);
-        const total = await Product.countDocuments(query);
+        const [products, total] = await Promise.all([
+            Product.find(query).skip(skip).limit(limitNum).lean(),
+            Product.countDocuments(query),
+        ]);
 
         res.status(200).json({
             products,
@@ -129,8 +142,8 @@ router.post('/add', protect, admin, auditLogMiddleware('CREATE_PRODUCT', 'Produc
                 sanitized.description = val;
             } else if (field === 'price') {
                 const price = Number(req.body.price);
-                if (isNaN(price) || price <= 0) {
-                    return res.status(400).json({ message: "Price must be a positive number" });
+                if (!Number.isFinite(price) || price <= 0 || price > 10000000) {
+                    return res.status(400).json({ message: "Price must be a positive number up to 10000000" });
                 }
                 sanitized.price = price;
             } else if (field === 'category') {
@@ -143,6 +156,9 @@ router.post('/add', protect, admin, auditLogMiddleware('CREATE_PRODUCT', 'Produc
                 const val = typeof req.body.image === 'string' ? req.body.image.trim() : '';
                 if (!val) {
                     return res.status(400).json({ message: "Image URL is required and must be non-empty" });
+                }
+                if (!isAllowedImageUrl(val)) {
+                    return res.status(400).json({ message: "Image must be an https URL, /uploads/ path, or Cloudinary URL" });
                 }
                 sanitized.image = val;
             } else if (field === 'rating') {
@@ -183,14 +199,40 @@ router.post('/add', protect, admin, auditLogMiddleware('CREATE_PRODUCT', 'Produc
     }
 });
 
-// 3. POST API: Insert many products at once (Admin only)
+// 3. POST API: Insert many products at once (Admin only) — seed-safe: allowlisted,
+// capped, authentic numbers only (no _id/__v injection, no negative prices).
 router.post('/seed', protect, admin, auditLogMiddleware('BULK_CREATE_PRODUCTS', 'Product'), async (req, res, next) => {
     try {
         if (!Array.isArray(req.body) || req.body.length === 0) {
             return res.status(400).json({ message: "Please provide an array of products to seed" });
         }
+        if (req.body.length > 100) {
+            return res.status(400).json({ message: "Seed array too large (max 100 products)" });
+        }
+        const sanitized = [];
+        for (const [i, raw] of req.body.entries()) {
+            if (!raw || typeof raw !== 'object') {
+                return res.status(400).json({ message: `Product at index ${i} is invalid` });
+            }
+            const title = typeof raw.title === 'string' ? raw.title.trim() : '';
+            const description = typeof raw.description === 'string' ? raw.description.trim() : '';
+            const category = typeof raw.category === 'string' ? raw.category.trim() : '';
+            const image = typeof raw.image === 'string' ? raw.image.trim() : '';
+            const price = Number(raw.price);
+            const stock = raw.countInStock === undefined ? 20 : Number(raw.countInStock);
+            if (!title || !description || !category || !image) {
+                return res.status(400).json({ message: `Product at index ${i} missing required fields` });
+            }
+            if (!Number.isFinite(price) || price <= 0) {
+                return res.status(400).json({ message: `Product at index ${i} has invalid price` });
+            }
+            if (!Number.isInteger(stock) || stock < 0) {
+                return res.status(400).json({ message: `Product at index ${i} has invalid stock` });
+            }
+            sanitized.push({ title, description, category, image, price, countInStock: stock });
+        }
         // insertMany() inserts the whole array into the database in one call
-        const products = await Product.insertMany(req.body); 
+        const products = await Product.insertMany(sanitized); 
         res.status(201).json({ message: "Store is now stocked! All products added! 🛒🎉", count: products.length });
     } catch (error) {
         if (error.name === 'ValidationError' || error.name === 'CastError') {
@@ -265,8 +307,8 @@ router.patch('/:id', protect, admin, auditLogMiddleware('UPDATE_PRODUCT', 'Produ
             if (req.body[field] !== undefined) {
                 if (field === 'price') {
                     const price = Number(req.body.price);
-                    if (isNaN(price) || price <= 0) {
-                        return res.status(400).json({ message: "Price must be a positive number" });
+                    if (!Number.isFinite(price) || price <= 0 || price > 10000000) {
+                        return res.status(400).json({ message: "Price must be a positive number up to 10000000" });
                     }
                     updates.price = price;
                 } else if (field === 'countInStock') {
@@ -291,6 +333,9 @@ router.patch('/:id', protect, admin, auditLogMiddleware('UPDATE_PRODUCT', 'Produ
                 } else if (field === 'image') {
                     if (!req.body.image || typeof req.body.image !== 'string' || !req.body.image.trim()) {
                         return res.status(400).json({ message: "Image URL is required" });
+                    }
+                    if (!isAllowedImageUrl(req.body.image)) {
+                        return res.status(400).json({ message: "Image must be an https URL, /uploads/ path, or Cloudinary URL" });
                     }
                     updates.image = req.body.image.trim();
                 } else if (field === 'category') {

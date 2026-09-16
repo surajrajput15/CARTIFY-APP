@@ -21,7 +21,7 @@ module.exports = {
     await orderCollection.createIndex({ expireAt: 1 }, { expireAfterSeconds: 0 });
     await orderCollection.createIndex({ userId: 1, createdAt: -1 });
     await orderCollection.createIndex({ status: 1, createdAt: -1 });
-    await orderCollection.createIndex({ razorpayOrderId: 1 });
+    await orderCollection.createIndex({ razorpayOrderId: 1 }, { unique: true, sparse: true });
     await orderCollection.createIndex({ razorpayPaymentId: 1 });
     await orderCollection.createIndex({ status: 1, paymentStatus: 1, createdAt: -1 });
 
@@ -34,6 +34,7 @@ module.exports = {
     // Add indexes to Address collection
     const addressCollection = db.collection('addresses');
     await addressCollection.createIndex({ userId: 1 });
+    await addressCollection.createIndex({ userId: 1, isDefault: 1 }, { unique: true, partialFilterExpression: { isDefault: true } });
   },
 
   async down(db, client) {

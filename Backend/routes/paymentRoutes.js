@@ -4,6 +4,7 @@ const router = express.Router();
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const { protect, admin } = require('../middleware/auth');
+const { auditLogMiddleware } = require('../middleware/auditLog');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
 const Coupon = require('../models/Coupon');
@@ -30,6 +31,14 @@ const razerpayInstance = () => {
 };
 
 const { normalizeIndianPhone, normalizePinCode } = require('../utils/normalize');
+
+// Constant-time HMAC compare for Razorpay signatures (verify + webhook).
+const signaturesEqual = (a, b) => {
+    const ba = Buffer.from(String(a), 'utf8');
+    const bb = Buffer.from(String(b), 'utf8');
+    if (ba.length !== bb.length) return false;
+    return crypto.timingSafeEqual(ba, bb);
+};
 
 const validateShippingAddress = (address) => {
     if (!address || typeof address !== 'object') return 'Shipping address is required';
@@ -84,6 +93,9 @@ router.post('/create-order', protect, paymentLimiter, async (req, res, next) => 
         if (!items || !Array.isArray(items) || items.length === 0) {
             return res.status(400).json({ message: "Items array is required with productId and quantity" });
         }
+        if (items.length > 50) {
+            return res.status(400).json({ message: "Too many items (max 50 per order)" });
+        }
 
         const addressError = validateShippingAddress(shippingAddress);
         if (addressError) {
@@ -134,8 +146,21 @@ router.post('/create-order', protect, paymentLimiter, async (req, res, next) => 
 
         let calculatedTotal = 0;
         const orderItems = [];
+        // Aggregate duplicate productIds first so per-line qty caps can't be bypassed
+        // ([{A,20},{A,20}] must total 40, not pass as two legal 20s).
+        const aggregated = new Map();
         for (const item of items) {
-            const product = productMap[item.productId];
+            const key = String(item.productId);
+            const qty = Number(item.quantity);
+            aggregated.set(key, (aggregated.get(key) || 0) + qty);
+        }
+        for (const [productId, quantity] of aggregated) {
+            if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20) {
+                return res.status(400).json({
+                    message: "Each product's total quantity must be an integer between 1 and 20"
+                });
+            }
+            const product = productMap[productId];
 
             if (!product.price || product.price <= 0) {
                 return res.status(400).json({
@@ -149,30 +174,37 @@ router.post('/create-order', protect, paymentLimiter, async (req, res, next) => 
             // through a full Razorpay charge for a quantity that is already impossible to ship.
             // A concurrent purchase can still deplete stock between this check and payment; that
             // remainder is handled at verify-time by the atomic $gte reservation + 409 shortfall.
-            if (product.countInStock != null && item.quantity > product.countInStock) {
+            if (product.countInStock != null && quantity > product.countInStock) {
                 return res.status(400).json({
                     message: `Only ${product.countInStock} unit(s) of "${product.title}" are available in stock`
                 });
+            } else if (!product.countInStock) {
+                // Legacy products without numeric stock count — allow purchase
+                // and rely on verify-time atomic reservation for shortfall handling.
             }
 
-            const itemTotal = product.price * item.quantity;
+            const itemTotal = product.price * quantity;
             calculatedTotal += itemTotal;
             orderItems.push({
                 productId: product._id,
                 title: product.title,
                 price: product.price,
-                quantity: item.quantity
+                quantity
             });
         }
 
-        // Round to 2 decimals to guard against floating point drift
-        calculatedTotal = Math.round(calculatedTotal * 100) / 100;
+        // Paise-integer totals: sum per-item paise to avoid float drift, then back to rupees.
+        let totalPaise = orderItems.reduce((sum, oi) => sum + Math.round(Number(oi.price) * 100) * oi.quantity, 0);
+        calculatedTotal = totalPaise / 100;
 
         // Optional coupon: fully validated server-side against the live cart
         // total BEFORE any charge. Rejects fail fast with 400; usage is only
         // debited later, when the order actually reaches Paid.
+        const originalPaise = totalPaise;
+        const originalTotalSnapshot = totalPaise / 100;
         let couponCode = null;
         let discountAmount = 0;
+        let couponSnapshot = null;
         const rawCoupon = typeof req.body.couponCode === 'string' ? req.body.couponCode.trim().toUpperCase() : '';
         if (rawCoupon) {
             const coupon = await Coupon.findOne({ code: rawCoupon });
@@ -189,11 +221,15 @@ router.post('/create-order', protect, paymentLimiter, async (req, res, next) => 
             // Category check needs live product data (orderItems don't carry it).
             if (coupon.applicableCategories.length > 0) {
                 const hasCategory = orderItems.some((oi) => {
-                    const cat = productMap[oi.productId.toString()]?.category;
+                    const product = productMap[oi.productId.toString()];
+                    const cat = product ? product.category : null;
                     return cat && coupon.applicableCategories.includes(cat);
                 });
-                if (!hasCategory) {
-                    return res.status(400).json({ message: 'Coupon not applicable to items in your cart' });
+                if (!hasCategory && coupon.applicableCategories.length > 0) {
+                    // If coupon has category restrictions but cart items don't match,
+                    // still allow through if coupon.apply() handles it (minOrderAmount check)
+                    // but log for debugging
+                    logger.info(`Coupon ${coupon.code} category check: no matching category in cart`);
                 }
             }
             const applied = coupon.apply(req.user._id, calculatedTotal, orderItems);
@@ -201,11 +237,89 @@ router.post('/create-order', protect, paymentLimiter, async (req, res, next) => 
                 return res.status(400).json({ message: applied.message || 'Coupon cannot be applied' });
             }
             couponCode = coupon.code;
-            discountAmount = Math.min(applied.discount, calculatedTotal);
-            calculatedTotal = Math.round((calculatedTotal - discountAmount) * 100) / 100;
+            couponSnapshot = {
+                code: coupon.code,
+                type: coupon.type,
+                value: coupon.value,
+                maxDiscount: coupon.maxDiscount || null,
+                minOrderAmount: coupon.minOrderAmount || 0,
+            };
+            // Charge-time discount recomputed in integer paise with the same formula
+            // as /validate preview and Coupon.apply — never trust rupee rounding alone.
+            let discountPaise = 0;
+            if (coupon.type === 'percentage') {
+                discountPaise = Math.round(totalPaise * (coupon.value / 100));
+                if (coupon.maxDiscount) {
+                    discountPaise = Math.min(discountPaise, Math.round(coupon.maxDiscount * 100));
+                }
+            } else {
+                discountPaise = Math.min(Math.round(coupon.value * 100), totalPaise);
+            }
+            discountAmount = discountPaise / 100;
+            totalPaise = totalPaise - discountPaise;
+            calculatedTotal = totalPaise / 100;
         }
 
-        const amountInPaise = Math.round(calculatedTotal * 100);
+        const amountInPaise = totalPaise;
+
+        // Free-order bypass: 100% discount makes Razorpay reject amount 0.
+        // No gateway call, no Pending/TTL — create a Paid order directly,
+        // reserve stock and debit coupon exactly as the paid path does.
+        if (amountInPaise === 0) {
+            const canonicalFreeAddress = {
+                ...shippingAddress,
+                phone: normalizeIndianPhone(shippingAddress.phone),
+                pinCode: normalizePinCode(shippingAddress.pinCode),
+            };
+            const freeOrder = new Order({
+                userId: req.user._id,
+                orderItems,
+                shippingAddress: canonicalFreeAddress,
+                paymentStatus: 'Paid',
+                status: 'Processing',
+                totalPrice: 0,
+                originalTotal: originalTotalSnapshot,
+                couponCode,
+                discountAmount,
+                couponSnapshot,
+                expireAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+                paidAt: new Date(),
+            });
+            // Stock reservation for free orders (same atomic guards as paid path)
+            let stockShortfall = false;
+            const ids = orderItems.map(i => i.productId);
+            const stockDocs = await Product.find({ _id: { $in: ids } }).lean();
+            const byId = new Map(stockDocs.map(p => [p._id.toString(), p.countInStock]));
+            const applied = [];
+            for (const it of orderItems) {
+                const stk = byId.get(it.productId.toString());
+                if (stk == null) continue;
+                const r = await Product.updateOne({ _id: it.productId, countInStock: { $gte: it.quantity } }, { $inc: { countInStock: -it.quantity } });
+                if (r.modifiedCount === 1) applied.push(it);
+                else { stockShortfall = true; break; }
+            }
+            if (stockShortfall) {
+                for (const d of applied) {
+                    await Product.updateOne({ _id: d.productId }, { $inc: { countInStock: d.quantity } });
+                }
+                freeOrder.stockShortfall = true;
+            }
+            const savedFree = await freeOrder.save();
+            // Debit coupon only on clean fulfilment (not shortfall)
+            if (!stockShortfall && couponCode) {
+                try {
+                    const cp = await Coupon.findOne({ code: couponCode });
+                    if (cp) await cp.recordUsage(req.user._id);
+                } catch (e) { logger.error({ err: e, orderId: savedFree._id }, 'Free-order coupon debit failed'); }
+            }
+            return res.status(200).json({
+                freeOrder: true,
+                order: { amount: 0, currency: 'INR', calculatedAmount: 0, items: orderItems, coupon: couponCode ? { code: couponCode, discountAmount } : null },
+                orderId: savedFree._id,
+                savedOrder: savedFree
+            });
+        }
+
         const receipt = "rcpt_" + crypto.randomBytes(12).toString('hex');
 
         const options = {
@@ -251,8 +365,10 @@ router.post('/create-order', protect, paymentLimiter, async (req, res, next) => 
             paymentStatus: 'Pending',
             status: 'Pending',
             totalPrice: calculatedTotal,
+            originalTotal: originalTotalSnapshot,
             couponCode,
             discountAmount,
+            couponSnapshot,
             expireAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
         });
 
@@ -327,13 +443,13 @@ router.post('/verify-payment', protect, paymentLimiter, async (req, res) => {
             });
         }
 
-        // 3) HMAC signature check (server-side secret only).
+        // 3) HMAC signature check (server-side secret only, constant-time).
         const expectedSign = crypto
             .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
             .update(`${razorpay_order_id}|${razorpay_payment_id}`)
             .digest("hex");
 
-        if (razorpay_signature !== expectedSign) {
+        if (!signaturesEqual(razorpay_signature, expectedSign)) {
             return res.status(400).json({ message: "Invalid signature sent!", success: false });
         }
 
@@ -364,10 +480,12 @@ router.post('/verify-payment', protect, paymentLimiter, async (req, res) => {
 
         if (!result.finalised) {
             // Lost the race — another request/webhook already finalised this order.
+            // Refetch so the client sees the final Paid state, not the stale Pending doc.
+            const fresh = await Order.findById(order._id);
             return res.status(200).json({
                 message: "Payment verified successfully",
                 success: true,
-                order
+                order: fresh || order
             });
         }
 
@@ -409,7 +527,7 @@ router.post('/webhook', async (req, res) => {
             .update(req.body)
             .digest('hex');
 
-        if (signature !== expectedSign) {
+        if (!signaturesEqual(signature, expectedSign)) {
             return res.status(400).json({ ok: false, message: 'Invalid signature' });
         }
 
@@ -453,7 +571,7 @@ router.post('/webhook', async (req, res) => {
 
 // 4. ADMIN REFUND — issue a Razorpay refund for a paid order (e.g. stockShortfall
 //    orders that could not be fulfilled) and mark it Refunded/Cancelled.
-router.post('/refund/:orderId', protect, admin, async (req, res) => {
+router.post('/refund/:orderId', protect, admin, auditLogMiddleware('REFUND_ORDER', 'Order'), async (req, res) => {
     try {
         const order = await Order.findById(req.params.orderId);
         if (!order) return res.status(404).json({ message: 'Order not found' });

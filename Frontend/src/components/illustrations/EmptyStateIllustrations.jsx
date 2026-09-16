@@ -156,26 +156,6 @@ export const ErrorIllustration = ({ className = 'w-32 h-32' }) => (
   </svg>
 );
 
-export const SuccessIllustration = ({ className = 'w-32 h-32' }) => (
-  <svg
-    className={className}
-    viewBox="0 0 120 120"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    aria-hidden="true"
-  >
-    <circle cx="60" cy="60" r="50" fill="#D1FAE5" />
-    <path
-      d="M40 60 L55 75 L82 45"
-      stroke="#10b981"
-      strokeWidth="6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      fill="none"
-    />
-  </svg>
-);
-
 export const HeroIllustration = ({ className = 'w-full h-60 md:h-72' }) => (
   <svg
     className={className}

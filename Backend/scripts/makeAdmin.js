@@ -6,11 +6,12 @@ require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') }
 
 const User = require('../models/User');
 
-const email = process.argv[2];
-if (!email) {
+const emailArg = process.argv[2];
+if (!emailArg) {
   console.log('Usage: node scripts/makeAdmin.js <email>');
   process.exit(1);
 }
+const email = String(emailArg).trim().toLowerCase();
 
 mongoose.connect(process.env.MONGO_URI)
   .then(async () => {

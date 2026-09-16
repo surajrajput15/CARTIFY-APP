@@ -17,5 +17,3 @@ export const resetPassword = (payload) => api.post('/api/auth/reset-password', p
 export const updateProfile = (userId, data) => api.put(`/api/auth/update/${userId}`, data);
 
 export const deleteAccount = (userId) => api.delete(`/api/auth/delete/${userId}`);
-
-export const fetchCsrfToken = () => api.get('/api/auth/csrf-token');

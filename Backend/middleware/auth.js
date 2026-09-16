@@ -18,6 +18,10 @@ const protect = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // Refresh tokens must never be usable as access tokens (7d vs 15m scope).
+    if (decoded.type === 'refresh') {
+      return res.status(401).json({ message: 'Not authorized, token failed' });
+    }
     req.user = await User.findById(decoded.id).select('-password -otp -otpExpire -refreshToken -refreshTokenExpire');
     if (!req.user) {
       return res.status(401).json({ message: 'User not found' });

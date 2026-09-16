@@ -10,7 +10,7 @@ export const updateOrderStatus = (orderId, status) =>
 
 export const refundOrder = (orderId) => api.post(`/api/payment/refund/${orderId}`);
 
-export const createPaymentOrder = (items, shippingAddress) =>
-    api.post('/api/payment/create-order', { items, shippingAddress });
+export const createPaymentOrder = (items, shippingAddress, couponCode) =>
+    api.post('/api/payment/create-order', { items, shippingAddress, couponCode });
 
 export const verifyPayment = (payload) => api.post('/api/payment/verify-payment', payload);

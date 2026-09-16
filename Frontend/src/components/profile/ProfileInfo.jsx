@@ -1,5 +1,4 @@
 import { Edit2, X, Loader2, Check } from 'lucide-react';
-import { getFirstName } from '../../utils/format';
 
 const ProfileInfo = ({ user, isEditing, editName, updateLoading, onToggleEdit, onEditNameChange, onSave }) => (
   <section

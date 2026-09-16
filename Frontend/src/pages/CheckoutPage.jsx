@@ -7,15 +7,14 @@ import { useAddresses } from '../hooks/useAddresses';
 import { useRazorpayPayment } from '../hooks/useRazorpayPayment';
 import AddressSelector from '../components/checkout/AddressSelector';
 import OrderSummary from '../components/checkout/OrderSummary';
-import { formatPrice } from '../utils/format';
-import { getShippingCost } from '../utils/constants';
+import { useCoupon } from '../hooks/useCoupon';
 
 const CheckoutPage = () => {
   const { user } = useAuth();
   const { cart, clearCart } = useCart();
   const navigate = useNavigate();
 
-  const { addresses, addressesLoading, fetchAddresses } = useAddresses(user?.id, true);
+  const { addresses, addressesLoading, addressesError, fetchAddresses } = useAddresses(user?.id, true);
 
   const [selectedAddress, setSelectedAddress] = useState(null);
 
@@ -24,10 +23,8 @@ const CheckoutPage = () => {
     [cart]
   );
 
-  const finalTotal = useMemo(
-    () => calculatedTotal + getShippingCost(calculatedTotal),
-    [calculatedTotal]
-  );
+  const { code, setCode, applied, loading: couponLoading, error: couponError, applyCoupon, clearCoupon } = useCoupon(cart, calculatedTotal);
+  const discount = applied?.discount || 0;
 
   useEffect(() => {
     if (!user) {
@@ -56,7 +53,7 @@ const CheckoutPage = () => {
     return () => { cancelled = true; };
   }, [user, cart.length, navigate, fetchAddresses]);
 
-  const { loading, handlePayment } = useRazorpayPayment({ user, cart, clearCart, navigate, selectedAddress });
+  const { loading, handlePayment } = useRazorpayPayment({ user, cart, clearCart, navigate, selectedAddress, couponCode: applied?.code || null, clearCoupon });
 
   return (
     <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
@@ -69,8 +66,10 @@ const CheckoutPage = () => {
           <AddressSelector
             addresses={addresses}
             loading={addressesLoading}
+            error={addressesError}
             selectedAddress={selectedAddress}
             onSelect={setSelectedAddress}
+            onRetry={fetchAddresses}
             onGoToProfile={() => {
               // Remember where we came from so Profile can send us back
               // right after the address is saved.
@@ -83,6 +82,14 @@ const CheckoutPage = () => {
         <OrderSummary
           cart={cart}
           total={calculatedTotal}
+          discount={discount}
+          appliedCoupon={applied}
+          couponCode={code}
+          setCouponCode={setCode}
+          couponLoading={couponLoading}
+          couponError={couponError}
+          onApplyCoupon={applyCoupon}
+          onRemoveCoupon={clearCoupon}
           loading={loading}
           canPay={Boolean(selectedAddress) && cart.length > 0}
           onPay={handlePayment}

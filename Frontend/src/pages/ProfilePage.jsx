@@ -12,7 +12,7 @@ import OrdersTab from '../components/profile/OrdersTab';
 import AddressManager from '../components/profile/AddressManager';
 import SettingsTab from '../components/profile/SettingsTab';
 
-const CLOSED_CONFIRM = { show: false, title: '', message: '', onConfirm: null, loading: false };
+const CLOSED_CONFIRM = { show: false, title: '', message: '', confirmLabel: 'Confirm', cancelLabel: 'Cancel', onConfirm: null, loading: false };
 
 const ProfilePage = () => {
   const { user, logout } = useAuth();
@@ -41,11 +41,6 @@ const ProfilePage = () => {
 
   if (!user) return null;
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
-
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setSearchParams({ tab });
@@ -55,7 +50,7 @@ const ProfilePage = () => {
   // send them straight back after the save instead of stranding them here.
   const handleSaveAddressAndReturn = async (address) => {
     const saved = await saveAddress(address);
-    let returnTo = null;
+    let returnTo;
     try {
       returnTo = sessionStorage.getItem('postProfileReturn');
       if (returnTo) sessionStorage.removeItem('postProfileReturn');
@@ -69,11 +64,30 @@ const ProfilePage = () => {
     return saved;
   };
 
+  const handleLogoutRequest = () => {
+    setConfirmModal({
+      show: true,
+      title: 'Log out',
+      message: 'Are you sure you want to log out?',
+      confirmLabel: 'Log Out',
+      cancelLabel: 'Cancel',
+      loading: false,
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, loading: true }));
+        await logout();
+        setConfirmModal(CLOSED_CONFIRM);
+        navigate('/');
+      }
+    });
+  };
+
   const handleDeleteAccount = () => {
     setConfirmModal({
       show: true,
       title: 'Delete Account',
       message: 'Are you sure you want to permanently delete your account? This cannot be undone.',
+      confirmLabel: 'Delete My Account',
+      cancelLabel: 'Cancel',
       loading: false,
       onConfirm: async () => {
         setConfirmModal(prev => ({ ...prev, loading: true }));
@@ -88,6 +102,8 @@ const ProfilePage = () => {
       show: true,
       title: 'Delete Address',
       message: 'Delete this address permanently?',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
       loading: false,
       onConfirm: async () => {
         setConfirmModal(prev => ({ ...prev, loading: true }));
@@ -108,7 +124,7 @@ const ProfilePage = () => {
       <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-6 sm:mb-8">My Account</h1>
 
       <div className="flex flex-col md:flex-row gap-4 sm:gap-6 md:gap-8">
-        <ProfileSidebar user={user} activeTab={activeTab} onTabChange={handleTabChange} onLogout={handleLogout} />
+        <ProfileSidebar user={user} activeTab={activeTab} onTabChange={handleTabChange} onLogout={handleLogoutRequest} />
 
         <div className="w-full md:w-3/4 space-y-4 sm:space-y-6 min-w-0">
           {activeTab === 'profile' && (
@@ -142,8 +158,8 @@ const ProfilePage = () => {
         <ConfirmModal
           title={confirmModal.title}
           message={confirmModal.message}
-          confirmLabel={confirmModal.title === 'Delete Account' ? 'Delete My Account' : 'Delete'}
-          cancelLabel="Cancel"
+          confirmLabel={confirmModal.confirmLabel}
+          cancelLabel={confirmModal.cancelLabel}
           loading={confirmModal.loading}
           onConfirm={confirmModal.onConfirm}
           onCancel={() => setConfirmModal(CLOSED_CONFIRM)}

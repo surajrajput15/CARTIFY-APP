@@ -39,8 +39,11 @@ const HomePage = () => {
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('search') || '';
 
-  // Reset loading AND page to 1 whenever search/category changes
+  // Reset loading AND page to 1 whenever search/category changes. This is a
+  // deliberate one-shot UI reset (user click / URL navigation), not a cascading
+  // render loop, so the effect is intentional here.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot reset on filter change
     setLoading(true);
     setPage(1);
     setFetchError(null);

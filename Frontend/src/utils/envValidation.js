@@ -17,9 +17,13 @@ export function validateEnv() {
     const msg = `[Cartify] Missing required environment variables: ${missing.join(', ')}.\n` +
       `Create a .env file based on .env.example and restart the dev server.`;
     if (import.meta.env.DEV) {
-      console.error(msg);
+      // Fail loudly in development so the mistake is caught immediately.
+      throw new Error(msg);
     }
-    throw new Error(msg);
+    // Production may bake env in at build time — don't crash the whole app,
+    // but make the misconfiguration impossible to miss.
+    console.error(msg);
+    return;
   }
 
   if (import.meta.env.DEV) {

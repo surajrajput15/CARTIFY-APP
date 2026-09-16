@@ -1,14 +1,5 @@
 // API error utilities: classify, format, and react to errors uniformly.
 
-export class ApiError extends Error {
-  constructor(message, status, data) {
-    super(message);
-    this.name = 'ApiError';
-    this.status = status;
-    this.data = data;
-  }
-}
-
 /**
  * Detect a network-layer failure (backend unreachable, CORS preflight, DNS
  * error, request aborted). These are distinct from 4xx/5xx HTTP responses, which
@@ -47,21 +38,4 @@ export function handleApiError(error, fallbackMessage = 'Something went wrong') 
     return 'Network error. Please check your connection.';
   }
   return fallbackMessage;
-}
-
-/**
- * Run an axios promise and return a tagged result. Never throws.
- *   { data, error, isNetworkError: boolean }
- */
-export async function apiCall(promise, fallbackMessage) {
-  try {
-    const response = await promise;
-    return { data: response.data, error: null, isNetworkError: false };
-  } catch (error) {
-    return {
-      data: null,
-      error: handleApiError(error, fallbackMessage),
-      isNetworkError: isNetworkError(error),
-    };
-  }
 }

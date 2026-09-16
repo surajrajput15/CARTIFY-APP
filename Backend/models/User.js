@@ -46,6 +46,17 @@ const userSchema = new mongoose.Schema({
     refreshTokenExpire: {
         type: Date,
         default: null
+    },
+    // Grace window for concurrent refresh double-fires (StrictMode, retries):
+    // the just-rotated-out token stays acceptable for 60s so a benign retry
+    // is never mistaken for a reuse attack.
+    previousRefreshToken: {
+        type: String,
+        default: null
+    },
+    previousRefreshTokenExpire: {
+        type: Date,
+        default: null
     }
 }, { timestamps: true });
 

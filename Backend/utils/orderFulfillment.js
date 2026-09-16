@@ -87,7 +87,10 @@ async function finalisePaidOrder(order, { paymentId } = {}) {
     try {
       const coupon = await Coupon.findOne({ code: finalisedOrder.couponCode });
       if (coupon) {
-        await coupon.recordUsage(finalisedOrder.userId);
+        const debited = await coupon.recordUsage(finalisedOrder.userId);
+        if (!debited) {
+          logger.warn({ orderId: order._id }, 'Coupon usage limit hit concurrently — paid order kept, needs admin review');
+        }
       } else {
         logger.warn({ orderId: order._id }, 'Paid order references unknown coupon');
       }

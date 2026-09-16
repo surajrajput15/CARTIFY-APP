@@ -9,7 +9,7 @@ import { logError } from '../utils/logger';
 
 const RAZORPAY_SCRIPT_URL = 'https://checkout.razorpay.com/v1/checkout.js';
 
-export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAddress }) => {
+export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAddress, couponCode, clearCoupon }) => {
   const [loading, setLoading] = useState(false);
   const razorpayLoadedRef = useRef(false);
   // Ensures EXACTLY ONE success confirmation even if the Razorpay success
@@ -21,6 +21,8 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
   // Open Razorpay modal instance, if any — closed on unmount so a stray
   // modal never outlives the checkout page.
   const paymentObjectRef = useRef(null);
+
+  console.log('[Razorpay] useRazorpayPayment initiated', { user: user?.email, cartLength: cart.length, hasSelectedAddress: !!selectedAddress, hasRazorpayKey: !!RAZORPAY_KEY });
 
   const loadRazorpayScript = useCallback(() => {
     return new Promise((resolve) => {
@@ -75,6 +77,7 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
   }, []);
 
   const handlePayment = useCallback(async () => {
+    console.log('[Razorpay] handlePayment called', { selectedAddress: !!selectedAddress, cartLength: cart.length });
     if (!selectedAddress) {
       toast.error('Please select a delivery address!');
       return;
@@ -93,9 +96,11 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
       return;
     }
 
+    console.log('[Razorpay] RAZORPAY_KEY present, loading SDK...');
     setLoading(true);
 
     const res = await loadRazorpayScript();
+    console.log('[Razorpay] loadRazorpayScript result:', res);
     if (!res) {
       toast.error('Razorpay SDK failed to load. Please check your internet connection.');
       setLoading(false);
@@ -108,19 +113,34 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
           productId: item._id || item.id,
           quantity: Math.floor(Number(item.quantity)) || 1
         })),
-        selectedAddress
+        selectedAddress,
+        couponCode || undefined
       );
+
+      console.log('[Razorpay] createPaymentOrder response:', data);
+      
+      // Free-order shortcut (100% discount): backend already created a Paid order.
+      if (data.freeOrder) {
+        toast.success('Order placed successfully! 🎉 (100% coupon applied)');
+        try { sessionStorage.setItem('orderJustPlaced', '1'); } catch { /* storage unavailable */ }
+        clearCart();
+        if (clearCoupon) clearCoupon();
+        navigate('/profile');
+        return;
+      }
 
       const order = data.order;
 
       // The cart stores a price snapshot, but the server always recomputes prices from the
       // live catalog. If a product price changed since it was added, warn the user so the
-      // final charge never silently surprises them.
+      // final charge never silently surprises them. Skip when a coupon is active
+      // because calculatedAmount is post-discount and would false-positive.
       const clientTotal = cart.reduce(
         (sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1),
         0
       );
       if (
+        !couponCode &&
         typeof order.calculatedAmount === 'number' &&
         Math.abs(order.calculatedAmount - clientTotal) > 0.01
       ) {
@@ -163,6 +183,7 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
                   // storage unavailable — redirect still proceeds below
                 }
                 clearCart();
+                if (clearCoupon) clearCoupon();
                 navigate('/profile');
               }
             } else {
@@ -190,16 +211,11 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
         }
       };
 
+      console.log('[Razorpay] Creating Razorpay modal with options:', { key: RAZORPAY_KEY, hasAmount: !!order.amount, hasOrderId: !!order.id });
+      
       const paymentObject = new window.Razorpay(options);
       paymentObjectRef.current = paymentObject;
-      paymentObject.on('payment.failed', function (response) {
-        paymentResultHandled = true;
-        paymentObjectRef.current = null;
-        const failureReason = response?.error?.description
-          ? `Payment failed: ${response.error.description}`
-          : 'Payment failed. Please try again.';
-        toast.error(failureReason);
-      });
+      console.log('[Razorpay] Razorpay modal created, about to open...');
       paymentObject.open();
 
     } catch (error) {
@@ -208,7 +224,7 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
     } finally {
       setLoading(false);
     }
-  }, [user, cart, clearCart, navigate, selectedAddress, loadRazorpayScript]);
+  }, [user, cart, clearCart, navigate, selectedAddress, couponCode, clearCoupon, loadRazorpayScript]);
 
   return { loading, handlePayment };
 };

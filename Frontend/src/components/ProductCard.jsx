@@ -1,4 +1,5 @@
-import { ShoppingCart, Star } from 'lucide-react';
+import { ShoppingCart } from 'lucide-react';
+import StarRating from './StarRating';
 import { useCart } from '../context/cartContext';
 import { Link } from 'react-router-dom';
 import { getStockStatus } from '../utils/stockStatus';
@@ -63,14 +64,16 @@ const ProductCard = memo(({ product }) => {
         </Link>
 
         <div className="flex items-center gap-1.5 mb-4">
-          <div className="flex items-center text-yellow-400">
-            <Star className="fill-current" size={14} aria-hidden="true" />
-          </div>
+          <StarRating rating={product.rating?.rate} size={14} />
           <span className="text-xs text-gray-600 font-bold" aria-label={`Rating ${Number(product.rating?.rate) || 0} out of 5`}>
             {Number(product.rating?.rate) || 0}
           </span>
           <span className="text-gray-300 text-xs" aria-hidden="true">|</span>
-          <span className="text-xs text-gray-400">({Number(product.rating?.count) || 0} reviews)</span>
+          <span className="text-xs text-gray-400">
+            {Number(product.rating?.count) || 0
+              ? `(${Number(product.rating?.count)} reviews)`
+              : 'No reviews yet'}
+          </span>
         </div>
 
         <div className="mt-auto flex items-center justify-between pt-2 gap-2">

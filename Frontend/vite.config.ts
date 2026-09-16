@@ -3,6 +3,9 @@ import react from '@vitejs/plugin-react'
 import { visualizer } from 'rollup-plugin-visualizer'
 
 export default defineConfig({
+  server: {
+    host: true,
+  },
   plugins: [
     react(),
     visualizer({

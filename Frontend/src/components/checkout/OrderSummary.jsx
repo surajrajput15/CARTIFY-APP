@@ -1,10 +1,12 @@
-import { CreditCard, Loader2, ShieldCheck, Lock, Truck } from 'lucide-react';
+import { Loader2, ShieldCheck, Lock, Truck } from 'lucide-react';
 import { formatPrice } from '../../utils/format';
 import { getShippingCost } from '../../utils/constants';
+import CouponInput from './CouponInput';
 
-const OrderSummary = ({ cart, total, loading, canPay, onPay }) => {
-  const shippingCost = getShippingCost(total);
-  const finalTotal = total + shippingCost;
+const OrderSummary = ({ cart, total, discount = 0, appliedCoupon, couponCode, setCouponCode, couponLoading, couponError, onApplyCoupon, onRemoveCoupon, loading, canPay, onPay }) => {
+  const discountedSubtotal = Math.max(0, total - (discount || 0));
+  const shippingCost = getShippingCost(discountedSubtotal);
+  const finalTotal = discountedSubtotal + shippingCost;
 
   return (
     <aside
@@ -13,14 +15,14 @@ const OrderSummary = ({ cart, total, loading, canPay, onPay }) => {
     >
       <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-4">Order Summary</h2>
 
-      <div className="space-y-3 mb-6 max-h-60 overflow-y-auto pr-2 -mr-2">
+      <div className="space-y-3 mb-6 max-h-60 overflow-y-auto pr-2 -mr-2" aria-label="Cart items">
         {cart.map((item, index) => (
           <div key={item._id || index} className="flex justify-between items-center text-sm gap-2">
-            <span className="text-gray-600 truncate flex-1" title={item.title}>
-              {item.title} <span className="text-gray-400">×{item.quantity || 1}</span>
+            <span className="text-gray-600 truncate flex-1" title={item.title || 'Item'}>
+              {item.title || 'Item'} <span className="text-gray-400">×{item.quantity || 1}</span>
             </span>
             <span className="font-semibold text-gray-800 whitespace-nowrap">
-              {formatPrice(item.price * (item.quantity || 1))}
+              {formatPrice((Number(item.price) || 0) * (Number(item.quantity) || 1))}
             </span>
           </div>
         ))}
@@ -31,6 +33,12 @@ const OrderSummary = ({ cart, total, loading, canPay, onPay }) => {
           <span>Subtotal</span>
           <span className="font-semibold text-gray-800">{formatPrice(total)}</span>
         </div>
+        {discount > 0 && (
+          <div className="flex justify-between text-green-600">
+            <span>Discount {appliedCoupon?.code ? `(${appliedCoupon.code})` : ''}</span>
+            <span className="font-bold">−{formatPrice(discount)}</span>
+          </div>
+        )}
         <div className="flex justify-between text-gray-600">
           <span className="flex items-center gap-1">
             <Truck size={14} aria-hidden="true" /> Shipping
@@ -40,6 +48,12 @@ const OrderSummary = ({ cart, total, loading, canPay, onPay }) => {
           </span>
         </div>
       </div>
+
+      {setCouponCode && (
+        <div className="mb-4">
+          <CouponInput code={couponCode} setCode={setCouponCode} applied={appliedCoupon} loading={couponLoading} error={couponError} onApply={onApplyCoupon} onRemove={onRemoveCoupon} />
+        </div>
+      )}
 
       <div className="flex justify-between items-center mb-4 pt-2 border-t border-gray-100">
         <span className="text-base sm:text-lg font-bold text-gray-800">Total</span>

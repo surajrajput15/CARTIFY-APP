@@ -35,11 +35,11 @@ const auditLogMiddleware = (action, resource) => {
       ? req.body
       : req.query;
 
-    // Continue to next middleware
-    await next();
+    // Continue to next middleware — do NOT await next() in Express 4 (it is not
+    // a promise). Log on response finish so handler-set status/body are captured.
+    next();
 
-    // Log after response is sent
-    if (res.writableEnded || res.finished) {
+    res.on('finish', () => {
       logAudit({
         action,
         resource,
@@ -55,7 +55,7 @@ const auditLogMiddleware = (action, resource) => {
         success: statusCode < 400,
         errorMessage: statusCode >= 400 ? responseBody?.message : undefined,
       });
-    }
+    });
   };
 };
 
@@ -76,18 +76,29 @@ async function logAudit({
   errorMessage,
 }) {
   try {
-    // Sanitize sensitive data
-    const sanitize = (data) => {
-      if (!data || typeof data !== 'object') return data;
+    // Sanitize sensitive data (deep — nested objects/arrays included).
+    const sanitize = (data, depth = 0) => {
+      if (!data || typeof data !== 'object' || depth > 5) return data;
+      if (Array.isArray(data)) return data.map((v) => sanitize(v, depth + 1));
       const sensitiveKeys = ['password', 'otp', 'token', 'secret', 'credential', 'authorization'];
-      const sanitized = { ...data };
+      const sanitized = Array.isArray(data) ? [] : { ...data };
       for (const key of Object.keys(sanitized)) {
         if (sensitiveKeys.some(k => key.toLowerCase().includes(k))) {
           sanitized[key] = '[REDACTED]';
+        } else if (typeof sanitized[key] === 'object') {
+          sanitized[key] = sanitize(sanitized[key], depth + 1);
         }
       }
       return sanitized;
     };
+    if (!userId || !userEmail) return; // AuditLog requires identity — skip anon routes.
+
+    // resourceId is ObjectId-typed: non-ObjectId :id params (e.g. /clear) must not
+    // reach the create call or Mongoose throws CastError and kills the audit write.
+    const mongoose = require('mongoose');
+    const safeResourceId = resourceId && mongoose.Types.ObjectId.isValid(String(resourceId))
+      ? resourceId
+      : undefined;
 
     await AuditLog.create({
       userId,
@@ -95,7 +106,7 @@ async function logAudit({
       userRole,
       action,
       resource,
-      resourceId,
+      resourceId: safeResourceId,
       ip,
       userAgent,
       requestId,

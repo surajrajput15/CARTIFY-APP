@@ -14,14 +14,14 @@ const strengthConfig = {
   strong: { label: 'Strong', color: 'bg-green-500', textColor: 'text-green-600', barWidth: '100%' },
 };
 
-const PasswordStrengthMeter = ({ password }) => {
+const PasswordStrengthMeter = ({ password, id }) => {
   if (!password) return null;
 
   const { score, checks } = evaluatePasswordStrength(password);
   const config = strengthConfig[score];
 
   return (
-    <div className="mt-3 space-y-3 animate-fade-in-up">
+    <div id={id} className="mt-3 space-y-3 animate-fade-in-up" role="status" aria-label={`Password strength: ${config.label}`}>
       <div className="flex items-center justify-between">
         <span className={`text-sm font-bold ${config.textColor}`}>
           <span className="mr-1" aria-hidden="true">&#9679;</span>

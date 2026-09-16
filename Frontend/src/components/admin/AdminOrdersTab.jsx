@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { RefreshCw, RotateCcw } from 'lucide-react';
 import { fetchAdminOrders, updateOrderStatus, refundOrder } from '../../services/ordersApi';
 import { ORDER_STATUSES } from '../../utils/constants';
-import { formatPrice, formatDate, formatNumber } from '../../utils/format';
+import { formatPrice, formatDate } from '../../utils/format';
 import { EmptyOrdersIllustration } from '../illustrations/EmptyStateIllustrations';
 import ConfirmModal from '../ConfirmModal';
 import { isNetworkError } from '../../utils/apiError';
@@ -15,6 +15,18 @@ const paymentBadge = (status) => {
     default: return 'bg-gray-100 text-gray-600';
   }
 };
+
+// Legal forward-only status flow. The select only offers the current status
+// plus these next states, so an order can't jump backwards (e.g. Delivered →
+// Pending, Cancelled → Shipped) via the UI.
+const LEGAL_TRANSITIONS = {
+  Pending: ['Processing', 'Shipped', 'Cancelled'],
+  Processing: ['Shipped', 'Cancelled'],
+  Shipped: ['Delivered'],
+  Delivered: [],
+  Cancelled: [],
+};
+const nextStatuses = (status) => [status, ...(LEGAL_TRANSITIONS[status] || [])];
 
 const AdminOrdersTab = () => {
   const [orders, setOrders] = useState([]);
@@ -96,10 +108,11 @@ const AdminOrdersTab = () => {
     <>
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap gap-2" role="tablist" aria-label="Filter orders by status">
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Filter orders by status">
             {['all', ...ORDER_STATUSES].map((s) => (
               <button
                 key={s}
+                type="button"
                 onClick={() => { setLoading(true); setStatusFilter(s); setPage(1); }}
                 aria-pressed={statusFilter === s}
                 className={`px-3 py-1.5 rounded-full text-xs font-bold capitalize transition-colors min-h-[36px] ${
@@ -119,7 +132,7 @@ const AdminOrdersTab = () => {
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" role="region" aria-label="Orders table (scroll horizontally)" tabIndex={0}>
             <table className="w-full text-sm min-w-[900px]">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
@@ -152,8 +165,9 @@ const AdminOrdersTab = () => {
                 ) : (
                   orders.map((o) => {
                     // Calculate actual total units across all items (not just distinct product types)
-                    const totalUnits = o.orderItems.reduce((sum, it) => sum + (Number(it.quantity) || 1), 0);
-                    const productTypes = o.orderItems.length;
+                    const items = o.orderItems || [];
+                    const totalUnits = items.reduce((sum, it) => sum + (Number(it.quantity) || 1), 0);
+                    const productTypes = items.length;
                     return (
                       <tr key={o._id} className="hover:bg-gray-50 transition-colors">
                         <td className="p-4 font-mono text-xs text-gray-500">#{String(o._id).slice(-6).toUpperCase()}</td>
@@ -174,12 +188,12 @@ const AdminOrdersTab = () => {
                         <td className="p-4">
                           <select
                             value={o.status}
-                            disabled={busyId === o._id}
+                            disabled={busyId === o._id || nextStatuses(o.status).length === 1}
                             onChange={(e) => handleStatusChange(o._id, e.target.value)}
                             aria-label={`Change status for order ${String(o._id).slice(-6).toUpperCase()}`}
                             className="px-2 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 focus:ring-teal-500 focus:border-teal-500 disabled:opacity-50 min-h-[36px]"
                           >
-                            {ORDER_STATUSES.map((s) => (
+                            {nextStatuses(o.status).map((s) => (
                               <option key={s} value={s}>{s}</option>
                             ))}
                           </select>

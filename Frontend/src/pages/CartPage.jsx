@@ -6,6 +6,8 @@ import { useCart } from '../context/cartContext';
 import { resolveImageUrl } from '../utils/imageUrl';
 import { formatPrice, truncate } from '../utils/format';
 import { getShippingCost, getShippingMessage, SHIPPING_CONFIG } from '../utils/constants';
+import { useCoupon } from '../hooks/useCoupon';
+import CouponInput from '../components/checkout/CouponInput';
 import { EmptyCartIllustration } from '../components/illustrations/EmptyStateIllustrations';
 
 const PLACEHOLDER_IMG = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzeXN0ZW0tdWkiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5Y2EzYWYiPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg==';
@@ -13,7 +15,7 @@ const PLACEHOLDER_IMG = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3d
 const CartPage = () => {
   const { cart, removeFromCart, updateQuantity } = useCart();
 
-  const { totalAmount, totalItems, shippingCost, shippingMessage } = useMemo(() => {
+  const { totalAmount, totalItems } = useMemo(() => {
     let amount = 0;
     let items = 0;
     for (const item of cart) {
@@ -22,15 +24,15 @@ const CartPage = () => {
       amount += itemPrice * itemQuantity;
       items += itemQuantity;
     }
-    return {
-      totalAmount: amount,
-      totalItems: items,
-      shippingCost: getShippingCost(amount),
-      shippingMessage: getShippingMessage(amount),
-    };
+    return { totalAmount: amount, totalItems: items };
   }, [cart]);
 
-  const finalTotal = totalAmount + shippingCost;
+  const { code, setCode, applied, loading: couponLoading, error: couponError, applyCoupon, clearCoupon } = useCoupon(cart, totalAmount);
+  const discount = applied?.discount || 0;
+  const discountedSubtotal = Math.max(0, totalAmount - discount);
+  const effectiveShipping = getShippingCost(discountedSubtotal);
+  const effectiveShippingMsg = getShippingMessage(discountedSubtotal);
+  const finalTotal = discountedSubtotal + effectiveShipping;
 
   // Empty cart state
   if (cart.length === 0) {
@@ -124,13 +126,21 @@ const CartPage = () => {
                 <span>Subtotal ({totalItems} {totalItems === 1 ? 'item' : 'items'})</span>
                 <span className="font-semibold text-gray-800">{formatPrice(totalAmount)}</span>
               </div>
+              {discount > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>Discount ({applied.code})</span>
+                  <span className="font-bold">−{formatPrice(discount)}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span>Shipping</span>
-                <span className={shippingMessage.className}>{shippingMessage.text}</span>
+                <span className={effectiveShippingMsg.className}>{effectiveShippingMsg.text}</span>
               </div>
             </div>
 
-            <div className="flex justify-between items-center mb-6">
+            <CouponInput code={code} setCode={setCode} applied={applied} loading={couponLoading} error={couponError} onApply={applyCoupon} onRemove={clearCoupon} />
+
+            <div className="flex justify-between items-center mt-4 mb-6">
               <span className="text-lg font-bold text-gray-800">Total</span>
               <span className="text-2xl font-bold text-teal-600">{formatPrice(finalTotal)}</span>
             </div>

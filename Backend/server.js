@@ -72,6 +72,15 @@ if (!hasBrevoApiKey && !hasSmtpFallback) {
 
 console.log('Environment variables validated successfully');
 
+// Production uploads: without Cloudinary or BACKEND_PUBLIC_URL, local /uploads URLs
+// fall back to the request host (poisonable) and vanish on Render restarts — warn loudly.
+if (process.env.NODE_ENV === 'production') {
+  const hasCloudinary = !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
+  if (!hasCloudinary && !process.env.BACKEND_PUBLIC_URL) {
+    console.error('WARNING: production uploads misconfigured — set CLOUDINARY_* or BACKEND_PUBLIC_URL, or image URLs may break/be poisonable.');
+  }
+}
+
 // Import Routes
 const productRoutes = require('./routes/productRoutes');
 const authRoutes = require('./routes/authRoutes');
@@ -173,19 +182,22 @@ app.use((req, res, next) => {
      '/api/auth/refresh',     // Token refresh needs to work without CSRF
      '/api/coupons/validate'  // Coupon validation during checkout
    ];
-   // Version-agnostic matching: /api/v1/* routers serve the same handlers as
-   // /api/*, so exclusions must apply to both (e.g. GET /api/v1/cart reads and
-   // POST /api/v1/coupons/validate previously missed CSRF handling).
-   const normalizedPath = req.path.replace(/^\/api\/v1(\/|$)/, '/api$1');
-   // Only exclude GET /api/cart (cart reads) - mutations need CSRF
-   if (req.method === 'GET' && normalizedPath.startsWith('/api/cart')) {
-     return next();
-   }
-   if (excludedPaths.some(p => normalizedPath.startsWith(p))) {
-     return next();
-   }
-   csrfProtection(req, res, next);
- });
+    // Version-agnostic matching: /api/v1/* routers serve the same handlers as
+    // /api/*, so exclusions must apply to both (e.g. GET /api/v1/cart reads and
+    // POST /api/v1/coupons/validate previously missed CSRF handling).
+    const normalizedPath = req.path.replace(/^\/api\/v1(\/|$)/, '/api$1');
+    // Exact matching only — prefix matching previously bypassed CSRF for
+    // lookalike paths (e.g. /api/auth/login-evil, /api/payment/webhook-evil).
+    const isExcluded = excludedPaths.includes(normalizedPath);
+    // Only exclude GET /api/cart (cart reads) - mutations need CSRF
+    if (req.method === 'GET' && normalizedPath === '/api/cart') {
+      return next();
+    }
+    if (isExcluded) {
+      return next();
+    }
+    csrfProtection(req, res, next);
+  });
 
 // Helmet with CSP
 app.use(helmet({
@@ -204,6 +216,11 @@ app.use(helmet({
     },
   },
   crossOriginEmbedderPolicy: false,
+  // Razorpay's checkout modal relies on window.postMessage() between the
+  // parent tab and its popup/iframe. Helmet's default `Cross-Origin-Opener-
+  // Policy: same-origin` blocks that handshake, so payment never completed.
+  // Disable COOP so the payment flow can open and verify.
+  crossOriginOpenerPolicy: false,
 }));
 
 // Request ID middleware for tracing
@@ -234,27 +251,50 @@ app.get('/ready', async (req, res) => {
   }
 });
 
-// MongoDB Database Connection with connection pool tuning
-mongoose.connect(process.env.MONGO_URI, {
+// MongoDB Database Connection with connection pool tuning.
+// The server NEVER exits on DB failure: /health stays 200, /ready reports 503,
+// and a background retry loop keeps attempting with backoff until Atlas is
+// reachable again (transient elections / network blips self-heal instead of
+// killing the whole backend).
+const mongoOptions = {
   maxPoolSize: 50, // Maximum number of connections
   minPoolSize: 10, // Minimum number of connections
   maxIdleTimeMS: 30000, // Close connections after 30s of inactivity
-  serverSelectionTimeoutMS: 5000, // How long to wait for a server
+  serverSelectionTimeoutMS: 15000, // High-latency links need more than 5s
   socketTimeoutMS: 45000, // How long a send or receive on a socket can take
   family: 4, // Use IPv4
   retryWrites: true, // Retry write operations
   w: 'majority', // Write concern
-})
-  .then(() => {
+};
+
+let mongoRetrying = false;
+
+const connectWithRetry = async (delayMs = 5000) => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI, mongoOptions);
     logger.info('MongoDB Database Connected Successfully with connection pooling');
-  })
-  .catch((error) => {
-    logger.error({ err: error }, 'MongoDB Connection Error');
-    process.exit(1);
-  });
+    mongoRetrying = false;
+  } catch (error) {
+    logger.error({ err: error }, `MongoDB Connection Error — retrying in ${delayMs / 1000}s (server stays up, /ready reports 503)`);
+    if (!mongoRetrying) {
+      mongoRetrying = true;
+      const nextDelay = Math.min(delayMs * 2, 30000);
+      setTimeout(() => {
+        mongoRetrying = false;
+        connectWithRetry(nextDelay);
+      }, delayMs).unref();
+    }
+  }
+};
+
+connectWithRetry(5000);
 
 mongoose.connection.on('disconnected', () => {
-  logger.warn('MongoDB disconnected');
+  // Log only — do NOT trigger connectWithRetry here. Mongoose's own monitor
+  // already auto-reconnects a dropped pool; firing a second manual connect
+  // races with it and causes connect/disconnect churn. The retry loop above
+  // is solely for the initial-connect failure path.
+  logger.warn('MongoDB disconnected — driver auto-reconnect in progress');
 });
 
 mongoose.connection.on('reconnected', () => {
@@ -265,20 +305,13 @@ mongoose.connection.on('error', (err) => {
   logger.error({ err }, 'MongoDB connection error');
 });
 
-// Setup API Routes - Versioned
+// Setup API Routes - Versioned (single canonical source: routes/index.js).
+// /api/v1 is canonical; /api is a backward-compat alias. Legacy per-router mounts
+// were removed to avoid double-registering every handler (double audit logs +
+// double rate-limit counting).
 const v1Routes = require('./routes/index');
 app.use('/api/v1', v1Routes);
 app.use('/api', v1Routes); // Backward compatibility (defaults to v1)
-
-// Legacy routes (kept for backward compatibility - will be deprecated)
-app.use('/api/products', productRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/addresses', addressRoutes);
-app.use('/api/cart', cartRoutes);
-app.use('/api/payment', paymentRoutes);
-app.use('/api/upload', uploadRoutes.router);
-app.use('/api/coupons', couponRoutes);
 
 // Swagger API Documentation
 const { setupSwagger } = require('./utils/swagger');
@@ -334,6 +367,30 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
+});
+
+server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+        console.error(`Port ${PORT} is already in use. Attempting to free it...`);
+        const { execSync } = require('child_process');
+        try {
+            if (process.platform === 'win32') {
+                execSync(`for /f "tokens=5" %a in ('netstat -ano ^| findstr :${PORT} ^| findstr LISTENING') do taskkill /F /PID %a`, { stdio: 'ignore' });
+            } else {
+                execSync(`kill -9 $(lsof -t -i:${PORT}) 2>/dev/null`, { stdio: 'ignore' });
+            }
+            console.log(`Killed old process on port ${PORT}. Retrying in 2 seconds...`);
+            setTimeout(() => {
+                server.listen(PORT);
+            }, 2000);
+        } catch (killErr) {
+            console.error(`Could not free port ${PORT}. Please stop the process manually and restart.`);
+            process.exit(1);
+        }
+    } else {
+        console.error('Server error:', err);
+        process.exit(1);
+    }
 });
 
 // Graceful shutdown — drain in-flight requests, then close MongoDB and Redis, so Render's

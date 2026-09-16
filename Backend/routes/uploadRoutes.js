@@ -53,12 +53,21 @@ const detectImage = (buffer) => {
 
 const storage = multer.memoryStorage();
 
+const rateLimit = require('express-rate-limit');
+const uploadLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 20,
+  message: { message: 'Too many uploads. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 }
 });
 
-router.post('/', protect, admin, (req, res) => {
+router.post('/', protect, admin, uploadLimiter, (req, res) => {
   upload.single('image')(req, res, (err) => {
     if (err) {
       return res.status(400).json({ message: err.message });
@@ -84,7 +93,7 @@ router.post('/', protect, admin, (req, res) => {
 
     if (hasCloudinary) {
       const uploadStream = cloudinary.uploader.upload_stream(
-        { public_id: publicId, resource_type: 'image' },
+        { public_id: publicId, resource_type: 'image', timeout: 15000 },
         (cloudErr, result) => {
           if (cloudErr || !result?.secure_url) {
             logger.error({ err: cloudErr }, 'Cloudinary upload error');
@@ -107,7 +116,9 @@ router.post('/', protect, admin, (req, res) => {
         logger.error({ err: writeErr.message }, 'Upload write error:');
         return res.status(500).json({ message: 'Failed to save image' });
       }
-      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      // Prefer explicit public base URL to avoid host-header poisoning; fall back
+      // to the request host only in development.
+      const baseUrl = (process.env.BACKEND_PUBLIC_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
       finishUpload(`${baseUrl}/uploads/${safeName}`);
     });
   });

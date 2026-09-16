@@ -7,6 +7,7 @@ import { logError } from '../utils/logger';
 export const useAddresses = (userId, initialLoading = false) => {
   const [addresses, setAddresses] = useState([]);
   const [addressesLoading, setAddressesLoading] = useState(initialLoading);
+  const [addressesError, setAddressesError] = useState('');
   const mountedRef = useRef(true);
   useEffect(() => () => { mountedRef.current = false; }, []);
 
@@ -14,10 +15,19 @@ export const useAddresses = (userId, initialLoading = false) => {
     if (mountedRef.current) setAddressesLoading(true);
     try {
       const response = await addressesApi.fetchAddresses(userId);
-      if (mountedRef.current) setAddresses(response.data);
+      if (mountedRef.current) {
+        setAddresses(response.data);
+        setAddressesError('');
+      }
       return response.data;
     } catch (error) {
       logError("Failed to fetch addresses", error);
+      if (mountedRef.current) {
+        // Track the failure separately so the UI can show an error panel
+        // instead of faking an "empty address list". Existing list data is
+        // kept so a transient failure doesn't wipe what we already have.
+        setAddressesError(handleApiError(error, "Failed to load addresses"));
+      }
       toast.error(handleApiError(error, "Failed to load addresses"));
       return [];
     } finally {
@@ -31,7 +41,8 @@ export const useAddresses = (userId, initialLoading = false) => {
       await fetchAddresses();
     } catch (err) {
       logError("Failed to save address", err);
-      toast.error(handleApiError(err, "Failed to save address"));
+      // No toast here — the caller (AddressManager) owns user feedback so
+      // failures don't double-toast.
       throw err;
     }
   }, [fetchAddresses]);
@@ -42,10 +53,10 @@ export const useAddresses = (userId, initialLoading = false) => {
       await fetchAddresses();
     } catch (err) {
       logError("Failed to delete address", err);
-      toast.error(handleApiError(err, "Failed to delete address"));
+      // No toast here — the caller (ProfilePage) owns user feedback.
       throw err;
     }
   }, [fetchAddresses]);
 
-  return { addresses, addressesLoading, fetchAddresses, saveAddress, deleteAddress };
+  return { addresses, addressesLoading, addressesError, fetchAddresses, saveAddress, deleteAddress };
 };

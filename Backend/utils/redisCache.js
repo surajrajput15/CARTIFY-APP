@@ -1,5 +1,5 @@
 const Redis = require('ioredis');
-const logger = require('./logger'); // We'll create this next
+const { logger } = require('./logger');
 
 // Redis client with connection pooling and retry strategy
 const createRedisClient = () => {
