@@ -160,7 +160,7 @@ const ProductDetailsPage = () => {
             src={resolveImageUrl(product.image)}
             alt={product.title || 'Product image'}
             loading="lazy"
-            onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMG; }}
+            decoding="async"
             className="max-h-[300px] sm:max-h-[400px] max-w-full object-contain hover:scale-105 transition-transform duration-300"
           />
         </div>
