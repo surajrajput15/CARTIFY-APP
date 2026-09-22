@@ -116,6 +116,69 @@ router.get('/', async (req, res) => {
     }
 });
 
+// ---------------------------------------------------------------------------
+// Clothing variants (V2) — shared validators for the add/update product paths.
+// A variant row = one sellable SKU: { size, color, stock, priceAdjustment, sku? }.
+// Rules: max 30 variants, either size or color required, stock >= 0 int,
+// priceAdjustment finite (default 0), SKU <= 80 chars or server-generated.
+const MAX_VARIANTS = 30;
+
+const sanitizeVariants = (rawVariants) => {
+  if (!Array.isArray(rawVariants)) {
+    return { error: 'variants must be an array' };
+  }
+  if (rawVariants.length > MAX_VARIANTS) {
+    return { error: `Too many variants (max ${MAX_VARIANTS})` };
+  }
+
+  const seen = new Set();
+  const variants = [];
+
+  for (const [i, raw] of rawVariants.entries()) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      return { error: `Variant at index ${i} is invalid` };
+    }
+    const size = typeof raw.size === 'string' ? raw.size.trim().slice(0, 20) : '';
+    const color = typeof raw.color === 'string' ? raw.color.trim().slice(0, 40) : '';
+    const sku = typeof raw.sku === 'string' ? raw.sku.trim().slice(0, 80) : '';
+    const stock = raw.stock === undefined ? 0 : Number(raw.stock);
+    const priceAdjustment = raw.priceAdjustment === undefined ? 0 : Number(raw.priceAdjustment);
+
+    if (!size && !color) {
+      return { error: `Variant at index ${i} needs a size or a color` };
+    }
+    if (!Number.isInteger(stock) || stock < 0) {
+      return { error: `Variant at index ${i} stock must be a non-negative integer` };
+    }
+    if (!Number.isFinite(priceAdjustment)) {
+      return { error: `Variant at index ${i} priceAdjustment must be a number` };
+    }
+
+    // Duplicate rows (same size+color) would create ambiguous SKUs — reject.
+    const key = `${size.toLowerCase()}|${color.toLowerCase()}`;
+    if (seen.has(key)) {
+      return { error: `Duplicate variant at index ${i} (same size and color)` };
+    }
+    seen.add(key);
+
+    variants.push({
+      size: size || null,
+      color: color || null,
+      stock,
+      priceAdjustment,
+      sku: sku || null // server fills the real SKU after the product _id exists
+    });
+  }
+
+  return { variants };
+};
+
+// Server-generated barcode-style SKU: {productId}-SIZE-COLOR (uppercase, dashes).
+const buildVariantSku = (productId, size, color) => {
+  const norm = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'OS';
+  return [productId.toString(), norm(size), norm(color)].join('-').slice(0, 80);
+};
+
 // 2. POST API: Add a new product (Admin only)
 router.post('/add', protect, admin, auditLogMiddleware('CREATE_PRODUCT', 'Product'), async (req, res) => {
     try {
@@ -181,6 +244,14 @@ router.post('/add', protect, admin, auditLogMiddleware('CREATE_PRODUCT', 'Produc
             }
         }
 
+        // Optional clothing variants (Phase: clothing variants). Validated fully
+        // server-side — clients never decide the SKU (server generates when absent).
+        if (req.body.variants !== undefined) {
+            const { error, variants } = sanitizeVariants(req.body.variants);
+            if (error) return res.status(400).json({ message: error });
+            sanitized.variants = variants;
+        }
+
         const required = ['title', 'description', 'price', 'category', 'image'];
         const missing = required.filter(f => sanitized[f] === undefined);
         if (missing.length > 0) {
@@ -189,6 +260,17 @@ router.post('/add', protect, admin, auditLogMiddleware('CREATE_PRODUCT', 'Produc
 
         const newProduct = new Product(sanitized);
         await newProduct.save();
+        // Fill server-generated SKUs for variants the admin left blank, then persist.
+        if (newProduct.variants && newProduct.variants.length > 0) {
+            let skuDirty = false;
+            for (const v of newProduct.variants) {
+                if (!v.sku) {
+                    v.sku = buildVariantSku(newProduct._id, v.size, v.color);
+                    skuDirty = true;
+                }
+            }
+            if (skuDirty) await newProduct.save();
+        }
         res.status(201).json({ message: "Product added successfully", product: newProduct });
     } catch (error) {
         if (error.name === 'ValidationError') {
@@ -357,6 +439,18 @@ router.patch('/:id', protect, admin, auditLogMiddleware('UPDATE_PRODUCT', 'Produ
                     updates[field] = req.body[field];
                 }
             }
+        }
+
+        // Optional variants replacement (Phase: clothing variants). The update path
+        // REPLACES the whole variant list — same semantics as the other fields.
+        if (req.body.variants !== undefined) {
+            const { error, variants } = sanitizeVariants(req.body.variants);
+            if (error) return res.status(400).json({ message: error });
+            // Fill server-generated SKUs for rows the admin left blank.
+            for (const v of variants) {
+                if (!v.sku) v.sku = buildVariantSku(product._id, v.size, v.color);
+            }
+            updates.variants = variants;
         }
 
         if (Object.keys(updates).length === 0) {

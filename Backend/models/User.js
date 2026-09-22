@@ -1,26 +1,39 @@
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
-    name: { 
-        type: String, 
-        required: true 
+    name: {
+        type: String,
+        required: true
     },
-    email: { 
-        type: String, 
-        required: true, 
+    email: {
+        type: String,
+        required: true,
         unique: true,
         // Normalize on save so case-only differences ("John@X.com" vs "john@x.com") can never
         // create duplicate accounts or block logins.
         set: (v) => (typeof v === 'string' ? v.trim().toLowerCase() : v)
     },
-    password: { 
-        type: String, 
+    password: {
+        type: String,
         // Password is optional because a user can also log in with OTP alone.
-        required: false 
+        required: false
     },
-    isAdmin: { 
-        type: Boolean, 
-        default: false 
+    // Contact number. Optional, but delivery partners need one so customers/admin can
+    // reach them about an in-flight order. Format is validated at the route layer
+    // (utils/normalize.normalizeIndianPhone), matching Address/Order.
+    phone: {
+        type: String,
+        default: null,
+        trim: true
+    },
+    role: {
+        type: String,
+        enum: ['customer', 'admin', 'delivery'],
+        default: 'customer'
+    },
+    isAdmin: {
+        type: Boolean,
+        default: false
     },
     // OTP fields
     // otp stores the SHA-256 hash of the code (never the plaintext), see authRoutes.
@@ -62,6 +75,7 @@ const userSchema = new mongoose.Schema({
 
 // Indexes (email unique index is auto-created from `unique: true` on the field)
 userSchema.index({ isAdmin: 1 });
+userSchema.index({ role: 1 });
 userSchema.index({ createdAt: -1 });
 userSchema.index({ refreshToken: 1 });
 

@@ -9,6 +9,7 @@ import { getShippingCost, getShippingMessage, SHIPPING_CONFIG } from '../utils/c
 import { useCoupon } from '../hooks/useCoupon';
 import CouponInput from '../components/checkout/CouponInput';
 import { EmptyCartIllustration } from '../components/illustrations/EmptyStateIllustrations';
+import { variantLabel } from '../utils/variants';
 
 const PLACEHOLDER_IMG = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzeXN0ZW0tdWkiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5Y2EzYWYiPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg==';
 
@@ -28,11 +29,13 @@ const CartPage = () => {
   }, [cart]);
 
   const { code, setCode, applied, loading: couponLoading, error: couponError, applyCoupon, clearCoupon } = useCoupon(cart, totalAmount);
-  const discount = applied?.discount || 0;
+  const discount = Math.min(Math.max(0, Number(applied?.discount) || 0), Math.max(0, totalAmount));
   const discountedSubtotal = Math.max(0, totalAmount - discount);
-  const effectiveShipping = getShippingCost(discountedSubtotal);
-  const effectiveShippingMsg = getShippingMessage(discountedSubtotal);
-  const finalTotal = discountedSubtotal + effectiveShipping;
+  const effectiveShipping = discountedSubtotal <= 0 ? 0 : getShippingCost(discountedSubtotal);
+  const effectiveShippingMsg = discountedSubtotal <= 0
+    ? { text: 'Free', className: 'text-green-600 font-medium' }
+    : getShippingMessage(discountedSubtotal);
+  const finalTotal = Math.max(0, discountedSubtotal + effectiveShipping);
 
   // Empty cart state
   if (cart.length === 0) {
@@ -65,7 +68,7 @@ const CartPage = () => {
         {/* Left Side: Cart Items List */}
         <div className="lg:w-2/3 space-y-4">
           {cart.map((item) => (
-            <div key={item._id || item.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row items-center gap-4">
+            <div key={`${item._id || item.id}::${item.variantKey || ''}`} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row items-center gap-4">
               <img
                 src={resolveImageUrl(item.image)}
                 alt={item.title || 'Cart item'}
@@ -78,13 +81,18 @@ const CartPage = () => {
                 <h3 className="font-semibold text-gray-800 text-base sm:text-lg line-clamp-2" title={item.title}>
                   {truncate(item.title, 80)}
                 </h3>
+                {item.variantKey && (
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {variantLabel(item.variantSize, item.variantColor)}
+                  </p>
+                )}
                 <p className="text-teal-600 font-bold text-xl mt-1">{formatPrice(item.price)}</p>
               </div>
 
               {/* Quantity Controls */}
               <div className="flex items-center gap-3 bg-gray-50 p-2 rounded-lg border">
                 <button
-                  onClick={() => updateQuantity(item._id || item.id, 'decrease')}
+                  onClick={() => updateQuantity(item._id || item.id, 'decrease', item.variantKey || null)}
                   className="p-2 hover:bg-white rounded shadow-sm text-gray-600 min-w-[44px] min-h-[44px] flex items-center justify-center"
                   aria-label="Decrease quantity"
                 >
@@ -94,7 +102,7 @@ const CartPage = () => {
                   {item.quantity || 1}
                 </span>
                 <button
-                  onClick={() => updateQuantity(item._id || item.id, 'increase')}
+                  onClick={() => updateQuantity(item._id || item.id, 'increase', item.variantKey || null)}
                   disabled={Number.isInteger(Number(item.countInStock)) && (item.quantity || 1) >= Number(item.countInStock)}
                   title={Number.isInteger(Number(item.countInStock)) && (item.quantity || 1) >= Number(item.countInStock) ? `Only ${item.countInStock} available in stock` : undefined}
                   className="p-2 hover:bg-white rounded shadow-sm text-gray-600 min-w-[44px] min-h-[44px] flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
@@ -106,7 +114,7 @@ const CartPage = () => {
 
               {/* Delete Button */}
               <button
-                onClick={() => removeFromCart(item._id || item.id)}
+                onClick={() => removeFromCart(item._id || item.id, item.variantKey || null)}
                 className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                 aria-label={`Remove ${item.title} from cart`}
               >

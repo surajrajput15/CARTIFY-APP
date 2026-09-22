@@ -8,16 +8,22 @@ export const useOrders = (userId) => {
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const mountedRef = useRef(true);
-  useEffect(() => () => { mountedRef.current = false; }, []);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const fetchOrders = useCallback(async () => {
+    if (!userId) return [];
     if (mountedRef.current) setLoadingOrders(true);
     try {
       const response = await fetchMyOrders(userId);
       if (mountedRef.current) setOrders(response.data);
+      return response.data;
     } catch (error) {
       logError("Failed to fetch orders", error);
       toast.error(handleApiError(error, "Failed to load orders"));
+      return [];
     } finally {
       if (mountedRef.current) setLoadingOrders(false);
     }

@@ -4,9 +4,13 @@ import { getShippingCost } from '../../utils/constants';
 import CouponInput from './CouponInput';
 
 const OrderSummary = ({ cart, total, discount = 0, appliedCoupon, couponCode, setCouponCode, couponLoading, couponError, onApplyCoupon, onRemoveCoupon, loading, canPay, onPay }) => {
-  const discountedSubtotal = Math.max(0, total - (discount || 0));
-  const shippingCost = getShippingCost(discountedSubtotal);
-  const finalTotal = discountedSubtotal + shippingCost;
+  const normalizedDiscount = Math.min(Math.max(0, Number(discount) || 0), Math.max(0, Number(total) || 0));
+  const discountedSubtotal = Math.max(0, total - normalizedDiscount);
+  // Backend charges shipping on the discounted total and forces ₹0 shipping on
+  // fully-discounted (free) orders — mirror that so the preview never shows ₹79
+  // while Razorpay charges ₹0.
+  const shippingCost = discountedSubtotal <= 0 ? 0 : getShippingCost(discountedSubtotal);
+  const finalTotal = Math.max(0, discountedSubtotal + shippingCost);
 
   return (
     <aside
@@ -33,12 +37,6 @@ const OrderSummary = ({ cart, total, discount = 0, appliedCoupon, couponCode, se
           <span>Subtotal</span>
           <span className="font-semibold text-gray-800">{formatPrice(total)}</span>
         </div>
-        {discount > 0 && (
-          <div className="flex justify-between text-green-600">
-            <span>Discount {appliedCoupon?.code ? `(${appliedCoupon.code})` : ''}</span>
-            <span className="font-bold">−{formatPrice(discount)}</span>
-          </div>
-        )}
         <div className="flex justify-between text-gray-600">
           <span className="flex items-center gap-1">
             <Truck size={14} aria-hidden="true" /> Shipping
@@ -50,8 +48,15 @@ const OrderSummary = ({ cart, total, discount = 0, appliedCoupon, couponCode, se
       </div>
 
       {setCouponCode && (
-        <div className="mb-4">
+        <div className="mb-4 min-w-0">
           <CouponInput code={couponCode} setCode={setCouponCode} applied={appliedCoupon} loading={couponLoading} error={couponError} onApply={onApplyCoupon} onRemove={onRemoveCoupon} />
+        </div>
+      )}
+
+      {normalizedDiscount > 0 && (
+        <div className="flex justify-between text-sm text-green-600 mb-4">
+          <span>Discount {appliedCoupon?.code ? `(${appliedCoupon.code})` : ''}</span>
+          <span className="font-bold">−{formatPrice(normalizedDiscount)}</span>
         </div>
       )}
 

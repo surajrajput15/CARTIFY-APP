@@ -10,13 +10,23 @@ router.post('/add', protect, async (req, res, next) => {
     try {
         // Strict allowlist + server-side validation. The raw body is never spread
         // into the document, so a client can't inject extra fields (userId etc.).
-        const allowedFields = ['fullName', 'phone', 'street', 'city', 'state', 'pinCode', 'isDefault'];
+        const allowedFields = ['fullName', 'phone', 'street', 'city', 'state', 'pinCode', 'isDefault', 'latitude', 'longitude'];
         const sanitized = {};
 
         for (const field of allowedFields) {
             const raw = req.body[field];
             if (field === 'isDefault') {
                 sanitized[field] = Boolean(raw);
+            } else if (field === 'latitude' || field === 'longitude') {
+                // Optional GPS pin: BOTH must arrive together as finite numbers in
+                // range, or be absent entirely (half-pins are rejected).
+                const isLat = field === 'latitude';
+                if (raw === undefined || raw === null || raw === '') continue;
+                const n = Number(raw);
+                if (!Number.isFinite(n) || (isLat && Math.abs(n) > 90) || (!isLat && Math.abs(n) > 180)) {
+                    return res.status(400).json({ message: `${field} must be a valid ${isLat ? 'latitude (-90..90)' : 'longitude (-180..180)'}` });
+                }
+                sanitized[field] = n;
             } else {
                 const val = typeof raw === 'string' ? raw.trim() : '';
                 if (!val) {
@@ -27,6 +37,11 @@ router.post('/add', protect, async (req, res, next) => {
                 }
                 sanitized[field] = val;
             }
+        }
+
+        // Both-or-neither for the optional GPS pin.
+        if ((sanitized.latitude !== undefined) !== (sanitized.longitude !== undefined)) {
+            return res.status(400).json({ message: 'latitude and longitude must be provided together' });
         }
 
         // Bound address-book growth per user.
@@ -99,7 +114,7 @@ router.put('/:id', protect, async (req, res, next) => {
             return res.status(403).json({ message: "You can only update your own addresses." });
         }
 
-        const allowedFields = ['fullName', 'phone', 'street', 'city', 'state', 'pinCode', 'isDefault'];
+        const allowedFields = ['fullName', 'phone', 'street', 'city', 'state', 'pinCode', 'isDefault', 'latitude', 'longitude'];
         const sanitized = {};
 
         for (const field of allowedFields) {
@@ -108,6 +123,16 @@ router.put('/:id', protect, async (req, res, next) => {
                 // Only touch default flag when explicitly provided — omitting it must
                 // never clear an existing default.
                 if (raw !== undefined) sanitized[field] = Boolean(raw);
+            } else if (field === 'latitude' || field === 'longitude') {
+                // Optional GPS pin: only applied when BOTH arrive together, valid
+                // numbers in range. Omitting them on update never clears a pin.
+                const isLat = field === 'latitude';
+                if (raw === undefined || raw === null || raw === '') continue;
+                const n = Number(raw);
+                if (!Number.isFinite(n) || (isLat && Math.abs(n) > 90) || (!isLat && Math.abs(n) > 180)) {
+                    return res.status(400).json({ message: `${field} must be a valid ${isLat ? 'latitude (-90..90)' : 'longitude (-180..180)'}` });
+                }
+                sanitized[field] = n;
             } else if (raw !== undefined) {
                 const val = typeof raw === 'string' ? raw.trim() : '';
                 if (!val) continue;
@@ -121,6 +146,11 @@ router.put('/:id', protect, async (req, res, next) => {
         // Empty/unknown-only bodies would silently no-op with 200 — reject them.
         if (Object.keys(sanitized).length === 0) {
             return res.status(400).json({ message: 'No valid fields to update' });
+        }
+
+        // Both-or-neither for the optional GPS pin on updates too.
+        if ((sanitized.latitude !== undefined) !== (sanitized.longitude !== undefined)) {
+            return res.status(400).json({ message: 'latitude and longitude must be provided together' });
         }
 
         if (sanitized.phone) {

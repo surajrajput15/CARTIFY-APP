@@ -14,6 +14,9 @@ import ProductTable from '../components/admin/ProductTable';
 import ProductFormModal from '../components/admin/ProductFormModal';
 import AdminOrdersTab from '../components/admin/AdminOrdersTab';
 import AdminCouponsTab from '../components/admin/AdminCouponsTab';
+import AdminDeliveryMap from '../components/admin/AdminDeliveryMap';
+import AdminDeliveryAssign from '../components/admin/AdminDeliveryAssign';
+import AdminCategoriesTab from '../components/admin/AdminCategoriesTab';
 import { isNetworkError } from '../utils/apiError';
 
 const CLOSED_CONFIRM = { show: false, title: '', message: '', onConfirm: null, loading: false };
@@ -114,10 +117,33 @@ const AdminPage = () => {
       toast.error('Review count must be a whole number 0 or above');
       return;
     }
+
+    const variants = (form.variants || []).map((v) => ({
+      size: (v.size || '').trim() || null,
+      color: (v.color || '').trim() || null,
+      sku: (v.sku || '').trim() || null,
+      stock: Number(v.stock) || 0,
+      priceAdjustment: Number(v.priceAdjustment) || 0
+    }));
+    for (const [i, v] of variants.entries()) {
+      if (!v.size && !v.color) {
+        toast.error(`Variant ${i + 1} needs a size or a color`);
+        return;
+      }
+      if (!Number.isInteger(v.stock) || v.stock < 0) {
+        toast.error(`Variant ${i + 1} stock must be a whole number 0 or above`);
+        return;
+      }
+      if (!Number.isFinite(v.priceAdjustment)) {
+        toast.error(`Variant ${i + 1} price adjustment must be a number`);
+        return;
+      }
+    }
+
     const wasEditing = Boolean(editingProduct);
     setSaving(true);
     try {
-      await saveProduct({ product: form, editingProduct });
+      await saveProduct({ product: { ...form, variants }, editingProduct });
       resetForm();
       toast.success(wasEditing ? 'Product updated' : 'Product added');
     } catch (err) {
@@ -140,7 +166,14 @@ const AdminPage = () => {
       category: product.category || 'electronics',
       image: product.image || '',
       countInStock: product.countInStock ?? 20,
-      rating: { rate: product.rating?.rate || 0, count: product.rating?.count || 0 }
+      rating: { rate: product.rating?.rate || 0, count: product.rating?.count || 0 },
+      variants: (product.variants || []).map((v) => ({
+        size: v.size || '',
+        color: v.color || '',
+        sku: v.sku || '',
+        stock: v.stock ?? 0,
+        priceAdjustment: v.priceAdjustment ?? 0
+      }))
     });
     setShowForm(true);
   };
@@ -230,7 +263,7 @@ const AdminPage = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
       <nav className="flex gap-2 mb-6" role="group" aria-label="Admin sections">
-        {['products', 'orders', 'coupons'].map((tab) => (
+        {['products', 'orders', 'coupons', 'categories', 'deliveries'].map((tab) => (
           <button
             key={tab}
             type="button"
@@ -295,6 +328,15 @@ const AdminPage = () => {
       {adminTab === 'orders' && <AdminOrdersTab />}
 
       {adminTab === 'coupons' && <AdminCouponsTab />}
+
+      {adminTab === 'categories' && <AdminCategoriesTab />}
+
+      {adminTab === 'deliveries' && (
+        <div className="space-y-4 sm:space-y-6">
+          <AdminDeliveryAssign />
+          <AdminDeliveryMap />
+        </div>
+      )}
 
       {confirmModal.show && (
         <ConfirmModal

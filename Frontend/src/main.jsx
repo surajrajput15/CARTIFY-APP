@@ -2,8 +2,10 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import './index.css'
+import 'leaflet/dist/leaflet.css'
 import { AuthProvider } from './context/authContext';
 import { CartProvider } from './context/cartContext';
+import { WishlistProvider } from './context/WishlistContext';
 import { BackendStatusProvider } from './context/BackendStatusContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import { toast } from 'react-hot-toast';
@@ -66,9 +68,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <ErrorBoundary>
       <BackendStatusProvider>
         <AuthProvider>
-          <CartProvider>
-            <App />
-          </CartProvider>
+          <WishlistProvider>
+            <CartProvider>
+              <App />
+            </CartProvider>
+          </WishlistProvider>
         </AuthProvider>
       </BackendStatusProvider>
     </ErrorBoundary>

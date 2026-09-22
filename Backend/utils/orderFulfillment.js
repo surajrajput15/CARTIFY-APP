@@ -2,6 +2,7 @@ const Product = require('../models/Product');
 const Order = require('../models/Order');
 const Coupon = require('../models/Coupon');
 const { logger } = require('./logger');
+const { buildVariantKey } = require('./variants');
 
 // Shared order finalisation used by BOTH the client verify-payment endpoint and the
 // Razorpay webhook, so a captured payment is reconciled exactly once no matter which
@@ -50,6 +51,28 @@ async function finalisePaidOrder(order, { paymentId } = {}) {
   let stockReserved = true;
 
   for (const item of finalisedOrder.orderItems) {
+    // Variant-aware reservation: when the order line carries a variantKey and the
+    // product still has that variant, decrement the VARIANT stock atomically
+    // (same $gte + compensating rollback pattern as flat stock).
+    if (item.variantKey) {
+      const product = stockProducts.find(p => p._id.toString() === item.productId.toString());
+      const variant = product?.variants?.find((v) => buildVariantKey(v) === item.variantKey);
+      if (variant) {
+        const result = await Product.updateOne(
+          { _id: item.productId, 'variants.size': variant.size || null, 'variants.color': variant.color || null, 'variants.stock': { $gte: item.quantity } },
+          { $inc: { 'variants.$.stock': -item.quantity } }
+        );
+        if (result.modifiedCount === 1) {
+          appliedDecrements.push({ productId: item.productId, quantity: item.quantity, variantKey: item.variantKey });
+          continue;
+        }
+        stockReserved = false;
+        break;
+      }
+      // Variant disappeared between checkout and verify — fall through to flat
+      // stock handling so the order can still be fulfilled or flagged.
+    }
+
     const stock = stockByProductId.get(item.productId.toString());
     if (stock == null) continue; // legacy product, untracked stock
 
@@ -70,10 +93,18 @@ async function finalisePaidOrder(order, { paymentId } = {}) {
     // Compensate: undo every decrement we applied so stock is never partially consumed
     // for an order that cannot be fully fulfilled.
     for (const d of appliedDecrements) {
-      await Product.updateOne(
-        { _id: d.productId },
-        { $inc: { countInStock: d.quantity } }
-      );
+      if (d.variantKey) {
+        const parsed = d.variantKey.split('|');
+        await Product.updateOne(
+          { _id: d.productId, 'variants.size': parsed[0] || null, 'variants.color': parsed[1] || null },
+          { $inc: { 'variants.$.stock': d.quantity } }
+        );
+      } else {
+        await Product.updateOne(
+          { _id: d.productId },
+          { $inc: { countInStock: d.quantity } }
+        );
+      }
     }
     await Order.findByIdAndUpdate(order._id, { stockShortfall: true });
     return { finalised: true, order: finalisedOrder, shortfall: true };

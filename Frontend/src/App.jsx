@@ -4,24 +4,31 @@ import { Toaster } from 'react-hot-toast';
 import { Loader2 } from 'lucide-react';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import MobileBottomNav from './components/MobileBottomNav';
 import Spinner from './components/Spinner';
 import InstallButton from './components/InstallButton';
 import BackendStatusBanner from './components/BackendStatusBanner';
 import HomePage from './pages/HomePage';
 import NotFound from './pages/NotFound';
+import AccessDenied from './pages/AccessDenied';
 import { GoogleIdentityProvider } from './context/googleIdentityContext';
 import { useAuth } from './context/authContext';
 import { useBackendStatus } from './context/BackendStatusContext';
 import { onBackendStatusChange } from './api/axios';
 import { registerNavigator } from './utils/navigation';
 import ErrorBoundary from './components/ErrorBoundary';
+import RoleGuard from './components/routeGuards/RoleGuard';
 
 const CartPage = lazy(() => import('./pages/CartPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
 const ProductDetailsPage = lazy(() => import('./pages/ProductDetailsPage'));
+const WishlistPage = lazy(() => import('./pages/WishlistPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
+const DeliveryPage = lazy(() => import('./pages/DeliveryPage'));
+const OrderTrackingPage = lazy(() => import('./pages/OrderTrackingPage'));
+const FaqPage = lazy(() => import('./pages/FaqPage'));
 
 function withErrorBoundary(Component) {
   return function WithErrorBoundary() {
@@ -39,7 +46,11 @@ const LoginPageWithError = withErrorBoundary(LoginPage);
 const ProfilePageWithError = withErrorBoundary(ProfilePage);
 const CheckoutPageWithError = withErrorBoundary(CheckoutPage);
 const ProductDetailsPageWithError = withErrorBoundary(ProductDetailsPage);
+const WishlistPageWithError = withErrorBoundary(WishlistPage);
 const AdminPageWithError = withErrorBoundary(AdminPage);
+const DeliveryPageWithError = withErrorBoundary(DeliveryPage);
+const OrderTrackingPageWithError = withErrorBoundary(OrderTrackingPage);
+const AccessDeniedWithError = withErrorBoundary(AccessDenied);
 
 function NavigationBridge() {
   const navigate = useNavigate();
@@ -77,7 +88,7 @@ function App() {
   return (
     <Router>
       <GoogleIdentityProvider>
-        <div className="min-h-screen bg-gray-50 font-sans pb-10">
+        <div className="min-h-screen bg-gray-50 font-sans pb-24 md:pb-10">
 
           <a
             href="#main-content"
@@ -99,19 +110,49 @@ function App() {
           <main id="main-content">
             <Suspense fallback={<Spinner />}>
               <Routes>
+                {/* Public routes */}
                 <Route path="/" element={<HomePageWithError />} />
                 <Route path="/cart" element={<CartPageWithError />} />
                 <Route path="/login" element={<LoginPageWithError />} />
                 <Route path="/profile" element={<ProfilePageWithError />} />
+                <Route path="/wishlist" element={<WishlistPageWithError />} />
                 <Route path="/checkout" element={<CheckoutPageWithError />} />
                 <Route path="/product/:id" element={<ProductDetailsPageWithError />} />
-                <Route path="/admin" element={<AdminPageWithError />} />
+                <Route path="/track/:id" element={<OrderTrackingPageWithError />} />
+                <Route path="/faq" element={<FaqPage />} />
+                
+                {/* Access denied page - also reachable directly */}
+                <Route path="/access-denied" element={<AccessDeniedWithError />} />
+                
+                {/* Protected: Admin only */}
+                <Route
+                  path="/admin/*"
+                  element={
+                    <RoleGuard allowedRoles={['admin']}>
+                      <AdminPageWithError />
+                    </RoleGuard>
+                  }
+                />
+
+                {/* Protected: Delivery partner only */}
+                <Route
+                  path="/delivery/*"
+                  element={
+                    <RoleGuard allowedRoles={['delivery']}>
+                      <DeliveryPageWithError />
+                    </RoleGuard>
+                  }
+                />
+                
+                {/* 404 catch-all */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
           </main>
 
           <Footer />
+
+          <MobileBottomNav />
 
           <InstallButton />
           

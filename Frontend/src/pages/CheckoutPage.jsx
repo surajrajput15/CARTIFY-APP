@@ -33,14 +33,9 @@ const CheckoutPage = () => {
       return;
     }
     // Empty cart = nothing to pay for. Bounce to cart instead of showing a
-    // dead checkout page. The just-paid flag (set on payment success) tells
-    // us this empty cart is post-order, not a dead end — consume it and stop.
+    // dead checkout page with a stale ₹0 subtotal.
     if (cart.length === 0) {
-      if (sessionStorage.getItem('orderJustPlaced')) {
-        sessionStorage.removeItem('orderJustPlaced');
-      } else {
-        navigate('/cart', { replace: true });
-      }
+      navigate('/cart', { replace: true });
       return;
     }
     let cancelled = false;

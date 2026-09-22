@@ -111,7 +111,8 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
       const { data } = await createPaymentOrder(
         cart.map(item => ({
           productId: item._id || item.id,
-          quantity: Math.floor(Number(item.quantity)) || 1
+          quantity: Math.floor(Number(item.quantity)) || 1,
+          ...(item.variantKey ? { variantKey: item.variantKey } : {})
         })),
         selectedAddress,
         couponCode || undefined
@@ -122,10 +123,9 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
       // Free-order shortcut (100% discount): backend already created a Paid order.
       if (data.freeOrder) {
         toast.success('Order placed successfully! 🎉 (100% coupon applied)');
-        try { sessionStorage.setItem('orderJustPlaced', '1'); } catch { /* storage unavailable */ }
         clearCart();
         if (clearCoupon) clearCoupon();
-        navigate('/profile');
+        navigate('/profile?tab=orders');
         return;
       }
 
@@ -175,16 +175,9 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
               if (!successNotifiedRef.current) {
                 successNotifiedRef.current = true;
                 toast.success("Payment Successful! 🎉 Order Placed.");
-                // Mark post-order so CheckoutPage's empty-cart guard doesn't
-                // misfire on the cleared cart during the redirect.
-                try {
-                  sessionStorage.setItem('orderJustPlaced', '1');
-                } catch {
-                  // storage unavailable — redirect still proceeds below
-                }
                 clearCart();
                 if (clearCoupon) clearCoupon();
-                navigate('/profile');
+                navigate('/profile?tab=orders');
               }
             } else {
               toast.error(verifyRes.data.message || "Payment could not be verified");

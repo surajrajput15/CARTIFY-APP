@@ -54,6 +54,19 @@ const googleClient = process.env.GOOGLE_CLIENT_ID
 // normalized form so register/login/OTP/reset can never diverge by case.
 const normalizeEmail = (email) => (typeof email === 'string' ? email.trim().toLowerCase() : '');
 
+// Canonical public user shape returned by every auth endpoint. `role` is derived
+// server-side so the frontend RoleGuard can trust a single field; an isAdmin flag
+// always implies the admin role. Never includes password/OTP/token material.
+const publicUser = (u) => ({
+    id: u._id,
+    name: u.name,
+    email: u.email,
+    isAdmin: Boolean(u.isAdmin),
+    role: u.isAdmin ? 'admin' : (u.role || 'customer'),
+    hasPassword: Boolean(u.password),
+    createdAt: u.createdAt,
+});
+
 // Constant-time comparison — mitigates OTP timing attacks regardless of rate limiting.
 const safeEqual = (a, b) => {
   const ba = Buffer.from(String(a), 'utf8');
@@ -324,7 +337,7 @@ router.post('/verify-otp', credentialGuard, async (req, res) => {
 
         res.status(200).json({
             message: "Login successful! 🎉",
-            user: { id: user._id, name: user.name, email: user.email, isAdmin: user.isAdmin }
+            user: publicUser(user)
         });
     } catch (error) {
         logger.error({ err: error }, "❌ OTP verify error:");
@@ -408,7 +421,7 @@ router.post('/register', credentialGuard, async (req, res) => {
 
         res.status(201).json({ 
             message: "Account created successfully!",
-            user: { id: newUser._id, name: newUser.name, email: newUser.email, isAdmin: newUser.isAdmin }
+            user: publicUser(newUser)
         });
     } catch (error) {
         logger.error({ err: error }, "❌ Registration error:");
@@ -453,7 +466,7 @@ router.post('/login', credentialGuard, async (req, res) => {
 
         res.status(200).json({
             message: "Login successful!",
-            user: { id: user._id, name: user.name, email: user.email, isAdmin: user.isAdmin }
+            user: publicUser(user)
         });
     } catch (error) {
         logger.error({ err: error }, "❌ Login error:");
@@ -695,14 +708,14 @@ router.put('/update/:id', sessionGuard, protect, async (req, res) => {
         const updatedUser = await User.findByIdAndUpdate(
             req.params.id, 
             { name: newName }, 
-            { returnDocument: 'after', runValidators: true }
+            { returnDocument: 'after', runValidators: true, projection: '-otp -otpAttempts -otpExpire -refreshToken -refreshTokenExpire -previousRefreshToken -previousRefreshTokenExpire' }
         );
         
         if (!updatedUser) return res.status(404).json({ message: "User not found" });
 
         res.status(200).json({ 
             message: "Profile updated successfully!", 
-            user: { id: updatedUser._id, name: updatedUser.name, email: updatedUser.email, isAdmin: updatedUser.isAdmin } 
+            user: publicUser(updatedUser) 
         });
     } catch (error) {
         logger.error({ err: error }, "❌ Profile update error:");
@@ -738,6 +751,68 @@ router.delete('/delete/:id', sessionGuard, protect, async (req, res) => {
     } catch (error) {
         logger.error({ err: error }, "❌ Account delete error:");
         res.status(500).json({ message: "Error deleting account." });
+    }
+});
+
+// 3. CHANGE PASSWORD (authenticated; replaces the email-OTP detour for logged-in users)
+router.put('/change-password/:id', sessionGuard, credentialGuard, protect, async (req, res) => {
+    try {
+        if (!req.params.id || !require('mongoose').Types.ObjectId.isValid(req.params.id)) {
+            return res.status(400).json({ message: "Invalid user ID format" });
+        }
+        if (req.user._id.toString() !== req.params.id) {
+            return res.status(403).json({ message: "You can only change your own password." });
+        }
+
+        const { currentPassword, newPassword } = req.body;
+        if (typeof currentPassword !== 'string' || typeof newPassword !== 'string' ||
+            currentPassword.length > MAX_PASSWORD_LENGTH || newPassword.length > MAX_PASSWORD_LENGTH) {
+            return res.status(400).json({ message: "Current and new passwords are required." });
+        }
+
+        // Throttle repeated guesses from a hijacked session. Keyed with a prefix so
+        // these failures never lock the normal login flow for the same email.
+        const failKey = `change:${req.user.email}`;
+        const lockedMessage = checkLoginLock(failKey);
+        if (lockedMessage) return res.status(429).json({ message: lockedMessage });
+
+        // protect strips the password field, so re-read it explicitly here.
+        const user = await User.findById(req.user._id).select('+password');
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        // Passwordless accounts (OTP/Google signup) cannot "change" a password they
+        // don't have — any submitted current password is rejected, and the email
+        // OTP reset flow remains the only way to set one (nothing is guessable).
+        if (!user.password) {
+            recordLoginFail(failKey);
+            return res.status(400).json({ message: "No password is set on this account. Use 'Forgot password' on the login page to create one." });
+        }
+
+        const isMatch = await bcrypt.compare(currentPassword, user.password);
+        if (!isMatch) {
+            recordLoginFail(failKey);
+            return res.status(400).json({ message: "Current password is incorrect." });
+        }
+
+        const passwordError = validatePassword(newPassword);
+        if (passwordError) return res.status(400).json({ message: passwordError });
+
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(newPassword, salt);
+
+        // Same hygiene as the OTP reset: rotate refresh tokens so stolen cookies
+        // cannot outlive a password change (the 60s grace slot keeps in-flight
+        // refreshes from this tab working), then reissue the auth cookie pair.
+        const { newAccessToken, newRefreshToken } = rotateRefreshToken(user);
+        clearLoginFails(failKey);
+        await user.save();
+
+        setAuthCookies(res, newAccessToken, newRefreshToken);
+
+        res.status(200).json({ message: "Password changed successfully!" });
+    } catch (error) {
+        logger.error({ err: error }, "❌ Change password error:");
+        res.status(500).json({ message: "Error changing password." });
     }
 });
 
@@ -805,7 +880,7 @@ router.post('/google', credentialGuard, async (req, res) => {
         setAuthCookies(res, accessToken, refreshToken);
 
         res.status(200).json({
-            user: { id: user._id, name: user.name, email: user.email, isAdmin: user.isAdmin }
+            user: publicUser(user)
         });
     } catch (error) {
         logger.error({ err: error }, "Google Login Error:");
@@ -830,9 +905,11 @@ router.get('/csrf-token', (req, res) => {
 // ==========================================
 router.get('/me', sessionGuard, protect, async (req, res) => {
     try {
-        res.status(200).json({
-            user: { id: req.user._id, name: req.user.name, email: req.user.email, isAdmin: req.user.isAdmin }
-        });
+        // protect strips sensitive fields, so hasPassword needs a dedicated read.
+        // The password itself is never included in the response — only its presence.
+        const me = await User.findById(req.user._id).select('name email isAdmin password createdAt role');
+        if (!me) return res.status(404).json({ message: "User not found" });
+        res.status(200).json({ user: publicUser(me) });
     } catch (error) {
         logger.error({ err: error }, "❌ /me error:");
         res.status(500).json({ message: "Error fetching user" });

@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { fetchProducts } from '../services/productsApi';
 import HeroBanner from '../components/HeroBanner';
+import ShopByCategory from '../components/ShopByCategory';
 import ProductCard from '../components/ProductCard';
 import { SkeletonList } from '../components/Skeleton';
 import { SearchEmptyIllustration } from '../components/illustrations/EmptyStateIllustrations';
 import { isNetworkError } from '../utils/apiError';
 import { formatNumber, truncate } from '../utils/format';
 import { logError } from '../utils/logger';
-import { PRODUCT_CATEGORIES } from '../utils/constants';
+import HomeSections from '../components/HomeSections';
 
 const getPageNumbers = (current, total) => {
   if (total <= 7) {
@@ -38,12 +39,19 @@ const HomePage = () => {
 
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get('search') || '';
+  const categoryParam = searchParams.get('category') || 'all';
 
-  // Reset loading AND page to 1 whenever search/category changes. This is a
-  // deliberate one-shot UI reset (user click / URL navigation), not a cascading
-  // render loop, so the effect is intentional here.
+  // URL is the single source of truth for filters: Navbar rail, ShopByCategory
+  // cards and search all drive /?category= / ?search=, so keep local state in sync.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot reset on filter change
+    setSelectedCategory(categoryParam);
+    setPage(1);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot sync from URL
+  }, [categoryParam]);
+
+  // Reset loading when search/category changes (URL-driven).
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot UI reset on filter change
     setLoading(true);
     setPage(1);
     setFetchError(null);
@@ -89,10 +97,6 @@ const HomePage = () => {
     return () => { cancelled = true; };
   }, [page, selectedCategory, searchQuery, retryKey]);
 
-  const handleCategoryChange = (cat) => {
-    setSelectedCategory(cat);
-  };
-
   const goToPage = (p) => {
     setPage(p);
     document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -106,33 +110,15 @@ const HomePage = () => {
 
   const heading = searchQuery
     ? `Search results for "${truncate(searchQuery, 40)}"`
-    : 'Trending Products';
+    : selectedCategory !== 'all'
+      ? `${truncate(selectedCategory, 20)} products`
+      : 'Trending Now';
 
   return (
     <main className="max-w-7xl mx-auto p-4 md:p-6 mt-4">
       <HeroBanner />
 
-      <nav
-        className="mt-8 sm:mt-12 mb-6 sm:mb-8 bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100"
-        aria-label="Product categories"
-      >
-        <div className="flex flex-wrap gap-2 sm:gap-3 justify-center">
-          {PRODUCT_CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => handleCategoryChange(cat)}
-              aria-pressed={selectedCategory === cat}
-              className={`px-4 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-medium capitalize transition-colors min-h-[36px] ${
-                selectedCategory === cat
-                  ? 'bg-teal-600 text-white shadow-md'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-      </nav>
+      {!searchQuery && selectedCategory === 'all' && <ShopByCategory />}
 
       <div id="products" className="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-1 scroll-mt-24">
         <div>
@@ -255,6 +241,8 @@ const HomePage = () => {
           )}
         </div>
       )}
+
+      {!searchQuery && selectedCategory === 'all' && <HomeSections />}
     </main>
   );
 };

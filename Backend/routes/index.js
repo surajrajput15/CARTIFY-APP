@@ -17,6 +17,11 @@ const cartRoutes = require('./cartRoutes');
 const paymentRoutes = require('./paymentRoutes');
 const couponRoutes = require('./couponRoutes');
 const uploadRoutes = require('./uploadRoutes');
+const wishlistRoutes = require('./wishlistRoutes');
+const categoryRoutes = require('./categoryRoutes');
+const adminRoutes = require('./adminRoutes');
+const adminDeliveryRoutes = require('./adminDeliveryRoutes');
+const locationRoutes = require('./locationRoutes');
 
 // Mount routes under v1
 router.use('/products', productRoutes);
@@ -27,11 +32,16 @@ router.use('/cart', cartRoutes);
 router.use('/payment', paymentRoutes);
 router.use('/coupons', couponRoutes);
 router.use('/upload', uploadRoutes.router);
+router.use('/wishlist', wishlistRoutes);
+router.use('/categories', categoryRoutes);
+router.use('/admin/analytics', adminRoutes);
+router.use('/admin', adminDeliveryRoutes);
+router.use('/locations', locationRoutes);
 
 // V1 API info endpoint
 router.get('/', (req, res) => {
   res.json({
-    version: '1.0.0',
+    version: '2.0.0',
     name: 'Cartify API',
     documentation: '/api/docs',
     endpoints: {
@@ -43,6 +53,10 @@ router.get('/', (req, res) => {
       payment: '/api/v1/payment',
       coupons: '/api/v1/coupons',
       upload: '/api/v1/upload',
+      wishlist: '/api/v1/wishlist',
+      categories: '/api/v1/categories',
+      'admin-analytics': '/api/v1/admin/analytics',
+      locations: '/api/v1/locations',
     },
   });
 });

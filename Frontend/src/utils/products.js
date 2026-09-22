@@ -5,8 +5,11 @@ export const EMPTY_PRODUCT_FORM = {
   category: 'electronics',
   image: '',
   countInStock: 20,
-  rating: { rate: 0, count: 0 }
+  rating: { rate: 0, count: 0 },
+  variants: []
 };
+
+export const EMPTY_VARIANT = { size: '', color: '', sku: '', stock: 0, priceAdjustment: 0 };
 
 export const filterProducts = (products, { searchTerm = '', filterCategory = '' } = {}) => {
   let result = products;

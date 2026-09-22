@@ -2,7 +2,10 @@ const mongoose = require('mongoose');
 
 const cartItemSchema = new mongoose.Schema({
     productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
-    quantity: { type: Number, required: true, min: 1, default: 1 }
+    quantity: { type: Number, required: true, min: 1, default: 1 },
+    // Canonical clothing-variant wire key "size|color" (either side may be empty).
+    // Null for plain (non-variant) products — legacy V1 behaviour preserved.
+    variantKey: { type: String, default: null, trim: true, maxlength: 80 }
 });
 
 const cartSchema = new mongoose.Schema({

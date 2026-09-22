@@ -12,6 +12,11 @@ const addressSchema = new mongoose.Schema({
     city: { type: String, required: true },
     state: { type: String, required: true },
     pinCode: { type: String, required: true },
+    // Optional GPS pin captured on the address map. Coordinates NEVER replace
+    // the human-readable fields above — they only enrich them for delivery
+    // navigation/tracking. Both or neither (validated at the route layer).
+    latitude: { type: Number, default: null, min: -90, max: 90 },
+    longitude: { type: Number, default: null, min: -180, max: 180 },
     isDefault: { type: Boolean, default: false },
 }, { timestamps: true });
 

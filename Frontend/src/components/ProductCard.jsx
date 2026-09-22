@@ -1,8 +1,10 @@
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, Heart } from 'lucide-react';
 import StarRating from './StarRating';
 import { useCart } from '../context/cartContext';
-import { Link } from 'react-router-dom';
+import { useWishlist } from '../context/WishlistContext';
+import { Link, useNavigate } from 'react-router-dom';
 import { getStockStatus } from '../utils/stockStatus';
+import { hasVariants, effectiveStock } from '../utils/variants';
 import { resolveImageUrl, generateSrcSet } from '../utils/imageUrl';
 import { formatPrice, truncate } from '../utils/format';
 import { memo, useCallback } from 'react';
@@ -11,39 +13,69 @@ const PLACEHOLDER_IMG = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3d
 
 const ProductCard = memo(({ product }) => {
   const { addToCart } = useCart();
-  const stock = getStockStatus(product.countInStock);
+  const navigate = useNavigate();
+  const { wishlist, isWishlisted, addToWishlist, removeFromWishlist } = useWishlist();
+  const productId = String(product?._id || product?.id || '');
+  const wishlisted = isWishlisted(productId);
+  const productHasVariants = hasVariants(product);
+  const stock = getStockStatus(productHasVariants ? effectiveStock(product) : product.countInStock);
+
+  const handleWishlistToggle = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (wishlisted) {
+      removeFromWishlist(product);
+    } else {
+      addToWishlist(product);
+    }
+  }, [wishlisted, addToWishlist, removeFromWishlist, product]);
 
   const handleAddToCart = useCallback(() => {
+    if (productHasVariants) {
+      navigate(`/product/${product._id}`);
+      return;
+    }
     addToCart(product);
-  }, [addToCart, product]);
+  }, [addToCart, product, productHasVariants, navigate]);
 
   const imageUrl = resolveImageUrl(product.image);
   const srcSet = generateSrcSet(product.image);
   const altText = product.title ? `${truncate(product.title, 60)} — ${product.category || 'product'}` : 'Product image';
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden border border-gray-100 flex flex-col h-full group">
-
+    <div className="bg-white rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden border border-gray-100 flex flex-col h-full">
       <Link
         to={`/product/${product._id}`}
-        className="h-56 overflow-hidden bg-gray-50 block cursor-pointer relative p-4 flex items-center justify-center border-b border-gray-50"
-        style={{ aspectRatio: '1 / 1' }}
+        className="h-56 overflow-hidden bg-gray-50 block cursor-pointer relative flex items-center justify-center border-b border-gray-100 group"
         aria-label={`View ${product.title}`}
       >
         {(stock || product.category) && (
-          <span className="absolute top-3 inset-x-3 z-10 flex items-start justify-between gap-2 pointer-events-none">
+          <span className="absolute top-3 left-3 z-20 flex flex-col items-start gap-1.5 pointer-events-none">
             {stock ? (
               <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm whitespace-nowrap ${stock.bgColor} ${stock.textColor}`}>
                 {stock.label}
               </span>
             ) : <span />}
             {product.category && (
-              <span className="bg-teal-50 text-teal-700 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm max-w-[55%] truncate">
+              <span className="bg-teal-50 text-teal-700 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm max-w-[160px] truncate">
                 {product.category}
               </span>
             )}
           </span>
         )}
+        <button
+          type="button"
+          onClick={handleWishlistToggle}
+          aria-pressed={wishlisted}
+          aria-label={wishlisted ? `Remove ${product.title} from wishlist` : `Save ${product.title} to wishlist`}
+          className={`absolute top-3 right-3 z-20 p-2.5 rounded-full shadow-md transition-all active:scale-90 min-w-[44px] min-h-[44px] inline-flex items-center justify-center ${
+            wishlisted
+              ? 'bg-red-50 text-red-500 border border-red-100'
+              : 'bg-white text-gray-400 border border-gray-100 hover:text-red-500 hover:border-red-200'
+          }`}
+        >
+          <Heart size={18} aria-hidden="true" className={wishlisted ? 'fill-current' : ''} />
+        </button>
         <img
           src={imageUrl}
           srcSet={srcSet}
@@ -52,7 +84,7 @@ const ProductCard = memo(({ product }) => {
           loading="lazy"
           decoding="async"
           onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMG; }}
-          className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500 ease-out"
+          className="max-h-full max-w-full object-contain p-4 group-hover:scale-105 transition-transform duration-500 ease-out"
         />
       </Link>
 
@@ -76,14 +108,15 @@ const ProductCard = memo(({ product }) => {
           </span>
         </div>
 
-        <div className="mt-auto flex items-center justify-between pt-2 gap-2">
+        <div className="mt-auto flex items-center justify-between pt-2">
           <span className="text-xl font-black text-gray-900">
             {formatPrice(product.price)}
           </span>
           <button
             onClick={handleAddToCart}
             disabled={stock?.disabled}
-            aria-label={stock?.disabled ? `${product.title} is out of stock` : `Add ${product.title} to cart`}
+            aria-label={stock?.disabled ? `${product.title} is out of stock` : productHasVariants ? `Choose options for ${product.title}` : `Add ${product.title} to cart`}
+            title={productHasVariants && !stock?.disabled ? 'Choose size / colour' : undefined}
             className={`p-2.5 rounded-xl transition-all shadow-md hover:shadow-lg shadow-teal-100 hover:shadow-teal-200 active:scale-95 min-w-[44px] min-h-[44px] flex items-center justify-center ${
               stock?.disabled
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-60'

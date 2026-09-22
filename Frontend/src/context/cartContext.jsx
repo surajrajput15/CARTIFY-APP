@@ -111,15 +111,19 @@ export const CartProvider = ({ children }) => {
 
   const addToCart = useCallback((product, qty = 1) => {
     const productId = product._id || product.id;
+    const variantKey = product.variantKey || null;
+    const lineKey = `${productId}::${variantKey || ''}`;
     setCart(prev => {
-      const existingIndex = prev.findIndex(item => item._id === productId);
+      const existingIndex = prev.findIndex(
+        item => `${item._id || item.id}::${item.variantKey || ''}` === lineKey
+      );
       let updated;
       if (existingIndex >= 0) {
         updated = prev.map((item, i) =>
           i === existingIndex ? { ...item, quantity: (item.quantity || 1) + qty } : item
         );
       } else {
-        updated = [...prev, { ...product, _id: productId, quantity: qty }];
+        updated = [...prev, { ...product, _id: productId, quantity: qty, variantKey }];
       }
       debouncedSave(updated);
       debouncedServerSync(updated);
@@ -127,19 +131,21 @@ export const CartProvider = ({ children }) => {
     });
   }, [debouncedSave, debouncedServerSync]);
 
-  const removeFromCart = useCallback((productId) => {
+  const removeFromCart = useCallback((productId, variantKey = null) => {
     setCart(prev => {
-      const updated = prev.filter(item => item._id !== productId);
+      const updated = prev.filter(
+        item => !((item._id || item.id) === productId && (item.variantKey || null) === (variantKey || null))
+      );
       debouncedSave(updated);
       debouncedServerSync(updated);
       return updated;
     });
   }, [debouncedSave, debouncedServerSync]);
 
-  const updateQuantity = useCallback((productId, action) => {
+  const updateQuantity = useCallback((productId, action, variantKey = null) => {
     setCart(prev => {
       const updated = prev.map(item => {
-        if (item._id === productId) {
+        if ((item._id || item.id) === productId && (item.variantKey || null) === (variantKey || null)) {
           let currentQuantity = item.quantity || 1;
           if (action === 'increase') {
             // Never exceed tracked stock — matches the PDP cap and prevents

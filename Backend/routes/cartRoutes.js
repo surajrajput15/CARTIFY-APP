@@ -13,12 +13,15 @@ const isValidId = (id) => mongoose.Types.ObjectId.isValid(String(id));
 // stock. This lets a user's cart survive across devices.
 
 // Convert raw cart items into frontend-shaped product objects.
+// Variant carts store { productId, variantKey, quantity } — variantKey is the
+// canonical "size|color" wire key (see utils/variants.js). Plain items have no
+// variantKey and behave exactly as before (V1 compatibility).
 const hydrateItems = (items, products) =>
   items
     .map((item) => {
-      const product = products.find((p) => p._id.toString() === item.productId.toString());
+      const product = products.find((p) => p._id.toString() === (item.productId._id || item.productId).toString());
       if (!product) return null; // product was deleted; drop it
-      return {
+      const base = {
         _id: product._id,
         title: product.title,
         price: product.price,
@@ -29,6 +32,19 @@ const hydrateItems = (items, products) =>
         rating: product.rating,
         quantity: item.quantity,
       };
+      if (item.variantKey) {
+        const variant = (product.variants || []).find((v) => `${v.size || ''}|${v.color || ''}` === item.variantKey);
+        base.variantKey = item.variantKey;
+        base.variantSize = variant ? (variant.size || null) : null;
+        base.variantColor = variant ? (variant.color || null) : null;
+        // Effective unit price includes the variant priceAdjustment; stock is
+        // the variant's own stock so quantity caps match checkout rules.
+        if (variant) {
+          base.price = product.price + (Number(variant.priceAdjustment) || 0);
+          base.countInStock = variant.stock;
+        }
+      }
+      return base;
     })
     .filter(Boolean);
 
@@ -56,11 +72,14 @@ router.post('/merge', protect, async (req, res) => {
     const localItems = Array.isArray(req.body.items) ? req.body.items : [];
     // Caps mirror the payment limit (qty 1-20) so a stored cart can never
     // hold a quantity that checkout would reject; 100 items bounds the write.
+    // variantKey (optional string, max 80 chars) distinguishes variants of the
+    // same product; merge keys on productId + variantKey.
     const normalized = localItems
       .slice(0, 100)
       .map((item) => ({
         productId: item.productId || item._id || item.id,
         quantity: Math.min(20, Math.max(1, Math.floor(Number(item.quantity)) || 1)),
+        variantKey: typeof item.variantKey === 'string' && item.variantKey.length <= 80 ? item.variantKey : null,
       }))
       .filter((item) => item.productId && isValidId(item.productId));
 
@@ -81,19 +100,21 @@ router.post('/merge', protect, async (req, res) => {
       { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
     );
 
-    // Merge: sum quantities for items already present, append new ones.
+    // Merge: sum quantities for items already present (same product + variant),
+    // append new ones.
     const mergedMap = new Map();
+    const lineKey = (it) => `${it.productId.toString()}::${it.variantKey || ''}`;
     for (const item of cart.items) {
-      mergedMap.set(item.productId.toString(), { productId: item.productId, quantity: item.quantity });
+      mergedMap.set(lineKey(item), { productId: item.productId, quantity: item.quantity, variantKey: item.variantKey || null });
     }
     for (const item of validItems) {
-      const key = item.productId.toString();
+      const key = lineKey(item);
       const existing = mergedMap.get(key);
       if (existing) {
         // Keep the merged total within the payment limit (qty <= 20).
         existing.quantity = Math.min(20, existing.quantity + item.quantity);
       } else {
-        mergedMap.set(key, { productId: item.productId, quantity: item.quantity });
+        mergedMap.set(key, { productId: item.productId, quantity: item.quantity, variantKey: item.variantKey });
       }
     }
 
@@ -130,6 +151,7 @@ router.put('/', protect, async (req, res) => {
       .map((item) => ({
         productId: item.productId || item._id || item.id,
         quantity: Math.min(20, Math.max(1, Math.floor(Number(item.quantity)) || 1)),
+        variantKey: typeof item.variantKey === 'string' && item.variantKey.length <= 80 ? item.variantKey : null,
       }))
       .filter((item) => item.productId && isValidId(item.productId));
 

@@ -13,6 +13,23 @@ coverage/
 qa/node_modules/
 qa/*.png
 qa/lh-prod.json
+qa/.task6_admin_*.json
+
+# Ad-hoc probe / smoke-test artifacts (never commit)
+p0*.mjs
+p0verify.mjs
+Frontend/p0*.mjs
+Frontend/tmp_*.mjs
+Frontend/tmp_p0go.mjs
+Frontend/_tmp_smoke/
+Frontend/.tmp_smoke_profile/
+Backend/scripts/_tmp_*.ps1
+Backend/audit_images.js
+Backend/source_images.js
+
+# Workspace root stubs (real projects live in Backend/ and Frontend/)
+/package.json
+/package-lock.json
 
 # Build stats (rollup visualizer)
 Frontend/dist/stats.html

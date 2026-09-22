@@ -91,3 +91,31 @@ export const calculateDiscount = (originalPrice, discountedPrice) => {
   if (isNaN(orig) || isNaN(disc) || orig <= 0 || disc >= orig) return 0;
   return Math.floor(((orig - disc) / orig) * 100);
 };
+
+/**
+ * Client-side mirror of the backend password policy (authRoutes.validatePassword):
+ * 8+ chars, at least one uppercase letter, one lowercase letter and one digit.
+ * Returns a human-readable error message string, or null when the password passes.
+ * Keeping both sides in sync lets the Change Password form fail fast without
+ * waiting for a network round-trip, while the backend stays authoritative.
+ * @param {string} password - The password to validate
+ * @returns {string|null} Error message, or null if valid
+ */
+export const validatePasswordPolicy = (password) => {
+  if (typeof password !== 'string' || password.length < 8) {
+    return 'Password must be at least 8 characters long';
+  }
+  if (password.length > 128) {
+    return 'Password must be at most 128 characters long';
+  }
+  if (!/[A-Z]/.test(password)) {
+    return 'Password must contain at least one uppercase letter';
+  }
+  if (!/[a-z]/.test(password)) {
+    return 'Password must contain at least one lowercase letter';
+  }
+  if (!/[0-9]/.test(password)) {
+    return 'Password must contain at least one number';
+  }
+  return null;
+};

@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { useOrders } from '../hooks/useOrders';
 import { useAddresses } from '../hooks/useAddresses';
 import { useProfile } from '../hooks/useProfile';
+import { useChangePassword } from '../hooks/useChangePassword';
 import ConfirmModal from '../components/ConfirmModal';
 import ProfileSidebar from '../components/profile/ProfileSidebar';
 import ProfileInfo from '../components/profile/ProfileInfo';
@@ -25,10 +26,19 @@ const ProfilePage = () => {
   const { orders, loadingOrders, fetchOrders } = useOrders(user?.id);
   const { addresses, addressesLoading, fetchAddresses, saveAddress, deleteAddress } = useAddresses(user?.id, false);
   const { isEditing, editName, setEditName, updateLoading, handleToggleEdit, handleUpdateProfile, deleteAccount } = useProfile();
+  const { changing: changingPassword, changePassword } = useChangePassword();
 
   useEffect(() => {
     if (!user) navigate('/login');
   }, [user, navigate]);
+
+  // URL-driven tab (?tab=orders from checkout success / navbar). One-shot
+  // navigation sync, not a cascading render loop.
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot URL sync
+    if (tab && tab !== activeTab) setActiveTab(tab);
+  }, [searchParams, activeTab]);
 
   useEffect(() => {
     if (activeTab === 'orders' && user) {
@@ -136,6 +146,7 @@ const ProfilePage = () => {
               onToggleEdit={handleToggleEdit}
               onEditNameChange={(e) => setEditName(e.target.value)}
               onSave={handleUpdateProfile}
+              onGoToSettings={() => handleTabChange('settings')}
             />
           )}
 
@@ -150,7 +161,15 @@ const ProfilePage = () => {
             />
           )}
 
-          {activeTab === 'settings' && <SettingsTab onDeleteAccount={handleDeleteAccount} />}
+          {activeTab === 'settings' && (
+            <SettingsTab
+              user={user}
+              onDeleteAccount={handleDeleteAccount}
+              onLogout={handleLogoutRequest}
+              onChangePassword={changePassword}
+              changing={changingPassword}
+            />
+          )}
         </div>
       </div>
 

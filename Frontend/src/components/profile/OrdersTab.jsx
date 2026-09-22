@@ -1,14 +1,18 @@
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { formatPrice, formatDate } from '../../utils/format';
 
 const ORDER_STATUS_STYLES = {
   Pending: { label: 'Pending', className: 'bg-gray-100 text-gray-600' },
   Processing: { label: 'Processing', className: 'bg-blue-50 text-blue-700' },
   Shipped: { label: 'Shipped', className: 'bg-indigo-50 text-indigo-700' },
+  'Out for Delivery': { label: 'Out for Delivery', className: 'bg-orange-50 text-orange-700' },
   Delivered: { label: 'Delivered', className: 'bg-teal-50 text-teal-700' },
   Cancelled: { label: 'Cancelled', className: 'bg-red-50 text-red-700' },
 };
 
 const OrdersTab = ({ orders, loading }) => {
+  const [expandedId, setExpandedId] = useState(null);
   const getPaymentLabel = (status) => {
     if (status === 'Paid') return { label: 'Paid', className: 'bg-green-50 text-green-700' };
     return { label: 'Payment Pending', className: 'bg-yellow-50 text-yellow-700' };
@@ -36,6 +40,8 @@ const OrdersTab = ({ orders, loading }) => {
           {orders.map(order => {
             const payment = getPaymentLabel(order.paymentStatus);
             const orderStatus = getOrderLabel(order.status);
+            const expanded = expandedId === order._id;
+            const addr = order.shippingAddress || {};
             return (
               <div key={order._id} className="p-4 border rounded-lg bg-gray-50">
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
@@ -61,6 +67,44 @@ const OrdersTab = ({ orders, loading }) => {
                 )}
                 {order.paidAt && (
                   <p className="text-gray-500 text-xs mt-1">Paid on {formatDate(order.paidAt)}</p>
+                )}
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedId(expanded ? null : order._id)}
+                    aria-expanded={expanded}
+                    className="text-sm font-bold text-teal-600 hover:text-teal-700"
+                  >
+                    {expanded ? 'Hide details' : 'View details'}
+                  </button>
+                  {(order.deliveryStatus === 'out_for_delivery' || order.deliveryStatus === 'accepted' || order.deliveryStatus === 'picked_up' || order.deliveryStatus === 'assigned' || order.deliveryStatus === 'delivered') && (
+                    <Link
+                      to={`/track/${order._id}`}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-lg transition-colors"
+                    >
+                      Track Delivery
+                    </Link>
+                  )}
+                </div>
+                {expanded && (
+                  <div className="mt-3 pt-3 border-t border-gray-200 space-y-3">
+                    <div>
+                      <p className="text-sm font-bold text-gray-800 mb-1">Items ({(order.orderItems || []).length})</p>
+                      {(order.orderItems || []).map((item) => (
+                        <p key={item.productId} className="text-sm text-gray-600">
+                          {item.title} × {item.quantity} — {formatPrice(item.price * item.quantity)}
+                        </p>
+                      ))}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-gray-800 mb-1">Shipping address</p>
+                      <p className="text-sm text-gray-600">
+                        {addr.fullName} · {addr.phone}
+                        <br />
+                        {addr.street}, {addr.city}, {addr.state} - {addr.pinCode}
+                      </p>
+                    </div>
+                  </div>
                 )}
               </div>
             );

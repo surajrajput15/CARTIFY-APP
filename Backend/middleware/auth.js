@@ -40,4 +40,27 @@ const admin = (req, res, next) => {
   }
 };
 
-module.exports = { protect, admin };
+// Delivery partner middleware — checks role === 'delivery'
+const delivery = (req, res, next) => {
+  if (req.user && req.user.role === 'delivery') {
+    next();
+  } else {
+    return res.status(403).json({ message: 'Not authorized as delivery partner' });
+  }
+};
+
+// Role-based access middleware — allows specific roles
+const roleAccess = (...allowedRoles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+    if (allowedRoles.includes(req.user.role)) {
+      next();
+    } else {
+      return res.status(403).json({ message: 'Not authorized for this resource' });
+    }
+  };
+};
+
+module.exports = { protect, admin, delivery, roleAccess };

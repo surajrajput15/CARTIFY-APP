@@ -40,9 +40,12 @@ export const useCoupon = (cart, totalAmount) => {
       setApplied(data.coupon);
       try { localStorage.setItem(STORAGE_KEY, c.trim().toUpperCase()); } catch { /* storage unavailable */ }
     } catch (err) {
-      const msg = err?.response?.data?.message || 'Invalid coupon';
+      const msg = err?.response?.data?.message || 'Invalid or expired coupon';
       setError(msg);
-      setApplied(null);
+      // Preserve the currently valid coupon: only clear it if the failed
+      // attempt targeted the applied code itself or nothing is applied yet.
+      const failedCode = c.trim().toUpperCase();
+      setApplied((prev) => (prev && prev.code !== failedCode ? prev : null));
     } finally {
       setLoading(false);
     }
@@ -90,7 +93,7 @@ export const useCoupon = (cart, totalAmount) => {
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err?.response?.data?.message || 'Invalid coupon');
+        setError(err?.response?.data?.message || 'Invalid or expired coupon');
         setApplied(null);
       });
     return () => { cancelled = true; };

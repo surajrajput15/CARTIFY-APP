@@ -9,6 +9,7 @@ const Product = require('../models/Product');
 const Order = require('../models/Order');
 const Coupon = require('../models/Coupon');
 const { finalisePaidOrder } = require('../utils/orderFulfillment');
+const { buildVariantKey } = require('../utils/variants');
 const rateLimit = require('express-rate-limit');
 
 // Rate limiting for payment endpoints to prevent abuse
@@ -113,6 +114,13 @@ router.post('/create-order', protect, paymentLimiter, async (req, res, next) => 
                     message: "Each item must have an integer quantity between 1 and 20"
                 });
             }
+            // Optional variant key: "size|color" (either side may be empty).
+            if (item.variantKey !== undefined && item.variantKey !== null && typeof item.variantKey !== 'string') {
+                return res.status(400).json({ message: "variantKey must be a string when provided" });
+            }
+            if (typeof item.variantKey === 'string' && item.variantKey.length > 80) {
+                return res.status(400).json({ message: "variantKey is too long" });
+            }
         }
 
         const productIdSet = [...new Set(items.map(item => item.productId))];
@@ -147,14 +155,18 @@ router.post('/create-order', protect, paymentLimiter, async (req, res, next) => 
         let calculatedTotal = 0;
         const orderItems = [];
         // Aggregate duplicate productIds first so per-line qty caps can't be bypassed
-        // ([{A,20},{A,20}] must total 40, not pass as two legal 20s).
+        // ([{A,20},{A,20}] must total 40, not pass as two legal 20s). The key is
+        // productId + variantKey so two variants of one product stay separate lines.
         const aggregated = new Map();
         for (const item of items) {
-            const key = String(item.productId);
+            const vKey = typeof item.variantKey === 'string' ? item.variantKey : null;
+            const key = `${String(item.productId)}::${vKey || ''}`;
             const qty = Number(item.quantity);
             aggregated.set(key, (aggregated.get(key) || 0) + qty);
         }
-        for (const [productId, quantity] of aggregated) {
+        for (const [key, quantity] of aggregated) {
+            const productId = key.split('::')[0];
+            const variantKeyRaw = key.split('::')[1] || null;
             if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20) {
                 return res.status(400).json({
                     message: "Each product's total quantity must be an integer between 1 and 20"
@@ -168,28 +180,65 @@ router.post('/create-order', protect, paymentLimiter, async (req, res, next) => 
                 });
             }
 
+            // ---- Variant resolution (server-authoritative) ----
+            // The client may pass variantKey "size|color"; when the product HAS
+            // variants, the key MUST match one of them. Variant price = base price
+            // + priceAdjustment (never trusted from the client). Stock checks use
+            // the variant stock; fulfilment decrements the VARIANT row.
+            let variant = null;
+            let unitPrice = product.price;
+            if (Array.isArray(product.variants) && product.variants.length > 0) {
+                const wanted = variantKeyRaw === null ? null : String(variantKeyRaw).trim();
+                if (!wanted) {
+                    return res.status(400).json({
+                        message: `Please choose a size/colour option for "${product.title}"`
+                    });
+                }
+                variant = product.variants.find((v) => buildVariantKey(v) === wanted);
+                if (!variant) {
+                    return res.status(400).json({
+                        message: `Selected option for "${product.title}" is no longer available`
+                    });
+                }
+                unitPrice = product.price + (Number(variant.priceAdjustment) || 0);
+                if (unitPrice <= 0) {
+                    return res.status(400).json({
+                        message: `Product "${product.title}" has an invalid variant price`
+                    });
+                }
+                if (variant.stock != null && quantity > variant.stock) {
+                    return res.status(400).json({
+                        message: `Only ${variant.stock} unit(s) of "${product.title}" (${variant.size || 'One size'}${variant.color ? ', ' + variant.color : ''}) are available`
+                    });
+                }
+            } else if (variantKeyRaw) {
+                // Client sent a variant key for a product with no variants — ignore it
+                // (defensive; keeps legacy carts purchasable).
+            }
+
             // Early stock gate: reject quantities that can never be fulfilled by the CURRENT
             // stock (tracked stock only — legacy products without a numeric countInStock are
-            // skipped, matching verify-time behaviour). This prevents a user from being put
-            // through a full Razorpay charge for a quantity that is already impossible to ship.
-            // A concurrent purchase can still deplete stock between this check and payment; that
-            // remainder is handled at verify-time by the atomic $gte reservation + 409 shortfall.
-            if (product.countInStock != null && quantity > product.countInStock) {
+            // skipped, matching verify-time behaviour). Variant products are gated per-variant
+            // above and skip this flat-stock check.
+            if (!variant && product.countInStock != null && quantity > product.countInStock) {
                 return res.status(400).json({
                     message: `Only ${product.countInStock} unit(s) of "${product.title}" are available in stock`
                 });
-            } else if (!product.countInStock) {
+            } else if (!variant && !product.countInStock) {
                 // Legacy products without numeric stock count — allow purchase
                 // and rely on verify-time atomic reservation for shortfall handling.
             }
 
-            const itemTotal = product.price * quantity;
+            const itemTotal = unitPrice * quantity;
             calculatedTotal += itemTotal;
             orderItems.push({
                 productId: product._id,
                 title: product.title,
-                price: product.price,
-                quantity
+                price: unitPrice,
+                quantity,
+                variantKey: variant ? buildVariantKey(variant) : null,
+                variantSize: variant ? (variant.size || null) : null,
+                variantColor: variant ? (variant.color || null) : null
             });
         }
 
@@ -271,6 +320,20 @@ router.post('/create-order', protect, paymentLimiter, async (req, res, next) => 
                 phone: normalizeIndianPhone(shippingAddress.phone),
                 pinCode: normalizePinCode(shippingAddress.pinCode),
             };
+            // Same optional GPS-pin handling as the paid path: keep only when both
+            // coordinates are finite numbers, otherwise drop them entirely.
+            const freeLat = Number(shippingAddress.latitude);
+            const freeLng = Number(shippingAddress.longitude);
+            if (
+                shippingAddress.latitude != null && shippingAddress.longitude != null &&
+                Number.isFinite(freeLat) && Number.isFinite(freeLng)
+            ) {
+                canonicalFreeAddress.latitude = freeLat;
+                canonicalFreeAddress.longitude = freeLng;
+            } else {
+                delete canonicalFreeAddress.latitude;
+                delete canonicalFreeAddress.longitude;
+            }
             const freeOrder = new Order({
                 userId: req.user._id,
                 orderItems,
@@ -357,6 +420,21 @@ router.post('/create-order', protect, paymentLimiter, async (req, res, next) => 
             phone: normalizeIndianPhone(shippingAddress.phone),
             pinCode: normalizePinCode(shippingAddress.pinCode),
         };
+        // Optional GPS pin: persist ONLY well-formed pairs so a malformed/half
+        // pin can never enter an order document (legacy orders stay compatible).
+        const lat = Number(shippingAddress.latitude);
+        const lng = Number(shippingAddress.longitude);
+        const hasValidPin =
+            shippingAddress.latitude != null && shippingAddress.longitude != null &&
+            Number.isFinite(lat) && Math.abs(lat) <= 90 &&
+            Number.isFinite(lng) && Math.abs(lng) <= 180;
+        if (hasValidPin) {
+            canonicalAddress.latitude = lat;
+            canonicalAddress.longitude = lng;
+        } else {
+            delete canonicalAddress.latitude;
+            delete canonicalAddress.longitude;
+        }
         const pendingOrder = new Order({
             userId: req.user._id,
             orderItems,

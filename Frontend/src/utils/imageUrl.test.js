@@ -15,9 +15,10 @@ describe('resolveImageUrl', () => {
     expect(resolveImageUrl('/uploads/abc123.png')).toBe('https://api.example.com/uploads/abc123.png');
   });
 
-  it('returns falsy values unchanged', () => {
-    expect(resolveImageUrl('')).toBe('');
-    expect(resolveImageUrl(null)).toBeNull();
-    expect(resolveImageUrl(undefined)).toBeUndefined();
+  it('returns the placeholder for falsy values', () => {
+    const placeholder = resolveImageUrl('');
+    expect(placeholder).toContain('data:image/svg+xml');
+    expect(resolveImageUrl(null)).toBe(placeholder);
+    expect(resolveImageUrl(undefined)).toBe(placeholder);
   });
 });

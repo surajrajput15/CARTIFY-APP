@@ -369,6 +369,11 @@ const server = app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
 
+// Socket.IO realtime layer (V2): live order tracking + admin broadcasts.
+// Must attach AFTER app.listen() so it can share the same HTTP server.
+const { initSocket, closeSocket } = require('./socket/socketServer');
+initSocket(server);
+
 server.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
         console.error(`Port ${PORT} is already in use. Attempting to free it...`);
@@ -397,6 +402,7 @@ server.on('error', (err) => {
 // restarts don't leave the process hanging or drop active connections mid-request.
 const shutdown = async (signal) => {
     logger.info({ signal }, 'Shutting down gracefully...');
+    closeSocket(); // stop accepting new socket connections first
     server.close(async () => {
         try {
             await Promise.all([
