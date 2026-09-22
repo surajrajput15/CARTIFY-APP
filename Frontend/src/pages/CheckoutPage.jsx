@@ -90,6 +90,10 @@ const CheckoutPage = () => {
           onPay={handlePayment}
         />
       </div>
+
+      {/* Clearance so the fixed mobile bottom nav never covers the Pay button
+          at the end of the flow. Scoped to mobile; desktop keeps its layout. */}
+      <div className="h-[calc(84px+env(safe-area-inset-bottom))] md:hidden" aria-hidden="true" />
     </main>
   );
 };

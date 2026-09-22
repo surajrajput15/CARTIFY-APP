@@ -114,11 +114,11 @@ const Navbar = () => {
               <button
                 type="button"
                 className="flex items-center gap-1.5 text-teal-50 hover:text-white transition-colors min-w-[44px] min-h-[44px] -my-4 px-2 justify-center"
-                aria-label="Deals and offers"
-                onClick={() => { navigate('/'); setRailOpen(false); setTimeout(() => document.querySelector('#deals')?.scrollIntoView({ behavior: 'smooth' }), 120); }}
+                aria-label="Featured picks"
+                onClick={() => { navigate('/?category=all'); setRailOpen(false); setTimeout(() => document.querySelector('#featured-heading')?.scrollIntoView({ behavior: 'smooth' }), 120); }}
               >
                 <BadgePercent size={13} aria-hidden="true" />
-                <span className="hidden sm:inline font-medium">Offers</span>
+                <span className="hidden sm:inline font-medium">Featured</span>
               </button>
               <button
                 type="button"

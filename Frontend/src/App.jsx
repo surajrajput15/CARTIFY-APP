@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { Loader2 } from 'lucide-react';
@@ -77,6 +77,17 @@ function BackendStatusBridge() {
 function App() {
   const { authLoading } = useAuth();
 
+  // Lift mobile toasts above the fixed bottom nav (safe-area aware). Desktop
+  // stays at the default bottom-right position.
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth < 768 : false
+  );
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -104,6 +115,7 @@ function App() {
           <Toaster
             position="bottom-right"
             reverseOrder={false}
+            containerStyle={isMobile ? { bottom: 'calc(76px + env(safe-area-inset-bottom))' } : undefined}
             toastOptions={{ ariaProps: { 'aria-live': 'polite', role: 'status' } }}
           />
           

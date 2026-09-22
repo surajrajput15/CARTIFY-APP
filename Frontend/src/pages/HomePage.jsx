@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { fetchProducts } from '../services/productsApi';
 import HeroBanner from '../components/HeroBanner';
@@ -112,7 +112,11 @@ const HomePage = () => {
     ? `Search results for "${truncate(searchQuery, 40)}"`
     : selectedCategory !== 'all'
       ? `${truncate(selectedCategory, 20)} products`
-      : 'Trending Now';
+      : 'All Products';
+  const gridIds = useMemo(
+    () => products.map((p) => String(p._id || p.id || '')).filter(Boolean),
+    [products]
+  );
 
   return (
     <main className="max-w-7xl mx-auto p-4 md:p-6 mt-4">
@@ -120,7 +124,7 @@ const HomePage = () => {
 
       {!searchQuery && selectedCategory === 'all' && <ShopByCategory />}
 
-      <div id="products" className="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-1 scroll-mt-24">
+      <div id="products" className="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-1 scroll-mt-36">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
             {heading}
@@ -242,7 +246,7 @@ const HomePage = () => {
         </div>
       )}
 
-      {!searchQuery && selectedCategory === 'all' && <HomeSections />}
+      {!searchQuery && selectedCategory === 'all' && <HomeSections takenIds={gridIds} />}
     </main>
   );
 };

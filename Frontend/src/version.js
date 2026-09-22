@@ -3,5 +3,5 @@
 // (Vite exposes import.meta.env.VITE_APP_VERSION, but we keep a fallback.)
 const envVersion = typeof import.meta !== 'undefined' && import.meta.env?.VITE_APP_VERSION;
 
-export const PACKAGE_VERSION = envVersion || '1.0.0';
+export const PACKAGE_VERSION = envVersion || '2.0.0';
 export const BUILD_TIME = new Date().toISOString();
