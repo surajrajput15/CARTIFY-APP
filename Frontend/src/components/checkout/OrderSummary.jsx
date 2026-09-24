@@ -3,7 +3,7 @@ import { formatPrice } from '../../utils/format';
 import { getShippingCost } from '../../utils/constants';
 import CouponInput from './CouponInput';
 
-const OrderSummary = ({ cart, total, discount = 0, appliedCoupon, couponCode, setCouponCode, couponLoading, couponError, onApplyCoupon, onRemoveCoupon, loading, canPay, onPay }) => {
+const OrderSummary = ({ cart, total, discount = 0, appliedCoupon, couponCode, setCouponCode, couponLoading, couponError, onApplyCoupon, onRemoveCoupon, onFindBestCoupon, bestCouponLoading, loading, canPay, onPay }) => {
   const normalizedDiscount = Math.min(Math.max(0, Number(discount) || 0), Math.max(0, Number(total) || 0));
   const discountedSubtotal = Math.max(0, total - normalizedDiscount);
   // Backend charges shipping on the discounted total and forces ₹0 shipping on
@@ -49,7 +49,7 @@ const OrderSummary = ({ cart, total, discount = 0, appliedCoupon, couponCode, se
 
       {setCouponCode && (
         <div className="mb-4 min-w-0">
-          <CouponInput code={couponCode} setCode={setCouponCode} applied={appliedCoupon} loading={couponLoading} error={couponError} onApply={onApplyCoupon} onRemove={onRemoveCoupon} />
+          <CouponInput code={couponCode} setCode={setCouponCode} applied={appliedCoupon} loading={couponLoading} error={couponError} onApply={onApplyCoupon} onRemove={onRemoveCoupon} onFindBest={onFindBestCoupon} bestLoading={bestCouponLoading} />
         </div>
       )}
 

@@ -11,6 +11,7 @@ import { useWishlist } from '../context/WishlistContext';
 import { useAuth } from '../context/authContext';
 import { getRecentViewed } from '../utils/recentlyViewed';
 import { fetchProducts, fetchProductById } from '../services/productsApi';
+import { fetchActiveCampaigns } from '../services/campaignsApi';
 import { isNetworkError } from '../utils/apiError';
 import { logError } from '../utils/logger';
 import { SUPPORT_EMAIL, SHIPPING_CONFIG } from '../utils/constants';
@@ -82,6 +83,48 @@ const TrustStrip = () => {
             <p className="text-xs text-gray-500 mt-0.5 truncate" title={desc}>{desc}</p>
           </div>
         ))}
+      </div>
+    </section>
+  );
+};
+
+// Live campaign banner: shows the first active seasonal campaign's banner
+// text/color on the home page; purely informational (checkout stays server
+// authoritative).
+const CampaignBanner = () => {
+  const [campaign, setCampaign] = useState(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchActiveCampaigns()
+      .then((res) => {
+        if (cancelled) return;
+        const rows = res.data?.campaigns || [];
+        setCampaign(rows[0] || null);
+      })
+      .catch(() => { if (!cancelled) setError(true); });
+    return () => { cancelled = true; };
+  }, []);
+
+  if (error || !campaign) return null;
+  return (
+    <section aria-label="Active promotion" className="not-sr-only">
+      <div
+        className="mt-4 rounded-2xl px-6 py-4 sm:px-8 text-white flex flex-col sm:flex-row sm:items-center gap-2 overflow-hidden relative"
+        style={{ backgroundColor: campaign.bannerColor || '#0f766e' }}
+      >
+        <span className="absolute -right-6 -top-8 w-36 h-36 rounded-full bg-white/10" aria-hidden="true" />
+        <Sparkles size={20} className="shrink-0" aria-hidden="true" />
+        <p className="font-bold text-base sm:text-lg leading-snug">
+          {campaign.bannerText || `Special Offer ${campaign.discountType === 'percentage' ? `${campaign.discountValue}%` : `₹${campaign.discountValue}`} off`}
+          {' '}
+          {campaign.endDate ? (
+            <span className="font-medium text-white/85 text-sm sm:text-base">
+              — ends {new Date(campaign.endDate).toLocaleDateString()}
+            </span>
+          ) : null}
+        </p>
       </div>
     </section>
   );
@@ -572,6 +615,7 @@ const HomeSections = ({ takenIds = [] }) => {
 
   return (
     <>
+      <CampaignBanner />
       {/* Order: Recommended → Featured → Recently → Wishlist → Buy Again →
           Collections → Promo → Trust. Sections share one `claims` map so each
           product appears at most once across the main grid + curated zone. */}

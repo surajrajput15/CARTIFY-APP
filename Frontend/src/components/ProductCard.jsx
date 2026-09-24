@@ -7,6 +7,7 @@ import { getStockStatus } from '../utils/stockStatus';
 import { hasVariants, effectiveStock } from '../utils/variants';
 import { resolveImageUrl, generateSrcSet } from '../utils/imageUrl';
 import { formatPrice, truncate } from '../utils/format';
+import { useActiveCampaigns } from '../hooks/useActiveCampaigns';
 import { memo, useCallback } from 'react';
 
 const PLACEHOLDER_IMG = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2YzZjRmNiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ic3lzdGVtLXVpIiBmb250LXNpemU9IjE0IiBmaWxsPSIjOWNhM2FmIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4=';
@@ -15,10 +16,13 @@ const ProductCard = memo(({ product }) => {
   const { addToCart } = useCart();
   const navigate = useNavigate();
   const { wishlist, isWishlisted, addToWishlist, removeFromWishlist } = useWishlist();
+  const { bestForProduct } = useActiveCampaigns();
   const productId = String(product?._id || product?.id || '');
   const wishlisted = isWishlisted(productId);
   const productHasVariants = hasVariants(product);
   const stock = getStockStatus(productHasVariants ? effectiveStock(product) : product.countInStock);
+  const campaign = bestForProduct(product);
+  const displayPrice = campaign ? Number(product.price) - campaign.discount : Number(product.price);
 
   const handleWishlistToggle = useCallback((e) => {
     e.preventDefault();
@@ -59,6 +63,11 @@ const ProductCard = memo(({ product }) => {
             {product.category && (
               <span className="bg-teal-50 text-teal-700 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm max-w-[160px] truncate">
                 {product.category}
+              </span>
+            )}
+            {campaign && (
+              <span className="bg-amber-100 text-amber-800 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm whitespace-nowrap">
+                ⚡ {campaign.campaign?.bannerText?.slice(0, 24) || 'On sale'}
               </span>
             )}
           </span>
@@ -109,9 +118,14 @@ const ProductCard = memo(({ product }) => {
         </div>
 
         <div className="mt-auto flex items-center justify-between pt-2">
-          <span className="text-xl font-black text-gray-900">
-            {formatPrice(product.price)}
-          </span>
+          <div>
+            {campaign && (
+              <span className="block text-xs text-gray-400 line-through" aria-hidden="true">{formatPrice(product.price)}</span>
+            )}
+            <span className="text-xl font-black text-gray-900">
+              {formatPrice(displayPrice)}
+            </span>
+          </div>
           <button
             onClick={handleAddToCart}
             disabled={stock?.disabled}

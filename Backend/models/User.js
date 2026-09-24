@@ -28,8 +28,45 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ['customer', 'admin', 'delivery'],
+        enum: ['customer', 'admin', 'delivery', 'warehouse'],
         default: 'customer'
+    },
+    // Warehouse-staff only: which warehouse this user manages. Set by an admin
+    // when creating/promoting a warehouse partner; scopes every warehouse portal
+    // route so staff can only see/edit their own warehouse's stock.
+    assignedWarehouseId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Warehouse',
+        default: null
+    },
+    // Account lifecycle state for admin user-management (D4.1). The OWNER is
+    // never blocked/deactivated — ownerValidator/status routes enforce that.
+    //   active      — normal account, can log in
+    //   blocked     — suspended temporarily by admin (blockReason shown to user)
+    //   deactivated — closed by user/admin (graceful) — can be re-activated
+    status: {
+        type: String,
+        enum: ['active', 'blocked', 'deactivated'],
+        default: 'active'
+    },
+    blockReason: {
+        type: String,
+        default: null,
+        trim: true
+    },
+    blockedAt: {
+        type: Date,
+        default: null
+    },
+    deactivatedAt: {
+        type: Date,
+        default: null
+    },
+    // Denormalised last successful login (set in auth routes on every login).
+    // Full login HISTORY lives in UserActivity (AUTH_LOGIN events, 90d TTL).
+    lastLoginAt: {
+        type: Date,
+        default: null
     },
     isAdmin: {
         type: Boolean,
@@ -76,6 +113,8 @@ const userSchema = new mongoose.Schema({
 // Indexes (email unique index is auto-created from `unique: true` on the field)
 userSchema.index({ isAdmin: 1 });
 userSchema.index({ role: 1 });
+userSchema.index({ status: 1 });
+userSchema.index({ assignedWarehouseId: 1 });
 userSchema.index({ createdAt: -1 });
 userSchema.index({ refreshToken: 1 });
 

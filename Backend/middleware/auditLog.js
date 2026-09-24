@@ -24,7 +24,7 @@ const auditLogMiddleware = (action, resource) => {
     // Capture request data
     const userId = req.user?._id;
     const userEmail = req.user?.email;
-    const userRole = req.user?.isAdmin ? 'admin' : 'user';
+    const userRole = req.user?.isAdmin ? 'admin' : (req.user?.role || 'user');
     const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
     const userAgent = req.headers['user-agent'] || 'unknown';
     const requestId = req.id || req.headers['x-request-id'];

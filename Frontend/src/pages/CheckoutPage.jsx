@@ -23,7 +23,7 @@ const CheckoutPage = () => {
     [cart]
   );
 
-  const { code, setCode, applied, loading: couponLoading, error: couponError, applyCoupon, clearCoupon } = useCoupon(cart, calculatedTotal);
+  const { code, setCode, applied, loading: couponLoading, error: couponError, applyCoupon, applyBestCoupon, bestLoading, clearCoupon } = useCoupon(cart, calculatedTotal);
   const discount = applied?.discount || 0;
 
   useEffect(() => {
@@ -85,6 +85,8 @@ const CheckoutPage = () => {
           couponError={couponError}
           onApplyCoupon={applyCoupon}
           onRemoveCoupon={clearCoupon}
+          onFindBestCoupon={applyBestCoupon}
+          bestCouponLoading={bestLoading}
           loading={loading}
           canPay={Boolean(selectedAddress) && cart.length > 0}
           onPay={handlePayment}

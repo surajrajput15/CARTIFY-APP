@@ -4,11 +4,12 @@ const { logger } = require('../utils/logger');
 // Socket.IO realtime layer (V2 live tracking).
 //
 // Rooms:
-//   user:{userId}      — personal customer/partner events (order updates)
-//   admin              — admin dashboard broadcasts
-//   delivery:{userId}  — delivery partner assignment pings
-//   order:{orderId}    — everyone authorized on one order (customer, assigned
-//                        partner, admins) — live courier location lives here
+  //   user:{userId}      — personal customer/partner events (order updates)
+  //   admin              — admin dashboard broadcasts
+  //   delivery:{userId}  — delivery partner assignment pings
+  //   warehouse:{userId} — warehouse staff alerts (low stock, transfers)
+  //   order:{orderId}    — everyone authorized on one order (customer, assigned
+  //                        partner, admins) — live courier location lives here
 //
 // Handshake auth reuses the SAME HttpOnly accessToken cookie as the REST API
 // (or an explicit auth.token from cross-origin clients). Refresh tokens are
@@ -96,6 +97,7 @@ const initSocket = (httpServer) => {
     socket.join(`user:${u.id}`);
     if (u.role === 'admin') socket.join('admin');
     if (u.role === 'delivery') socket.join(`delivery:${u.id}`);
+    if (u.role === 'warehouse') socket.join(`warehouse:${u.id}`);
 
     // Subscribe to one order's live events (authorization enforced server-side).
     socket.on('order:subscribe', async ({ orderId } = {}) => {

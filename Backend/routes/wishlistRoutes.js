@@ -5,13 +5,16 @@ const router = express.Router();
 const Wishlist = require('../models/Wishlist');
 const Product = require('../models/Product');
 const { protect } = require('../middleware/auth');
+const { activityLogger } = require('../middleware/userActivity');
 
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(String(id));
 
 // POST /api/wishlist/add — authenticated user ki wishlist mein product add kare
 // Duplicate product add hone se rokta hai (already wishlisted toh message de dega)
 // Invalid product ID handle karta hai
-router.post('/add', protect, async (req, res) => {
+router.post('/add', protect, activityLogger('WISHLIST_ADD', (req) => ({
+  productId: req.body && req.body.productId,
+})), async (req, res) => {
   try {
     const { productId } = req.body;
 
@@ -65,7 +68,9 @@ router.post('/add', protect, async (req, res) => {
 
 // POST /api/wishlist/remove — authenticated user ki wishlist se product remove kare
 // Sirf apni wishlist se hi remove ho sakta hai (ownership protection)
-router.post('/remove', protect, async (req, res) => {
+router.post('/remove', protect, activityLogger('WISHLIST_REMOVE', (req) => ({
+  productId: req.body && req.body.productId,
+})), async (req, res) => {
   try {
     const { productId } = req.body;
 

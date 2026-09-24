@@ -5,11 +5,14 @@ const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const { protect, admin } = require('../middleware/auth');
 const { auditLogMiddleware } = require('../middleware/auditLog');
+const { activityLogger, checkoutActivityLogger } = require('../middleware/userActivity');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
 const Coupon = require('../models/Coupon');
 const { finalisePaidOrder } = require('../utils/orderFulfillment');
+const { applyCouponAtCheckout } = require('../utils/couponEngine');
 const { buildVariantKey } = require('../utils/variants');
+const { adminMutateGuard } = require('../utils/routeLimiters');
 const rateLimit = require('express-rate-limit');
 
 // Rate limiting for payment endpoints to prevent abuse
@@ -79,7 +82,14 @@ const handleRazorpayError = (error) => {
 // 1. CREATE PAYMENT ORDER — SERVER-AUTHORITATIVE
 // Recomputes prices from MongoDB, persists a Pending Order, then returns the Razorpay order.
 // The client supplies ONLY product ids + quantities and the shipping address.
-router.post('/create-order', protect, paymentLimiter, async (req, res, next) => {
+router.post('/create-order', protect, paymentLimiter, activityLogger('CHECKOUT_START', (req, body) => {
+  const o = body && body.order;
+  return {
+    itemCount: Array.isArray(o && o.items) ? o.items.length : 0,
+    total: o && o.calculatedAmount,
+    freeOrder: body && body.freeOrder === true ? true : undefined,
+  };
+}), async (req, res, next) => {
     try {
         let razorpay;
         try {
@@ -249,43 +259,43 @@ router.post('/create-order', protect, paymentLimiter, async (req, res, next) => 
         // Optional coupon: fully validated server-side against the live cart
         // total BEFORE any charge. Rejects fail fast with 400; usage is only
         // debited later, when the order actually reaches Paid.
-        const originalPaise = totalPaise;
+        // Pricing: exactly one discount source wins so the math stays predictable.
+        //   - optional coupon (user-entered code) — invalid code hard-fails (400)
+        //   - auto campaign (live, eligible) — applied only when the coupon either
+        //     isn't used or gives less of a saving
+        // The larger discount is taken; the other is ignored. If neither applies,
+        // the order is charged at the clean line-item total.
         const originalTotalSnapshot = totalPaise / 100;
         let couponCode = null;
         let discountAmount = 0;
         let couponSnapshot = null;
+        let campaignId = null;
+        let campaignCode = null;
+        let campaignDiscountAmount = 0;
+        let campaignSnapshot = null;
         const rawCoupon = typeof req.body.couponCode === 'string' ? req.body.couponCode.trim().toUpperCase() : '';
+        const categoryMap = new Map(
+            Object.values(productMap).map((p) => [String(p._id), p.category])
+        );
+
+        const appliedCoupon = { valid: false, discount: 0 };
         if (rawCoupon) {
             const coupon = await Coupon.findOne({ code: rawCoupon });
             if (!coupon) {
                 return res.status(400).json({ message: 'Invalid coupon code' });
             }
-            const now = new Date();
-            if (!coupon.isActive || now < coupon.validFrom || now > coupon.validUntil) {
-                return res.status(400).json({ message: 'Coupon is expired or inactive' });
+            // Shared coupon engine: identical rules to the /validate preview so
+            // a coupon can never be accepted here after looking valid in the
+            // checkout (category/product/exclusion + min-order + expiry).
+            appliedCoupon.evaluate = await applyCouponAtCheckout(coupon, req.user._id, {
+                orderAmount: calculatedTotal,
+                items: orderItems.map((oi) => ({ productId: oi.productId })),
+                productCategories: categoryMap,
+            });
+            if (!appliedCoupon.evaluate.valid) {
+                return res.status(400).json({ message: appliedCoupon.evaluate.message || 'Coupon cannot be applied' });
             }
-            if (coupon.usageLimit != null && coupon.usedCount >= coupon.usageLimit) {
-                return res.status(400).json({ message: 'Coupon usage limit reached' });
-            }
-            // Category check needs live product data (orderItems don't carry it).
-            if (coupon.applicableCategories.length > 0) {
-                const hasCategory = orderItems.some((oi) => {
-                    const product = productMap[oi.productId.toString()];
-                    const cat = product ? product.category : null;
-                    return cat && coupon.applicableCategories.includes(cat);
-                });
-                if (!hasCategory && coupon.applicableCategories.length > 0) {
-                    // If coupon has category restrictions but cart items don't match,
-                    // still allow through if coupon.apply() handles it (minOrderAmount check)
-                    // but log for debugging
-                    logger.info(`Coupon ${coupon.code} category check: no matching category in cart`);
-                }
-            }
-            const applied = coupon.apply(req.user._id, calculatedTotal, orderItems);
-            if (!applied.valid) {
-                return res.status(400).json({ message: applied.message || 'Coupon cannot be applied' });
-            }
-            couponCode = coupon.code;
+            couponCode = rawCoupon;
             couponSnapshot = {
                 code: coupon.code,
                 type: coupon.type,
@@ -293,20 +303,28 @@ router.post('/create-order', protect, paymentLimiter, async (req, res, next) => 
                 maxDiscount: coupon.maxDiscount || null,
                 minOrderAmount: coupon.minOrderAmount || 0,
             };
-            // Charge-time discount recomputed in integer paise with the same formula
-            // as /validate preview and Coupon.apply — never trust rupee rounding alone.
-            let discountPaise = 0;
-            if (coupon.type === 'percentage') {
-                discountPaise = Math.round(totalPaise * (coupon.value / 100));
-                if (coupon.maxDiscount) {
-                    discountPaise = Math.min(discountPaise, Math.round(coupon.maxDiscount * 100));
-                }
-            } else {
-                discountPaise = Math.min(Math.round(coupon.value * 100), totalPaise);
+        }
+
+        // Auto campaign (best-of vs coupon, never stacking). Only evaluated as a
+        // fallback: when a coupon is used and valid it always wins, keeping the
+        // "what you see is what you pay" contract intact.
+        const { applyCampaignAtCheckout } = require('../utils/campaignEngine');
+        let appliedCampaign = { valid: true, discount: 0, finalAmount: calculatedTotal, applied: false, campaign: null };
+        if (!couponCode) {
+            appliedCampaign = await applyCampaignAtCheckout({
+                cartTotalRupees: calculatedTotal,
+                items: orderItems.map((oi) => ({ productId: oi.productId, quantity: oi.quantity, price: oi.price, category: productMap[String(oi.productId)]?.category })),
+                productCategories: categoryMap,
+            });
+            if (appliedCampaign.applied && appliedCampaign.discount > 0) {
+                campaignId = appliedCampaign.campaign._id;
+                campaignCode = appliedCampaign.campaign.slug || appliedCampaign.campaign.name;
+                campaignSnapshot = appliedCampaign.campaign;
+                campaignDiscountAmount = appliedCampaign.discount;
+                discountAmount = appliedCampaign.discount;
+                totalPaise = Math.round(appliedCampaign.finalAmount * 100);
+                calculatedTotal = appliedCampaign.finalAmount;
             }
-            discountAmount = discountPaise / 100;
-            totalPaise = totalPaise - discountPaise;
-            calculatedTotal = totalPaise / 100;
         }
 
         const amountInPaise = totalPaise;
@@ -345,6 +363,10 @@ router.post('/create-order', protect, paymentLimiter, async (req, res, next) => 
                 couponCode,
                 discountAmount,
                 couponSnapshot,
+                campaignId,
+                campaignCode,
+                campaignDiscountAmount,
+                campaignSnapshot,
                 expireAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
                 paidAt: new Date(),
             });
@@ -377,7 +399,14 @@ router.post('/create-order', protect, paymentLimiter, async (req, res, next) => 
             }
             return res.status(200).json({
                 freeOrder: true,
-                order: { amount: 0, currency: 'INR', calculatedAmount: 0, items: orderItems, coupon: couponCode ? { code: couponCode, discountAmount } : null },
+                order: {
+                    amount: 0,
+                    currency: 'INR',
+                    calculatedAmount: 0,
+                    items: orderItems,
+                    coupon: couponCode ? { code: couponCode, discountAmount } : null,
+                    campaign: campaignCode ? { code: campaignCode, name: campaignSnapshot?.name, discountAmount: campaignDiscountAmount } : null,
+                },
                 orderId: savedFree._id,
                 savedOrder: savedFree
             });
@@ -447,6 +476,10 @@ router.post('/create-order', protect, paymentLimiter, async (req, res, next) => 
             couponCode,
             discountAmount,
             couponSnapshot,
+            campaignId,
+            campaignCode,
+            campaignDiscountAmount,
+            campaignSnapshot,
             expireAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
         });
 
@@ -463,7 +496,8 @@ router.post('/create-order', protect, paymentLimiter, async (req, res, next) => 
                 ...rzpOrder,
                 calculatedAmount: calculatedTotal,
                 items: orderItems,
-                coupon: couponCode ? { code: couponCode, discountAmount } : null
+                coupon: couponCode ? { code: couponCode, discountAmount } : null,
+                campaign: campaignCode ? { code: campaignCode, name: campaignSnapshot?.name, discountAmount: campaignDiscountAmount } : null
             },
             orderId: savedOrder._id
         });
@@ -484,7 +518,7 @@ router.post('/create-order', protect, paymentLimiter, async (req, res, next) => 
 //        cannot double-finalise an order.
 //    Only Razorpay-signed payloads are accepted; the amount is re-checked against the
 //    server-persisted total. The client never supplies a price or a payment state.
-router.post('/verify-payment', protect, paymentLimiter, async (req, res) => {
+router.post('/verify-payment', protect, paymentLimiter, checkoutActivityLogger(), async (req, res) => {
     try {
         const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
@@ -649,7 +683,7 @@ router.post('/webhook', async (req, res) => {
 
 // 4. ADMIN REFUND — issue a Razorpay refund for a paid order (e.g. stockShortfall
 //    orders that could not be fulfilled) and mark it Refunded/Cancelled.
-router.post('/refund/:orderId', protect, admin, auditLogMiddleware('REFUND_ORDER', 'Order'), async (req, res) => {
+router.post('/refund/:orderId', protect, admin, adminMutateGuard, auditLogMiddleware('REFUND_ORDER', 'Order'), async (req, res) => {
     try {
         const order = await Order.findById(req.params.orderId);
         if (!order) return res.status(404).json({ message: 'Order not found' });

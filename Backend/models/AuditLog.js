@@ -4,7 +4,7 @@ const auditLogSchema = new mongoose.Schema({
   // Who performed the action
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   userEmail: { type: String, required: true },
-  userRole: { type: String, enum: ['user', 'admin'], required: true },
+  userRole: { type: String, enum: ['customer', 'admin', 'delivery', 'warehouse', 'user'], required: true },
 
   // What action was performed
   action: { type: String, required: true }, // e.g., 'CREATE_PRODUCT', 'DELETE_ORDER', 'REFUND_PAYMENT'

@@ -2,9 +2,11 @@ const express = require('express');
 const { logger } = require('../utils/logger');
 const router = express.Router();
 const Coupon = require('../models/Coupon');
-const Product = require('../models/Product');
+const Order = require('../models/Order');
 const { protect, admin } = require('../middleware/auth');
 const { auditLogMiddleware } = require('../middleware/auditLog');
+const { adminMutateGuard } = require('../utils/routeLimiters');
+const { evaluateCoupon, findBestCoupon } = require('../utils/couponEngine');
 
 // Validation helper
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -85,7 +87,7 @@ const validateCoupon = (body, isUpdate = false) => {
 };
 
 // 1. CREATE COUPON (Admin only)
-router.post('/', protect, admin, auditLogMiddleware('CREATE_COUPON', 'Coupon'), async (req, res) => {
+router.post('/', protect, admin, adminMutateGuard, auditLogMiddleware('CREATE_COUPON', 'Coupon'), async (req, res) => {
     try {
         const errors = validateCoupon(req.body);
         if (errors.length > 0) {
@@ -160,6 +162,33 @@ router.get('/', protect, admin, async (req, res) => {
     }
 });
 
+// 3. COUPON USAGE ANALYTICS (admin) — MUST be registered before GET /:id so
+// the literal 'analytics' path is never swallowed by the :id param matcher.
+// Redemption volume + discount paid out per coupon, aggregated over Paid
+// orders only (honest: money actually spent, Pending excluded).
+router.get('/analytics', protect, admin, async (req, res) => {
+    try {
+        const [overview, byCode] = await Promise.all([
+            Order.aggregate([
+                { $match: { paymentStatus: 'Paid', couponCode: { $ne: null } } },
+                { $group: { _id: null, orders: { $sum: 1 }, discountGiven: { $sum: '$discountAmount' } } }
+            ]),
+            Order.aggregate([
+                { $match: { paymentStatus: 'Paid', couponCode: { $ne: null } } },
+                { $group: { _id: '$couponCode', orders: { $sum: 1 }, discountGiven: { $sum: '$discountAmount' } } }
+            ]).sort({ orders: -1 }).limit(50)
+        ]);
+
+        res.status(200).json({
+            overview: overview[0] || { orders: 0, discountGiven: 0 },
+            byCode,
+        });
+    } catch (error) {
+        logger.error({ err: error }, "❌ Coupon analytics error:");
+        res.status(500).json({ message: "Error fetching coupon analytics" });
+    }
+});
+
 // 3. GET SINGLE COUPON (Admin only)
 router.get('/:id', protect, admin, async (req, res) => {
     try {
@@ -191,102 +220,38 @@ router.post('/validate', protect, async (req, res) => {
         if (typeof orderAmount !== 'number' || orderAmount < 0) {
             return res.status(400).json({ message: 'Valid order amount is required' });
         }
-        
-        const coupon = await Coupon.findOne({ 
+
+        const coupon = await Coupon.findOne({
             code: code.trim().toUpperCase(),
-            isActive: true,
-            validFrom: { $lte: new Date() },
-            validUntil: { $gte: new Date() }
         });
-        
+
         if (!coupon) {
             return res.status(404).json({ message: 'Invalid or expired coupon code' });
         }
-        
-        // Check usage limit
-        if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) {
-            return res.status(400).json({ message: 'Coupon usage limit reached' });
+
+        // Shared evaluation engine — identical rules + discount math to charge-time
+        // (paymentRoutes), so a coupon preview can never drift from what will be
+        // applied when the order actually goes through Razorpay.
+        const check = await evaluateCoupon(coupon, { orderAmount, items });
+
+        if (!check.valid) {
+            return res.status(400).json({ message: check.message });
         }
-        
-        // Check user-specific limit
+
+        // Per-user usage limit (checked here, debited later on Paid only).
         const userUsage = coupon.usedBy.filter(u => u.userId?.toString() === req.user._id.toString()).length;
         if (userUsage >= coupon.userLimit) {
             return res.status(400).json({ message: 'You have already used this coupon maximum times' });
         }
-        
-        // Check minimum order amount
-        if (orderAmount < coupon.minOrderAmount) {
-            return res.status(400).json({ 
-                message: `Minimum order amount of ₹${coupon.minOrderAmount} required` 
-            });
-        }
-        
-        // Check applicable categories — server-lookup so preview matches
-        // charge-time (paymentRoutes uses productMap categories, not client data).
-        if (coupon.applicableCategories.length > 0 && items.length > 0) {
-            const ids = items.map(i => i.productId).filter(Boolean);
-            let cats = [];
-            if (ids.length > 0) {
-                const prods = await Product.find({ _id: { $in: ids } }).select('category').lean();
-                cats = prods.map(p => p.category);
-            } else {
-                cats = items.map(i => i.category).filter(Boolean);
-            }
-            const hasValidCategory = cats.some(c => coupon.applicableCategories.includes(c));
-            if (!hasValidCategory) {
-                return res.status(400).json({ 
-                    message: 'Coupon not applicable to items in your cart' 
-                });
-            }
-        }
-        
-        // Check applicable products
-        if (coupon.applicableProducts.length > 0 && items.length > 0) {
-            const hasValidProduct = items.some(item => 
-                coupon.applicableProducts.some(pId => pId.toString() === item.productId.toString())
-            );
-            if (!hasValidProduct) {
-                return res.status(400).json({ 
-                    message: 'Coupon not applicable to items in your cart' 
-                });
-            }
-        }
-        
-        // Check excluded products
-        if (coupon.excludedProducts.length > 0 && items.length > 0) {
-            const hasExcludedProduct = items.some(item => 
-                coupon.excludedProducts.some(pId => pId.toString() === item.productId.toString())
-            );
-            if (hasExcludedProduct) {
-                return res.status(400).json({ 
-                    message: 'Coupon not valid for some items in your cart' 
-                });
-            }
-        }
-        
-        // Calculate discount in integer paise — identical formula to charge-time
-        // (paymentRoutes create-order) so preview never drifts by 1p.
-        const orderPaise = Math.round(orderAmount * 100);
-        let discountPaise = 0;
-        if (coupon.type === 'percentage') {
-            discountPaise = Math.round(orderPaise * (coupon.value / 100));
-            if (coupon.maxDiscount) {
-                discountPaise = Math.min(discountPaise, Math.round(coupon.maxDiscount * 100));
-            }
-        } else {
-            discountPaise = Math.min(Math.round(coupon.value * 100), orderPaise);
-        }
-        const discount = discountPaise / 100;
-        const finalAmount = (orderPaise - discountPaise) / 100;
-        
+
         res.status(200).json({
             valid: true,
             coupon: {
                 code: coupon.code,
                 type: coupon.type,
                 value: coupon.value,
-                discount,
-                finalAmount
+                discount: check.discount,
+                finalAmount: check.finalAmount,
             }
         });
     } catch (error) {
@@ -295,8 +260,40 @@ router.post('/validate', protect, async (req, res) => {
     }
 });
 
+// 3b. AUTO-APPLY BEST COUPON (customer) — find the single highest-saving valid
+// coupon for the live cart. Same engine as /validate so the suggested coupon is
+// exactly what charge-time would honour. Stacks nothing: one coupon per order.
+router.post('/best', protect, async (req, res) => {
+    try {
+        const { orderAmount } = req.body;
+        const items = Array.isArray(req.body.items) ? req.body.items : [];
+
+        if (typeof orderAmount !== 'number' || orderAmount < 0) {
+            return res.status(400).json({ message: 'Valid order amount is required' });
+        }
+
+        const result = await findBestCoupon({
+            userId: req.user._id,
+            orderAmount,
+            items,
+        });
+
+        res.status(200).json({
+            found: result.found,
+            coupon: result.coupon,
+            discount: result.discount,
+            message: result.found
+                ? `Best available coupon ${result.coupon.code} saves you ${result.coupon.discount.toFixed(2)}`
+                : 'No applicable coupons for this cart',
+        });
+    } catch (error) {
+        logger.error({ err: error }, "❌ Coupon best-pick error:");
+        res.status(500).json({ message: "Error finding best coupon" });
+    }
+});
+
 // 5. UPDATE COUPON (Admin only)
-router.put('/:id', protect, admin, auditLogMiddleware('UPDATE_COUPON', 'Coupon'), async (req, res) => {
+router.put('/:id', protect, admin, adminMutateGuard, auditLogMiddleware('UPDATE_COUPON', 'Coupon'), async (req, res) => {
     try {
         const coupon = await Coupon.findById(req.params.id);
         if (!coupon) {
@@ -357,7 +354,7 @@ router.put('/:id', protect, admin, auditLogMiddleware('UPDATE_COUPON', 'Coupon')
 });
 
 // 6. DELETE COUPON (Admin only)
-router.delete('/:id', protect, admin, auditLogMiddleware('DELETE_COUPON', 'Coupon'), async (req, res) => {
+router.delete('/:id', protect, admin, adminMutateGuard, auditLogMiddleware('DELETE_COUPON', 'Coupon'), async (req, res) => {
     try {
         const coupon = await Coupon.findByIdAndDelete(req.params.id);
         if (!coupon) {
@@ -374,7 +371,7 @@ router.delete('/:id', protect, admin, auditLogMiddleware('DELETE_COUPON', 'Coupo
 });
 
 // 7. TOGGLE COUPON STATUS (Admin only)
-router.patch('/:id/toggle', protect, admin, async (req, res) => {
+router.patch('/:id/toggle', protect, admin, adminMutateGuard, auditLogMiddleware('TOGGLE_COUPON', 'Coupon'), async (req, res) => {
     try {
         const coupon = await Coupon.findById(req.params.id);
         if (!coupon) {

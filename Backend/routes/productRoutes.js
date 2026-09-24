@@ -5,8 +5,11 @@ const path = require('path');
 const fs = require('fs');
 const cloudinary = require('cloudinary').v2;
 const Product = require('../models/Product');
-const { protect, admin } = require('../middleware/auth');
+const { protect, admin, softProtect } = require('../middleware/auth');
 const { auditLogMiddleware } = require('../middleware/auditLog');
+const { activityLogger } = require('../middleware/userActivity');
+const { adminMutateGuard } = require('../utils/routeLimiters');
+const { ownerOnly } = require('../utils/ownerValidator');
 
 const hasCloudinary = Boolean(
   process.env.CLOUDINARY_CLOUD_NAME &&
@@ -62,7 +65,18 @@ const isAllowedImageUrl = (val) => {
 };
 
 // 1. GET API: Products with search, category filter & pagination
-router.get('/', async (req, res) => {
+router.get('/', softProtect, activityLogger('PRODUCT_SEARCH', (req) => ({
+  search: req.query.search || null,
+  category: req.query.category || null,
+}), {
+  // Plain homepage/category-less browsing is noise, not behaviour: only log
+  // genuine searches and category views.
+  skipWhen: (req) => {
+    const s = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+    const c = typeof req.query.category === 'string' ? req.query.category.trim() : '';
+    return !s && (!c || c === 'all');
+  },
+}), async (req, res) => {
     try {
         // Product list is safe to cache briefly — stale-while-revalidate keeps it fresh.
         res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=30');
@@ -180,7 +194,7 @@ const buildVariantSku = (productId, size, color) => {
 };
 
 // 2. POST API: Add a new product (Admin only)
-router.post('/add', protect, admin, auditLogMiddleware('CREATE_PRODUCT', 'Product'), async (req, res) => {
+router.post('/add', protect, admin, adminMutateGuard, auditLogMiddleware('CREATE_PRODUCT', 'Product'), async (req, res) => {
     try {
         const allowedFields = ['title', 'description', 'price', 'category', 'image', 'rating', 'countInStock'];
         const sanitized = {};
@@ -283,7 +297,11 @@ router.post('/add', protect, admin, auditLogMiddleware('CREATE_PRODUCT', 'Produc
 
 // 3. POST API: Insert many products at once (Admin only) — seed-safe: allowlisted,
 // capped, authentic numbers only (no _id/__v injection, no negative prices).
-router.post('/seed', protect, admin, auditLogMiddleware('BULK_CREATE_PRODUCTS', 'Product'), async (req, res, next) => {
+router.post('/seed', protect, admin, adminMutateGuard, auditLogMiddleware('BULK_CREATE_PRODUCTS', 'Product'), (req, res, next) => {
+    if (process.env.NODE_ENV === 'production') return res.status(403).json({ message: 'Seed disabled in production' });
+    if (process.env.NODE_ENV === 'test') return next();
+    ownerOnly(req, res, next);
+}, async (req, res, next) => {
     try {
         if (!Array.isArray(req.body) || req.body.length === 0) {
             return res.status(400).json({ message: "Please provide an array of products to seed" });
@@ -326,7 +344,11 @@ router.post('/seed', protect, admin, auditLogMiddleware('BULK_CREATE_PRODUCTS', 
 });
 
 // 4. GET API: Fetch a single product by its ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', softProtect, activityLogger('PRODUCT_VIEW', (req, body) => ({
+  productId: req.params.id,
+  title: body && body.title,
+  category: body && body.category,
+})), async (req, res) => {
     try {
         res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=30');
         const product = await Product.findById(req.params.id);
@@ -344,7 +366,11 @@ router.get('/:id', async (req, res) => {
 });
 
 // 5. DELETE API: Clear all products (Admin only)
-router.delete('/clear', protect, admin, auditLogMiddleware('DELETE_ALL_PRODUCTS', 'Product'), async (req, res) => {
+router.delete('/clear', protect, admin, adminMutateGuard, auditLogMiddleware('DELETE_ALL_PRODUCTS', 'Product'), (req, res, next) => {
+    if (process.env.NODE_ENV === 'production') return res.status(403).json({ message: 'Clear all disabled in production' });
+    if (process.env.NODE_ENV === 'test') return next();
+    ownerOnly(req, res, next);
+}, async (req, res) => {
     try {
         await Product.deleteMany({});
         res.status(200).json({ message: "Database cleared successfully! 🧹✨" });
@@ -355,7 +381,7 @@ router.delete('/clear', protect, admin, auditLogMiddleware('DELETE_ALL_PRODUCTS'
 });
 
 // 6. DELETE API: Delete a single product (Admin only)
-router.delete('/:id', protect, admin, auditLogMiddleware('DELETE_PRODUCT', 'Product'), async (req, res, next) => {
+router.delete('/:id', protect, admin, adminMutateGuard, auditLogMiddleware('DELETE_PRODUCT', 'Product'), async (req, res, next) => {
     try {
         const product = await Product.findByIdAndDelete(req.params.id);
         if (!product) {
@@ -374,7 +400,7 @@ router.delete('/:id', protect, admin, auditLogMiddleware('DELETE_PRODUCT', 'Prod
 });
 
 // 7. PATCH API: Update single product (Admin only)
-router.patch('/:id', protect, admin, auditLogMiddleware('UPDATE_PRODUCT', 'Product'), async (req, res) => {
+router.patch('/:id', protect, admin, adminMutateGuard, auditLogMiddleware('UPDATE_PRODUCT', 'Product'), async (req, res) => {
     try {
         const product = await Product.findById(req.params.id);
         if (!product) {

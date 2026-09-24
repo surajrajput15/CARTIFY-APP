@@ -6,6 +6,7 @@ const User = require('../models/User');
 const mongoose = require('mongoose');
 const { protect, admin, delivery } = require('../middleware/auth');
 const { auditLogMiddleware } = require('../middleware/auditLog');
+const { adminMutateGuard, staffActionGuard } = require('../utils/routeLimiters');
 const { isValidOrderTransition, isValidDeliveryTransition, canCancelOrder, canFailDelivery } = require('../utils/orderStatus');
 const { emitOrderUpdate } = require('../socket/socketServer');
 
@@ -131,7 +132,7 @@ router.patch('/:id/status', protect, admin, auditLogMiddleware('UPDATE_ORDER_STA
  * POST /api/orders/:id/assign-delivery
  * Admin only - Assign delivery partner to order
  */
-router.post('/:id/assign-delivery', protect, admin, async (req, res, next) => {
+router.post('/:id/assign-delivery', protect, admin, adminMutateGuard, auditLogMiddleware('ASSIGN_DELIVERY', 'Order'), async (req, res, next) => {
     try {
         const { deliveryPartnerId } = req.body;
 
@@ -196,7 +197,7 @@ router.post('/:id/assign-delivery', protect, admin, async (req, res, next) => {
  * POST /api/orders/:id/accept-delivery
  * Delivery partner only - Accept delivery assignment
  */
-router.post('/:id/accept-delivery', protect, delivery, async (req, res, next) => {
+router.post('/:id/accept-delivery', protect, delivery, staffActionGuard, auditLogMiddleware('ACCEPT_DELIVERY', 'Order'), async (req, res, next) => {
     try {
         const order = await Order.findById(req.params.id);
         if (!order) {
@@ -251,7 +252,7 @@ router.post('/:id/accept-delivery', protect, delivery, async (req, res, next) =>
  * POST /api/orders/:id/pickup-delivery
  * Delivery partner only - Mark order as picked up
  */
-router.post('/:id/pickup-delivery', protect, delivery, async (req, res, next) => {
+router.post('/:id/pickup-delivery', protect, delivery, staffActionGuard, auditLogMiddleware('PICKUP_DELIVERY', 'Order'), async (req, res, next) => {
     try {
         const order = await Order.findById(req.params.id);
         if (!order) {
@@ -306,7 +307,7 @@ router.post('/:id/pickup-delivery', protect, delivery, async (req, res, next) =>
  * POST /api/orders/:id/out-for-delivery
  * Delivery partner only - Mark order as out for delivery
  */
-router.post('/:id/out-for-delivery', protect, delivery, async (req, res, next) => {
+router.post('/:id/out-for-delivery', protect, delivery, staffActionGuard, auditLogMiddleware('OUT_FOR_DELIVERY', 'Order'), async (req, res, next) => {
     try {
         const order = await Order.findById(req.params.id);
         if (!order) {
@@ -368,7 +369,7 @@ router.post('/:id/out-for-delivery', protect, delivery, async (req, res, next) =
  * POST /api/orders/:id/complete-delivery
  * Delivery partner only - Mark delivery as completed
  */
-router.post('/:id/complete-delivery', protect, delivery, async (req, res, next) => {
+router.post('/:id/complete-delivery', protect, delivery, staffActionGuard, auditLogMiddleware('COMPLETE_DELIVERY', 'Order'), async (req, res, next) => {
     try {
         const order = await Order.findById(req.params.id);
         if (!order) {
@@ -429,7 +430,7 @@ router.post('/:id/complete-delivery', protect, delivery, async (req, res, next) 
  * POST /api/orders/:id/fail-delivery
  * Delivery partner only - Mark delivery as failed
  */
-router.post('/:id/fail-delivery', protect, delivery, async (req, res, next) => {
+router.post('/:id/fail-delivery', protect, delivery, staffActionGuard, auditLogMiddleware('FAIL_DELIVERY', 'Order'), async (req, res, next) => {
     try {
         const order = await Order.findById(req.params.id);
         if (!order) {
@@ -486,6 +487,42 @@ router.post('/:id/fail-delivery', protect, delivery, async (req, res, next) => {
         }
         logger.error({ err: error }, 'Fail delivery error:');
         res.status(500).json({ message: 'Failed to mark delivery as failed' });
+    }
+});
+
+/**
+ * GET /api/orders/delivery/stats
+ * Delivery partner only - Today's headline numbers for the partner dashboard:
+ * how many orders are currently assigned/active vs completed/failed today.
+ */
+router.get('/delivery/stats', protect, delivery, async (req, res, next) => {
+    try {
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+        const startOfThisWeek = new Date(startOfToday);
+        startOfThisWeek.setDate(startOfThisWeek.getDate() - 6);
+        startOfThisWeek.setHours(0, 0, 0, 0);
+
+        const activeStatuses = ['assigned', 'accepted', 'picked_up', 'out_for_delivery'];
+        const base = { deliveryPartnerId: req.user._id };
+
+        const [active, todayCompleted, todayFailed, weekCompleted] = await Promise.all([
+            Order.countDocuments({ ...base, deliveryStatus: { $in: activeStatuses } }),
+            Order.countDocuments({ ...base, deliveryStatus: 'delivered', deliveredAt: { $gte: startOfToday } }),
+            Order.countDocuments({ ...base, deliveryStatus: 'failed', failedAt: { $gte: startOfToday } }),
+            Order.countDocuments({ ...base, deliveryStatus: 'delivered', deliveredAt: { $gte: startOfThisWeek } }),
+        ]);
+
+        res.status(200).json({
+            active,
+            todayCompleted,
+            todayFailed,
+            weekCompleted,
+            todayTotal: todayCompleted + todayFailed,
+        });
+    } catch (error) {
+        logger.error({ err: error }, 'Get delivery stats error:');
+        res.status(500).json({ message: 'Failed to fetch delivery stats' });
     }
 });
 

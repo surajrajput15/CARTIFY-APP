@@ -5,6 +5,7 @@ const router = express.Router();
 const Cart = require('../models/Cart');
 const Product = require('../models/Product');
 const { protect } = require('../middleware/auth');
+const { activityLogger } = require('../middleware/userActivity');
 
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(String(id));
 
@@ -67,7 +68,9 @@ router.get('/', protect, async (req, res) => {
 
 // POST /api/cart/merge — merge the client's local cart into the server cart and
 // return the merged, hydrated result. Used on login so a guest's items survive.
-router.post('/merge', protect, async (req, res) => {
+router.post('/merge', protect, activityLogger('CART_MERGE', (req, body) => ({
+  itemCount: Array.isArray(body && body.items) ? body.items.length : 0,
+})), async (req, res) => {
   try {
     const localItems = Array.isArray(req.body.items) ? req.body.items : [];
     // Caps mirror the payment limit (qty 1-20) so a stored cart can never
@@ -141,7 +144,9 @@ router.post('/merge', protect, async (req, res) => {
 
 // PUT /api/cart — replace the server cart wholesale with the client's current
 // items (called after every local cart mutation while logged in).
-router.put('/', protect, async (req, res) => {
+router.put('/', protect, activityLogger('CART_SYNC', (req, body) => ({
+  itemCount: Array.isArray(body && body.items) ? body.items.length : 0,
+})), async (req, res) => {
   try {
     const localItems = Array.isArray(req.body.items) ? req.body.items : [];
     // Caps mirror the payment limit (qty 1-20) so a stored cart can never
@@ -174,7 +179,7 @@ router.put('/', protect, async (req, res) => {
 });
 
 // DELETE /api/cart — clear the server cart (after order placement, or on logout).
-router.delete('/', protect, async (req, res) => {
+router.delete('/', protect, activityLogger('CART_CLEAR'), async (req, res) => {
   try {
     await Cart.deleteOne({ userId: req.user._id });
     res.status(200).json({ message: 'Cart cleared' });

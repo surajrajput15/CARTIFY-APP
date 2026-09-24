@@ -453,6 +453,37 @@ describe('Order Delivery Routes (Phase 1)', () => {
     });
   });
 
+  describe('GET /api/orders/delivery/stats', () => {
+    it('returns this partner\'s headline numbers scoped to today', async () => {
+      const today = new Date();
+      const longAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      await Order.insertMany([
+        // Active & in-flight — counted.
+        baseOrder({ userId: customer._id, deliveryPartnerId: partner._id, deliveryStatus: 'assigned', status: 'Processing' }),
+        baseOrder({ userId: customer._id, deliveryPartnerId: partner._id, deliveryStatus: 'picked_up', status: 'Processing' }),
+        // Delivered today vs delivered long ago.
+        baseOrder({ userId: customer._id, deliveryPartnerId: partner._id, deliveryStatus: 'delivered', status: 'Delivered', deliveredAt: today }),
+        baseOrder({ userId: customer._id, deliveryPartnerId: partner._id, deliveryStatus: 'delivered', status: 'Delivered', deliveredAt: longAgo }),
+        // Failed today.
+        baseOrder({ userId: customer._id, deliveryPartnerId: partner._id, deliveryStatus: 'failed', status: 'Failed', failedAt: today }),
+        // Someone else's job — never counted.
+        baseOrder({ userId: customer._id, deliveryPartnerId: otherPartner._id, deliveryStatus: 'assigned', status: 'Processing' }),
+      ]);
+
+      const res = await partnerAgent.get('/api/orders/delivery/stats').expect(200);
+      expect(res.body.active).toBe(2);
+      expect(res.body.todayCompleted).toBe(1);
+      expect(res.body.todayFailed).toBe(1);
+      expect(res.body.todayTotal).toBe(2);
+      expect(res.body.weekCompleted).toBeGreaterThanOrEqual(1);
+    });
+
+    it('rejects a non-delivery caller', async () => {
+      await customerAgent.get('/api/orders/delivery/stats').expect(403);
+      await adminAgent.get('/api/orders/delivery/stats').expect(403);
+    });
+  });
+
   describe('GET /api/orders/admin/delivery', () => {
     it('lets an admin list every order with delivery info', async () => {
       await Order.insertMany([

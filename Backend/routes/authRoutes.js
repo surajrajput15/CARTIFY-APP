@@ -44,7 +44,10 @@ const Address = require('../models/Address');
 const Cart = require('../models/Cart');
 const Coupon = require('../models/Coupon');
 const sendEmail = require('../utils/sendEmail');
+const { applyOwnerRole } = require('../utils/ownerValidator');
 const { protect } = require('../middleware/auth');
+const { auditLogMiddleware } = require('../middleware/auditLog');
+const { logActivity, activityLogger } = require('../middleware/userActivity');
 
 const googleClient = process.env.GOOGLE_CLIENT_ID
   ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
@@ -328,12 +331,17 @@ router.post('/verify-otp', credentialGuard, async (req, res) => {
         user.otpExpire = undefined;
         user.otpAttempts = 0;
 
+        // Update last login timestamp
+        user.lastLoginAt = new Date();
+
         // Generate tokens (shared rotation primitive)
         const { newAccessToken: accessToken, newRefreshToken: refreshToken } = rotateRefreshToken(user);
         await user.save();
 
         // Set HttpOnly cookies
         setAuthCookies(res, accessToken, refreshToken);
+
+        logActivity({ userId: user._id, userEmail: user.email, event: 'AUTH_LOGIN', details: { method: 'otp' }, req });
 
         res.status(200).json({
             message: "Login successful! 🎉",
@@ -403,6 +411,7 @@ router.post('/register', credentialGuard, async (req, res) => {
             userExists.otp = undefined;
             userExists.otpExpire = undefined;
             userExists.otpAttempts = 0;
+            await applyOwnerRole(userExists);
             await userExists.save();
             return res.status(201).json({ message: "Account created successfully!" });
         }
@@ -413,11 +422,16 @@ router.post('/register', credentialGuard, async (req, res) => {
         const newUser = new User({ name, email, password: hashedPassword });
         await newUser.save();
 
+        // Owner allowlist sync: owner lands as admin on first register too.
+        await applyOwnerRole(newUser);
+
         // Generate tokens for auto-login after registration (shared primitive)
         const { newAccessToken: accessToken, newRefreshToken: refreshToken } = rotateRefreshToken(newUser);
         await newUser.save();
 
         setAuthCookies(res, accessToken, refreshToken);
+
+        logActivity({ userId: newUser._id, userEmail: newUser.email, event: 'AUTH_REGISTER', details: { method: 'password' }, req });
 
         res.status(201).json({ 
             message: "Account created successfully!",
@@ -458,11 +472,20 @@ router.post('/login', credentialGuard, async (req, res) => {
         }
         clearLoginFails(email);
 
+        // Owner allowlist sync right before token issuance — same rule as
+        // google/register: owner is promoted, everyone else stripped.
+        await applyOwnerRole(user);
+
+        // Update last login timestamp
+        user.lastLoginAt = new Date();
+
         // Generate tokens (shared rotation primitive)
         const { newAccessToken: accessToken, newRefreshToken: refreshToken } = rotateRefreshToken(user);
         await user.save();
 
         setAuthCookies(res, accessToken, refreshToken);
+
+        logActivity({ userId: user._id, userEmail: user.email, event: 'AUTH_LOGIN', details: { method: 'password' }, req });
 
         res.status(200).json({
             message: "Login successful!",
@@ -559,6 +582,7 @@ router.post('/logout', sessionGuard, async (req, res) => {
             try {
                 const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
                 if (decoded.type === 'refresh' && decoded.id) {
+                    logActivity({ userId: decoded.id, userEmail: null, event: 'AUTH_LOGOUT', req });
                     await User.findByIdAndUpdate(decoded.id, { 
                         refreshToken: undefined, 
                         refreshTokenExpire: undefined 
@@ -691,7 +715,7 @@ router.post('/reset-password', credentialGuard, async (req, res) => {
 // ==========================================
 
 // 1. UPDATE PROFILE (Name change)
-router.put('/update/:id', sessionGuard, protect, async (req, res) => {
+router.put('/update/:id', sessionGuard, protect, auditLogMiddleware('UPDATE_PROFILE', 'User'), activityLogger('PROFILE_UPDATE', (req) => ({ field: 'name' })), async (req, res) => {
     try {
         if (!req.params.id || !require('mongoose').Types.ObjectId.isValid(req.params.id)) {
             return res.status(400).json({ message: "Invalid user ID format" });
@@ -724,7 +748,7 @@ router.put('/update/:id', sessionGuard, protect, async (req, res) => {
 });
 
 // 2. DELETE ACCOUNT
-router.delete('/delete/:id', sessionGuard, protect, async (req, res) => {
+router.delete('/delete/:id', sessionGuard, protect, auditLogMiddleware('DELETE_ACCOUNT', 'User'), async (req, res) => {
     try {
         if (!req.params.id || !require('mongoose').Types.ObjectId.isValid(req.params.id)) {
             return res.status(400).json({ message: "Invalid user ID format" });
@@ -873,11 +897,21 @@ router.post('/google', credentialGuard, async (req, res) => {
             await user.save();
         }
 
+        // Owner allowlist sync happens right before token issuance: the owner
+        // is auto-promoted (fresh Google signups included), everyone else is
+        // auto-stripped from admin on every single login.
+        await applyOwnerRole(user);
+
+        // Update last login timestamp
+        user.lastLoginAt = new Date();
+
         // Generate tokens (shared rotation primitive)
         const { newAccessToken: accessToken, newRefreshToken: refreshToken } = rotateRefreshToken(user);
         await user.save();
 
         setAuthCookies(res, accessToken, refreshToken);
+
+        logActivity({ userId: user._id, userEmail: user.email, event: 'AUTH_LOGIN', details: { method: 'google' }, req });
 
         res.status(200).json({
             user: publicUser(user)

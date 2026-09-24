@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { validateCoupon } from '../services/couponsApi';
+import { validateCoupon, findBestCoupon } from '../services/couponsApi';
 
 const STORAGE_KEY = 'cartify_coupon_code';
 
@@ -10,6 +10,7 @@ export const useCoupon = (cart, totalAmount) => {
   const [applied, setApplied] = useState(null); // { code, discount, finalAmount }
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [bestLoading, setBestLoading] = useState(false);
   const debounceRef = useRef(null);
 
   // Identity key of the cart contents. Two carts with the same total but
@@ -57,6 +58,30 @@ export const useCoupon = (cart, totalAmount) => {
     doValidate(code, totalAmount, cart);
   }, [code, totalAmount, cart, doValidate]);
 
+  const applyBestCoupon = useCallback(async () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setBestLoading(true);
+    setError('');
+    try {
+      const itemsPayload = cart.map((i) => ({ productId: i._id || i.id, quantity: i.quantity, category: i.category }));
+      const { data } = await findBestCoupon(totalAmount, itemsPayload);
+      if (data.found) {
+        setApplied(data.coupon);
+        setCode(data.coupon.code);
+        try { localStorage.setItem(STORAGE_KEY, data.coupon.code); } catch { /* storage unavailable */ }
+      } else {
+        setApplied(null);
+        setCode('');
+        setError('No coupons apply to this cart right now');
+      }
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Could not find a best coupon';
+      setError(msg);
+    } finally {
+      setBestLoading(false);
+    }
+  }, [cart, totalAmount, setCode]);
+
   // Auto-revalidate when the cart total OR contents change after a coupon is
   // applied. Content changes at equal total (item swaps) also re-validate.
   useEffect(() => {
@@ -101,5 +126,5 @@ export const useCoupon = (cart, totalAmount) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { code, setCode, applied, loading, error, applyCoupon, clearCoupon, setError };
+  return { code, setCode, applied, loading, error, applyCoupon, applyBestCoupon, bestLoading, clearCoupon, setError };
 };

@@ -49,6 +49,15 @@ const delivery = (req, res, next) => {
   }
 };
 
+// Warehouse staff middleware — checks role === 'warehouse'
+const warehouse = (req, res, next) => {
+  if (req.user && req.user.role === 'warehouse') {
+    next();
+  } else {
+    return res.status(403).json({ message: 'Not authorized as warehouse staff' });
+  }
+};
+
 // Role-based access middleware — allows specific roles
 const roleAccess = (...allowedRoles) => {
   return (req, res, next) => {
@@ -63,4 +72,26 @@ const roleAccess = (...allowedRoles) => {
   };
 };
 
-module.exports = { protect, admin, delivery, roleAccess };
+// Soft auth for public routes that want identity when available (e.g. product
+// browse tracking): attaches req.user when a valid access token is present,
+// otherwise continues anonymously. Never rejects.
+const softProtect = async (req, res, next) => {
+  let token;
+  if (req.cookies && req.cookies.accessToken) {
+    token = req.cookies.accessToken;
+  } else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    token = req.headers.authorization.split(' ')[1];
+  }
+  if (!token) return next();
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.type === 'refresh') return next();
+    const user = await User.findById(decoded.id).select('-password -otp -otpExpire -refreshToken -refreshTokenExpire');
+    if (user) req.user = user;
+  } catch {
+    // Invalid/expired token on a public route: stay anonymous.
+  }
+  next();
+};
+
+module.exports = { protect, admin, delivery, warehouse, roleAccess, softProtect };

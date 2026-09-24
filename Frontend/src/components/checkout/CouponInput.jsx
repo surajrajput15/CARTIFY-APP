@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Ticket, Loader2, CheckCircle2, ChevronDown } from 'lucide-react';
 import { formatPrice } from '../../utils/format';
 
-const CouponInput = ({ code, setCode, applied, loading, error, onApply, onRemove }) => {
+const CouponInput = ({ code, setCode, applied, loading, error, onApply, onRemove, onFindBest, bestLoading }) => {
   const [expanded, setExpanded] = useState(false);
   const inputRef = useRef(null);
   const showForm = !applied && (expanded || Boolean(code?.trim()) || Boolean(error) || loading);
@@ -84,22 +84,36 @@ const CouponInput = ({ code, setCode, applied, loading, error, onApply, onRemove
           {error && <p id="coupon-error" role="alert" className="text-xs text-red-600 mt-1.5 font-medium break-words">{error}</p>}
         </form>
       ) : (
-        <button
-          type="button"
-          onClick={() => setExpanded(true)}
-          aria-expanded="false"
-          aria-controls="coupon-code-input"
-          className="w-full flex items-center justify-between gap-3 text-left min-h-[44px] focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-1 rounded-lg"
-        >
-          <span className="flex items-center gap-2 min-w-0">
-            <Ticket size={16} className="text-teal-600 shrink-0" aria-hidden="true" />
-            <span className="min-w-0">
-              <span className="block text-sm font-bold text-gray-800 leading-tight">Have a coupon?</span>
-              <span className="block text-xs text-gray-500 leading-tight truncate">Apply a promo code and save on your order</span>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            aria-expanded="false"
+            aria-controls="coupon-code-input"
+            className="w-full flex-1 flex items-center justify-between gap-3 text-left min-h-[44px] focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-1 rounded-lg"
+          >
+            <span className="flex items-center gap-2 min-w-0">
+              <Ticket size={16} className="text-teal-600 shrink-0" aria-hidden="true" />
+              <span className="min-w-0">
+                <span className="block text-sm font-bold text-gray-800 leading-tight">Have a coupon?</span>
+                <span className="block text-xs text-gray-500 leading-tight truncate">Enter a promo code or apply the best one</span>
+              </span>
             </span>
-          </span>
-          <span className="shrink-0 text-sm font-bold text-teal-600">Apply</span>
-        </button>
+            <span className="shrink-0 text-sm font-bold text-teal-600">Apply</span>
+          </button>
+          {onFindBest && (
+            <button
+              type="button"
+              onClick={onFindBest}
+              disabled={loading || bestLoading}
+              className="shrink-0 px-4 py-2 border border-teal-600 text-teal-700 bg-white rounded-lg text-sm font-bold hover:bg-teal-50 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] inline-flex items-center justify-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-1"
+              aria-label="Apply the best available coupon for this cart"
+            >
+              {bestLoading ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <Ticket size={15} aria-hidden="true" />}
+              Best Coupon
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

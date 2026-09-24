@@ -26,6 +26,7 @@
 - [📚 Engineering Documentation](#-engineering-documentation)
 - [📸 Screenshots](#-screenshots)
 - [✨ Features](#-features)
+- [👥 Roles & Access Matrix](#-roles--access-matrix)
 - [🛠️ Tech Stack](#️-tech-stack)
 - [🔒 Security](#-security)
 - [⚡ Performance](#-performance)
@@ -132,7 +133,7 @@ Cartify follows a sprint-based engineering process focused on building productio
 ### 🚀 Production Engineering
 - **Server-side Price Validation** — All pricing computed server-side to prevent tampering
 - **JWT Authentication** — Stateless, secure token-based auth (Bearer header, not httpOnly cookies)
-- **Role-based Authorization** — Admin and user route separation with middleware
+- **Role-based Authorization** — Four roles (customer, admin, delivery, warehouse) with JWT-protected middleware guards
 - **Google OAuth** — One-click social login with server-side ID token verification
 - **OTP Login** — Passwordless email-based authentication
 - **Helmet** — HTTP header hardening against common web vulnerabilities
@@ -181,6 +182,29 @@ Cartify follows a sprint-based engineering process focused on building productio
 
 ---
 
+## 👥 Roles & Access Matrix
+
+Cartify ships four account roles. Public registration always creates a **customer**; the other three roles are assigned only by an admin (via the **Staff** tab in the admin panel) — there is no self-serve path to elevated access.
+
+| Capability | Customer | Admin | Delivery Partner | Warehouse Staff |
+|---|---|---|---|---|
+| Browse / search products, wishlist, cart, checkout & pay | ✅ | ✅ | ✅ | ✅ |
+| Profile, addresses, order history, live tracking | ✅ | ✅ | ✅ | ✅ |
+| **Admin panel** `/admin/*` (products, orders, coupons, campaigns, categories, stock, deliveries, staff, audit logs, user activity) | — | ✅ | — | — |
+| Create/assign/demote staff (delivery + warehouse) | — | ✅ | — | — |
+| **Delivery portal** `/delivery/*` — assigned orders, accept → pick-up → out-for-delivery → deliver/fail, live GPS, dashboard stats | — | ✅ (view) | ✅ | — |
+| **Warehouse portal** `/warehouse/*` — dashboard, set stock on own warehouse, transfer stock out, low-stock alerts, stock ledger | — | ✅ (view) | — | ✅ |
+| Audit history (who did what) via admin **Audit Logs** tab | — | ✅ | — | — |
+| User activity feed (search/view/cart/checkout/auth) via admin **History** tab | — | ✅ | — | — |
+
+**Access control rules**
+- Role checks run on every protected route via `middleware/auth.js` (`admin`, `delivery`, `warehouse` guards) on top of `protect` (JWT).
+- Every state change on a protected surface is captured by the audit log; cart/search/checkout/auth events flow into the user-activity feed.
+- Warehouse routes are scoped to the caller's `assignedWarehouseId` — staff can only read/edit **their own** warehouse's inventory, never another's.
+- Admin/partner/warehouse **mutation** endpoints carry dedicated rate limits (`utils/routeLimiters.js`: admin 30/min, staff actions 20/min) in addition to the global 200/min; auth endpoints keep the stricter 5/min credential guard.
+
+---
+
 ## 🔒 Security
 
 Cartify implements multiple layers of security to protect users and data:
@@ -188,7 +212,7 @@ Cartify implements multiple layers of security to protect users and data:
 - **JWT Authentication** — Stateless token-based auth with configurable expiry
 - **bcrypt Password Hashing** — Salted password storage with configurable rounds
 - **Helmet** — HTTP response header hardening against XSS, clickjacking, and other attacks
-- **Rate Limiting** — Auth endpoint (5 req/min) and general API (100 req/min) rate limits
+- **Rate Limiting** — Auth credentials (5 req/min), admin mutations (30/min), staff actions (20/min), and general API (200 req/min) rate limits
 - **Google OAuth Verification** — Server-side ID token verification (audience checked) before login
 - **Server-authoritative Payments** — All pricing computed server-side to prevent client tampering
 - **HMAC Razorpay Verification** — SHA256 signature verification for payment authenticity

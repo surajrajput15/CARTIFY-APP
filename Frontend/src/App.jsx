@@ -27,6 +27,7 @@ const ProductDetailsPage = lazy(() => import('./pages/ProductDetailsPage'));
 const WishlistPage = lazy(() => import('./pages/WishlistPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 const DeliveryPage = lazy(() => import('./pages/DeliveryPage'));
+const WarehousePortal = lazy(() => import('./pages/WarehousePortal'));
 const OrderTrackingPage = lazy(() => import('./pages/OrderTrackingPage'));
 const FaqPage = lazy(() => import('./pages/FaqPage'));
 
@@ -49,6 +50,7 @@ const ProductDetailsPageWithError = withErrorBoundary(ProductDetailsPage);
 const WishlistPageWithError = withErrorBoundary(WishlistPage);
 const AdminPageWithError = withErrorBoundary(AdminPage);
 const DeliveryPageWithError = withErrorBoundary(DeliveryPage);
+const WarehousePortalWithError = withErrorBoundary(WarehousePortal);
 const OrderTrackingPageWithError = withErrorBoundary(OrderTrackingPage);
 const AccessDeniedWithError = withErrorBoundary(AccessDenied);
 
@@ -152,6 +154,16 @@ function App() {
                   element={
                     <RoleGuard allowedRoles={['delivery']}>
                       <DeliveryPageWithError />
+                    </RoleGuard>
+                  }
+                />
+
+                {/* Protected: Warehouse staff only */}
+                <Route
+                  path="/warehouse/*"
+                  element={
+                    <RoleGuard allowedRoles={['warehouse']}>
+                      <WarehousePortalWithError />
                     </RoleGuard>
                   }
                 />

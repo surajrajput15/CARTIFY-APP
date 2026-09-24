@@ -1,6 +1,8 @@
 import api from '../api/axios';
 
 // Delivery partner orders
+export const fetchDeliveryStats = () => api.get('/api/orders/delivery/stats');
+
 export const fetchAssignedDeliveries = (page = 1, limit = 20) =>
   api.get('/api/orders/delivery/assigned', { params: { page, limit } });
 

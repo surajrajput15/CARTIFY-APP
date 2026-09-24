@@ -118,10 +118,13 @@ app.use(cors({
       'http://localhost:5174',
       'https://cartify-hub.vercel.app',
     ];
-    // Allow all Vercel preview deployments (*.vercel.app)
-    if (!origin || allowed.includes(origin) || /^https:\/\/.*\.vercel\.app$/.test(origin)) {
+    // Allow all Vercel preview deployments (*.vercel.app) + all localhost in dev
+    const isLocalhost = origin && /^http:\/\/localhost:\d+$/.test(origin);
+    const isAllowed = !origin || allowed.includes(origin) || isLocalhost || (origin && /^https:\/\/.*\.vercel\.app$/.test(origin));
+    if (isAllowed) {
       callback(null, true);
     } else {
+      console.log('[CORS] Blocked origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },

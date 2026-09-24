@@ -28,7 +28,7 @@ const CartPage = () => {
     return { totalAmount: amount, totalItems: items };
   }, [cart]);
 
-  const { code, setCode, applied, loading: couponLoading, error: couponError, applyCoupon, clearCoupon } = useCoupon(cart, totalAmount);
+  const { code, setCode, applied, loading: couponLoading, error: couponError, applyCoupon, applyBestCoupon, bestLoading, clearCoupon } = useCoupon(cart, totalAmount);
   const discount = Math.min(Math.max(0, Number(applied?.discount) || 0), Math.max(0, totalAmount));
   const discountedSubtotal = Math.max(0, totalAmount - discount);
   const effectiveShipping = discountedSubtotal <= 0 ? 0 : getShippingCost(discountedSubtotal);
@@ -146,7 +146,7 @@ const CartPage = () => {
               </div>
             </div>
 
-            <CouponInput code={code} setCode={setCode} applied={applied} loading={couponLoading} error={couponError} onApply={applyCoupon} onRemove={clearCoupon} />
+            <CouponInput code={code} setCode={setCode} applied={applied} loading={couponLoading} error={couponError} onApply={applyCoupon} onRemove={clearCoupon} onFindBest={applyBestCoupon} bestLoading={bestLoading} />
 
             <div className="flex justify-between items-center mt-4 mb-6">
               <span className="text-lg font-bold text-gray-800">Total</span>

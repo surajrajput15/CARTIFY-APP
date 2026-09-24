@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Plus, Trash2, Edit2, Power } from 'lucide-react';
+import { Plus, Trash2, Edit2, Power, TrendingUp, ShoppingBag, BadgePercent } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { fetchCoupons, deleteCoupon, toggleCoupon } from '../../services/couponsApi';
+import { fetchCoupons, fetchCouponAnalytics, deleteCoupon, toggleCoupon } from '../../services/couponsApi';
 import { formatPrice, formatDate } from '../../utils/format';
 import CouponFormModal from './CouponFormModal';
 import ConfirmModal from '../ConfirmModal';
@@ -12,9 +12,17 @@ const CLOSED_CONFIRM = { show: false };
 const AdminCouponsTab = () => {
   const [coupons, setCoupons] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [analytics, setAnalytics] = useState({ overview: { orders: 0, discountGiven: 0 }, byCode: [] });
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [confirm, setConfirm] = useState(CLOSED_CONFIRM);
+
+  const loadAnalytics = async () => {
+    try {
+      const { data } = await fetchCouponAnalytics();
+      setAnalytics(data || { overview: { orders: 0, discountGiven: 0 }, byCode: [] });
+    } catch { /* non-blocking: usage stats are supplementary */ }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -30,6 +38,7 @@ const AdminCouponsTab = () => {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- mount fetch
     load();
+    loadAnalytics();
   }, []);
 
   const handleDelete = (id) => setConfirm({
@@ -52,6 +61,45 @@ const AdminCouponsTab = () => {
           <Plus size={18} /> Add Coupon
         </button>
       </div>
+
+      {/* Usage analytics: real money spent on Paid orders only */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="bg-white rounded-xl border p-4 flex items-center gap-3">
+          <span className="p-2.5 rounded-lg bg-amber-50 text-amber-600"><BadgePercent size={20} aria-hidden="true" /></span>
+          <div>
+            <p className="text-xs text-gray-500 font-medium uppercase">Coupons Used (Paid)</p>
+            <p className="text-xl font-bold">{analytics.overview.orders}</p>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border p-4 flex items-center gap-3">
+          <span className="p-2.5 rounded-lg bg-red-50 text-red-600"><ShoppingBag size={20} aria-hidden="true" /></span>
+          <div>
+            <p className="text-xs text-gray-500 font-medium uppercase">Discount Given</p>
+            <p className="text-xl font-bold">{formatPrice(analytics.overview.discountGiven)}</p>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border p-4 flex items-center gap-3">
+          <span className="p-2.5 rounded-lg bg-teal-50 text-teal-600"><TrendingUp size={20} aria-hidden="true" /></span>
+          <div>
+            <p className="text-xs text-gray-500 font-medium uppercase">Top Code</p>
+            <p className="text-xl font-bold truncate">{analytics.byCode[0]?._id || '—'}</p>
+          </div>
+        </div>
+      </div>
+
+      {analytics.byCode.length > 1 && (
+        <div className="bg-white rounded-xl border p-4">
+          <p className="text-sm font-bold text-gray-700 mb-2">Top performing coupons</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {analytics.byCode.slice(0, 6).map(c => (
+              <div key={c._id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm">
+                <span className="font-bold tracking-wider">{c._id}</span>
+                <span className="text-gray-500">{c.orders} orders · {formatPrice(c.discountGiven)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {showForm && (
         <CouponFormModal editing={editing} onClose={() => { setShowForm(false); setEditing(null); }} onSaved={() => { setShowForm(false); setEditing(null); load(); }} />

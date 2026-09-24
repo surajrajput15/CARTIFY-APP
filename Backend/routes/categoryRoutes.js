@@ -5,6 +5,8 @@ const router = express.Router();
 const Category = require('../models/Category');
 const Product = require('../models/Product');
 const { protect, admin } = require('../middleware/auth');
+const { auditLogMiddleware } = require('../middleware/auditLog');
+const { adminMutateGuard } = require('../utils/routeLimiters');
 
 // Canonical slugify (no deps): lowercase, keep alnum + hyphens, collapse rest.
 const slugify = (str) =>
@@ -63,7 +65,7 @@ router.get('/', async (req, res, next) => {
 });
 
 // ADMIN: create category
-router.post('/add', protect, admin, async (req, res, next) => {
+router.post('/add', protect, admin, adminMutateGuard, auditLogMiddleware('CREATE_CATEGORY', 'Category'), async (req, res, next) => {
   try {
     const { error, out } = sanitizeBody(req.body);
     if (error) return res.status(400).json({ message: error });
@@ -89,7 +91,7 @@ router.post('/add', protect, admin, async (req, res, next) => {
 });
 
 // ADMIN: update category (partial)
-router.patch('/:id', protect, admin, async (req, res, next) => {
+router.patch('/:id', protect, admin, adminMutateGuard, auditLogMiddleware('UPDATE_CATEGORY', 'Category'), async (req, res, next) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ message: 'Invalid category ID format' });
@@ -122,7 +124,7 @@ router.patch('/:id', protect, admin, async (req, res, next) => {
 });
 
 // ADMIN: delete category (products are NOT touched — taxonomy only)
-router.delete('/:id', protect, admin, async (req, res, next) => {
+router.delete('/:id', protect, admin, adminMutateGuard, auditLogMiddleware('DELETE_CATEGORY', 'Category'), async (req, res, next) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ message: 'Invalid category ID format' });

@@ -4,9 +4,10 @@ const { normalizeIndianPhone, normalizePinCode } = require('../utils/normalize')
 const router = express.Router();
 const Address = require('../models/Address');
 const { protect } = require('../middleware/auth');
+const { auditLogMiddleware } = require('../middleware/auditLog');
 
 // 1. ADD NEW ADDRESS
-router.post('/add', protect, async (req, res, next) => {
+router.post('/add', protect, auditLogMiddleware('CREATE_ADDRESS', 'Address'), async (req, res, next) => {
     try {
         // Strict allowlist + server-side validation. The raw body is never spread
         // into the document, so a client can't inject extra fields (userId etc.).
@@ -106,7 +107,7 @@ router.get('/:userId', protect, async (req, res, next) => {
 });
 
 // 3. UPDATE ADDRESS (including setting as default)
-router.put('/:id', protect, async (req, res, next) => {
+router.put('/:id', protect, auditLogMiddleware('UPDATE_ADDRESS', 'Address'), async (req, res, next) => {
     try {
         const address = await Address.findById(req.params.id);
         if (!address) return res.status(404).json({ message: "Address not found" });
@@ -195,7 +196,7 @@ router.put('/:id', protect, async (req, res, next) => {
 });
 
 // 4. DELETE ADDRESS
-router.delete('/:id', protect, async (req, res, next) => {
+router.delete('/:id', protect, auditLogMiddleware('DELETE_ADDRESS', 'Address'), async (req, res, next) => {
     try {
         const address = await Address.findById(req.params.id);
         if (!address) return res.status(404).json({ message: "Address not found" });

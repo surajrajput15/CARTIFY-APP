@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { Package, Phone, MapPin, Navigation, XCircle, Clock, ChevronDown, AlertTriangle, UserCircle2 } from 'lucide-react';
 import { useAuth } from '../context/authContext';
 import {
+  fetchDeliveryStats,
   fetchAssignedDeliveries,
   fetchCompletedDeliveries,
   fetchFailedDeliveries,
@@ -248,7 +249,21 @@ function DeliveryPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [stats, setStats] = useState(null);
   const { connected } = useSocket();
+
+  const loadStats = useCallback(async () => {
+    try {
+      const res = await fetchDeliveryStats();
+      setStats(res.data);
+    } catch {
+      // Stats are a nice-to-have — never block the dashboard on them.
+    }
+  }, []);
+
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
 
   const fetchers = {
     active: fetchAssignedDeliveries,
@@ -291,6 +306,7 @@ function DeliveryPage() {
       setSelectedOrder((s) => (s && s._id === order._id ? updated : s));
       if (action.next === 'delivered' || action.next === 'failed') {
         loadOrders(tab, page);
+        loadStats();
       }
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Action failed');
@@ -335,6 +351,48 @@ function DeliveryPage() {
           </button>
         </div>
       </div>
+
+      {/* Dashboard stats */}
+      {stats && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center shrink-0" aria-hidden="true">
+              <Package size={20} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-2xl font-bold text-gray-900 leading-none">{stats.active}</p>
+              <p className="text-xs text-gray-500 mt-1">Active deliveries</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center shrink-0" aria-hidden="true">
+              <Package size={20} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-2xl font-bold text-gray-900 leading-none">{stats.todayCompleted}</p>
+              <p className="text-xs text-gray-500 mt-1">Delivered today</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0" aria-hidden="true">
+              <XCircle size={20} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-2xl font-bold text-gray-900 leading-none">{stats.todayFailed}</p>
+              <p className="text-xs text-gray-500 mt-1">Failed today</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0" aria-hidden="true">
+              <Package size={20} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-2xl font-bold text-gray-900 leading-none">{stats.weekCompleted}</p>
+              <p className="text-xs text-gray-500 mt-1">Delivered (7 days)</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-2 mb-6 overflow-x-auto pb-1">

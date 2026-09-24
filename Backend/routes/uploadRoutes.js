@@ -7,6 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const cloudinary = require('cloudinary').v2;
 const { protect, admin } = require('../middleware/auth');
+const { auditLogMiddleware } = require('../middleware/auditLog');
 
 const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
 
@@ -67,7 +68,7 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }
 });
 
-router.post('/', protect, admin, uploadLimiter, (req, res) => {
+router.post('/', protect, admin, uploadLimiter, auditLogMiddleware('UPLOAD_IMAGE', 'Upload'), (req, res) => {
   upload.single('image')(req, res, (err) => {
     if (err) {
       return res.status(400).json({ message: err.message });

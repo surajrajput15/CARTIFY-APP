@@ -17,6 +17,17 @@ import AdminCouponsTab from '../components/admin/AdminCouponsTab';
 import AdminDeliveryMap from '../components/admin/AdminDeliveryMap';
 import AdminDeliveryAssign from '../components/admin/AdminDeliveryAssign';
 import AdminCategoriesTab from '../components/admin/AdminCategoriesTab';
+import AdminWarehousesTab from '../components/admin/AdminWarehousesTab';
+import AdminCampaignsTab from '../components/admin/AdminCampaignsTab';
+import AdminAuditLogsTab from '../components/admin/AdminAuditLogsTab';
+import AdminUserActivityTab from '../components/admin/AdminUserActivityTab';
+import AdminStaffTab from '../components/admin/AdminStaffTab';
+import AdminControlTab from '../components/admin/AdminControlTab';
+import AdminUsersTab from '../components/admin/AdminUsersTab';
+import AdminAnalyticsTab from '../components/admin/AdminAnalyticsTab';
+import AdminReviewsTab from '../components/admin/AdminReviewsTab';
+import AdminNotificationsTab from '../components/admin/AdminNotificationsTab';
+import AdminSettingsTab from '../components/admin/AdminSettingsTab';
 import { isNetworkError } from '../utils/apiError';
 
 const CLOSED_CONFIRM = { show: false, title: '', message: '', onConfirm: null, loading: false };
@@ -263,7 +274,7 @@ const AdminPage = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
       <nav className="flex gap-2 mb-6" role="group" aria-label="Admin sections">
-        {['products', 'orders', 'coupons', 'categories', 'deliveries'].map((tab) => (
+        {['control', 'users', 'orders', 'products', 'categories', 'warehouses', 'coupons', 'campaigns', 'deliveries', 'analytics', 'reviews', 'notifications', 'activity', 'audit', 'settings'].map((tab) => (
           <button
             key={tab}
             type="button"
@@ -275,14 +286,16 @@ const AdminPage = () => {
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
-            {tab}
+            {tab === 'warehouses' ? 'Inventory / Stock' : tab}
           </button>
         ))}
       </nav>
 
+      {adminTab === 'control' && <AdminControlTab />}
+
       {adminTab === 'products' && (
         <>
-          <AdminHeader onBack={() => navigate('/')} onSeed={handleSeed} onClearAll={handleClearAll} />
+          <AdminHeader onBack={() => navigate('/')} onSeed={handleSeed} onClearAll={handleClearAll} showDevActions={true} />
 
           <AdminFilterBar
             searchTerm={searchTerm}
@@ -325,11 +338,17 @@ const AdminPage = () => {
         </>
       )}
 
+      {adminTab === 'users' && <AdminUsersTab />}
+
       {adminTab === 'orders' && <AdminOrdersTab />}
+
+      {adminTab === 'categories' && <AdminCategoriesTab />}
+
+      {adminTab === 'warehouses' && <AdminWarehousesTab />}
 
       {adminTab === 'coupons' && <AdminCouponsTab />}
 
-      {adminTab === 'categories' && <AdminCategoriesTab />}
+      {adminTab === 'campaigns' && <AdminCampaignsTab />}
 
       {adminTab === 'deliveries' && (
         <div className="space-y-4 sm:space-y-6">
@@ -337,6 +356,18 @@ const AdminPage = () => {
           <AdminDeliveryMap />
         </div>
       )}
+
+      {adminTab === 'analytics' && <AdminAnalyticsTab />}
+
+      {adminTab === 'reviews' && <AdminReviewsTab />}
+
+      {adminTab === 'notifications' && <AdminNotificationsTab />}
+
+      {adminTab === 'audit' && <AdminAuditLogsTab />}
+
+      {adminTab === 'activity' && <AdminUserActivityTab />}
+
+      {adminTab === 'settings' && <AdminSettingsTab />}
 
       {confirmModal.show && (
         <ConfirmModal

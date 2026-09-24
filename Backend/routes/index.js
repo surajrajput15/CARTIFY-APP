@@ -21,7 +21,18 @@ const wishlistRoutes = require('./wishlistRoutes');
 const categoryRoutes = require('./categoryRoutes');
 const adminRoutes = require('./adminRoutes');
 const adminDeliveryRoutes = require('./adminDeliveryRoutes');
+const adminStaffRoutes = require('./adminStaffRoutes');
+const adminUserRoutes = require('./adminUserRoutes');
 const locationRoutes = require('./locationRoutes');
+const warehouseRoutes = require('./warehouseRoutes');
+const warehousePortalRoutes = require('./warehousePortalRoutes');
+const inventoryRoutes = require('./inventoryRoutes');
+const stockRoutes = require('./stockRoutes');
+const campaignRoutes = require('./campaignRoutes');
+const reviewRoutes = require('./reviewRoutes');
+const notificationRoutes = require('./notificationRoutes');
+const auditRoutes = require('./auditRoutes');
+const activityRoutes = require('./activityRoutes');
 
 // Mount routes under v1
 router.use('/products', productRoutes);
@@ -36,7 +47,18 @@ router.use('/wishlist', wishlistRoutes);
 router.use('/categories', categoryRoutes);
 router.use('/admin/analytics', adminRoutes);
 router.use('/admin', adminDeliveryRoutes);
+router.use('/admin/staff', adminStaffRoutes);
+router.use('/admin/users', adminUserRoutes);
+router.use('/admin/audit-logs', auditRoutes);
+router.use('/admin/user-activity', activityRoutes);
 router.use('/locations', locationRoutes);
+router.use('/warehouses', warehouseRoutes);
+router.use('/warehouse', warehousePortalRoutes);
+router.use('/inventory', inventoryRoutes);
+router.use('/stock', stockRoutes);
+router.use('/reviews', reviewRoutes);
+router.use('/notifications', notificationRoutes);
+router.use('/campaigns', campaignRoutes);
 
 // V1 API info endpoint
 router.get('/', (req, res) => {
@@ -56,7 +78,16 @@ router.get('/', (req, res) => {
       wishlist: '/api/v1/wishlist',
       categories: '/api/v1/categories',
       'admin-analytics': '/api/v1/admin/analytics',
+      'admin-users': '/api/v1/admin/users',
+      'admin-audit-logs': '/api/v1/admin/audit-logs',
+      'admin-user-activity': '/api/v1/admin/user-activity',
+      reviews: '/api/v1/reviews',
+      notifications: '/api/v1/notifications',
       locations: '/api/v1/locations',
+      warehouses: '/api/v1/warehouses',
+      inventory: '/api/v1/inventory',
+      stock: '/api/v1/stock',
+      campaigns: '/api/v1/campaigns',
     },
   });
 });

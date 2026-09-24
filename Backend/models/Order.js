@@ -77,6 +77,35 @@ const orderSchema = new mongoose.Schema({
         maxDiscount: { type: Number, default: null },
         minOrderAmount: { type: Number, default: 0 },
     },
+    // Campaign applied at checkout (auto, not user-entered). Best-of rule:
+    // exactly one of couponCode / campaignCode may be set — whichever discounts
+    // more. Snapshot survives campaign edits so order history is stable.
+    campaignId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Campaign',
+        default: null,
+    },
+    campaignCode: {
+        type: String,
+        default: null,
+        trim: true,
+    },
+    campaignDiscountAmount: {
+        type: Number,
+        default: 0,
+        min: 0,
+    },
+    campaignSnapshot: {
+        _id: { type: mongoose.Schema.Types.ObjectId },
+        name: { type: String },
+        slug: { type: String, default: null },
+        discountType: { type: String, enum: ['percentage', 'fixed'] },
+        discountValue: { type: Number },
+        maxDiscount: { type: Number, default: null },
+        minOrderAmount: { type: Number, default: 0 },
+        bannerText: { type: String, default: '' },
+        bannerColor: { type: String, default: null },
+    },
     // Order lifecycle status (orderStatus): 
     // Pending -> Confirmed -> Processing -> Packed -> Shipped -> Out for Delivery -> Delivered
     // Also: Cancelled, Failed, Returned, Refunded

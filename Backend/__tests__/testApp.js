@@ -15,6 +15,15 @@ const orderRoutes = require('../routes/orderRoutes');
 const addressRoutes = require('../routes/addressRoutes');
 const cartRoutes = require('../routes/cartRoutes');
 const paymentRoutes = require('../routes/paymentRoutes');
+const couponRoutes = require('../routes/couponRoutes');
+const warehouseRoutes = require('../routes/warehouseRoutes');
+const inventoryRoutes = require('../routes/inventoryRoutes');
+const stockRoutes = require('../routes/stockRoutes');
+const campaignRoutes = require('../routes/campaignRoutes');
+const auditRoutes = require('../routes/auditRoutes');
+const activityRoutes = require('../routes/activityRoutes');
+const adminStaffRoutes = require('../routes/adminStaffRoutes');
+const warehousePortalRoutes = require('../routes/warehousePortalRoutes');
 
 /**
  * Build a test Express app that mirrors the real server's middleware stack.
@@ -33,6 +42,15 @@ const buildTestApp = () => {
   app.use('/api/addresses', addressRoutes);
   app.use('/api/cart', cartRoutes);
   app.use('/api/payment', paymentRoutes);
+  app.use('/api/coupons', couponRoutes);
+  app.use('/api/warehouses', warehouseRoutes);
+  app.use('/api/inventory', inventoryRoutes);
+  app.use('/api/stock', stockRoutes);
+  app.use('/api/campaigns', campaignRoutes);
+  app.use('/api/admin/audit-logs', auditRoutes);
+  app.use('/api/admin/user-activity', activityRoutes);
+  app.use('/api/admin/staff', adminStaffRoutes);
+  app.use('/api/warehouse', warehousePortalRoutes);
 
   // 404 handler
   app.use((req, res) => {

@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
   Home, ShoppingCart, Heart, User, LayoutGrid,
-  Shield, Truck, Package
+  Shield, Truck, Package, Warehouse
 } from 'lucide-react';
 import { useAuth } from '../context/authContext';
 import { useCart } from '../context/cartContext';
@@ -40,6 +40,13 @@ const MobileBottomNav = () => {
       <NavLink key="delivery" to="/delivery" className={({ isActive }) => `${base} ${isActive ? active : inactive}`} aria-label="Delivery dashboard">
         <Truck size={20} aria-hidden="true" />
         <span>Deliveries</span>
+      </NavLink>
+    );
+  } else if (user?.role === 'warehouse') {
+    items.push(
+      <NavLink key="warehouse" to="/warehouse" className={({ isActive }) => `${base} ${isActive ? active : inactive}`} aria-label="Warehouse dashboard">
+        <Warehouse size={20} aria-hidden="true" />
+        <span>Warehouse</span>
       </NavLink>
     );
   } else if (isAdmin) {

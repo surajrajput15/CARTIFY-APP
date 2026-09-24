@@ -3,6 +3,11 @@ import api from '../api/axios';
 export const validateCoupon = (code, orderAmount, items) =>
   api.post('/api/coupons/validate', { code, orderAmount, items });
 
+export const findBestCoupon = (orderAmount, items) =>
+  api.post('/api/coupons/best', { orderAmount, items });
+
+export const fetchCouponAnalytics = () => api.get('/api/coupons/analytics');
+
 export const fetchCoupons = (params) => api.get('/api/coupons', { params });
 export const fetchCouponById = (id) => api.get(`/api/coupons/${id}`);
 export const createCoupon = (data) => api.post('/api/coupons', data);
