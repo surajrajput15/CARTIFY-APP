@@ -172,19 +172,20 @@ app.get('/api/auth/csrf-token', csrfProtection, (req, res) => {
 });
 
 app.use((req, res, next) => {
-   const excludedPaths = [
-     '/api/payment/webhook',
-     '/api/auth/send-otp',
-     '/api/auth/verify-otp',
-     '/api/auth/register',
-     '/api/auth/login',
-     '/api/auth/forgot-password',
-     '/api/auth/reset-password',
-     '/api/auth/google',
-     '/api/auth/csrf-token',  // Served by the single handler above - skip global csurf
-     '/api/auth/refresh',     // Token refresh needs to work without CSRF
-     '/api/coupons/validate'  // Coupon validation during checkout
-   ];
+const excludedPaths = [
+      '/api/payment/webhook',
+      '/api/auth/send-otp',
+      '/api/auth/verify-otp',
+      '/api/auth/register',
+      '/api/auth/login',
+      '/api/auth/forgot-password',
+      '/api/auth/reset-password',
+      '/api/auth/google',
+      '/api/auth/csrf-token',
+      '/api/auth/refresh',
+      '/api/auth/logout',       // Logout uses cookies, not CSRF token
+      '/api/coupons/validate'   // Coupon validation during checkout
+    ];
     // Version-agnostic matching: /api/v1/* routers serve the same handlers as
     // /api/*, so exclusions must apply to both (e.g. GET /api/v1/cart reads and
     // POST /api/v1/coupons/validate previously missed CSRF handling).
@@ -237,21 +238,26 @@ if (process.env.SENTRY_DSN) {
 
 // Health check endpoints
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString(), uptime: process.uptime() });
 });
 
 app.get('/ready', async (req, res) => {
   try {
     // Check MongoDB connection
     if (mongoose.connection.readyState !== 1) {
-      return res.status(503).json({ status: 'not ready', reason: 'database disconnected' });
+      return res.status(503).json({ status: 'not ready', reason: 'database disconnected', readyState: mongoose.connection.readyState });
     }
     // Quick ping
     await mongoose.connection.db.admin().ping();
-    res.status(200).json({ status: 'ready', timestamp: new Date().toISOString() });
+    res.status(200).json({ status: 'ready', timestamp: new Date().toISOString(), uptime: process.uptime() });
   } catch (error) {
     res.status(503).json({ status: 'not ready', reason: error.message });
   }
+});
+
+// Render health check alias (some configs expect /healthz or root)
+app.get('/healthz', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // MongoDB Database Connection with connection pool tuning.
@@ -368,7 +374,7 @@ if (process.env.SENTRY_DSN) {
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server is running on port ${PORT}`);
 });
 
@@ -422,6 +428,16 @@ const shutdown = async (signal) => {
     // Force-exit if connections refuse to drain (prevents an indefinite hang).
     setTimeout(() => process.exit(1), 10000).unref();
 };
+
+// Handle unhandled promise rejections and uncaught exceptions
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error({ err: reason, promise }, 'Unhandled Rejection - server stays up');
+});
+
+process.on('uncaughtException', (error) => {
+  logger.error({ err: error }, 'Uncaught Exception - shutting down');
+  shutdown('uncaughtException');
+});
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
