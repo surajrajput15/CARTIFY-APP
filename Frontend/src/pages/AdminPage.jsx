@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/authContext';
 import toast from 'react-hot-toast';
 import { uploadImage } from '../services/productsApi';
@@ -21,7 +21,6 @@ import AdminWarehousesTab from '../components/admin/AdminWarehousesTab';
 import AdminCampaignsTab from '../components/admin/AdminCampaignsTab';
 import AdminAuditLogsTab from '../components/admin/AdminAuditLogsTab';
 import AdminUserActivityTab from '../components/admin/AdminUserActivityTab';
-import AdminStaffTab from '../components/admin/AdminStaffTab';
 import AdminControlTab from '../components/admin/AdminControlTab';
 import AdminUsersTab from '../components/admin/AdminUsersTab';
 import AdminAnalyticsTab from '../components/admin/AdminAnalyticsTab';
@@ -32,9 +31,12 @@ import { isNetworkError } from '../utils/apiError';
 
 const CLOSED_CONFIRM = { show: false, title: '', message: '', onConfirm: null, loading: false };
 
+const ADMIN_TABS = ['control', 'users', 'orders', 'products', 'categories', 'warehouses', 'coupons', 'campaigns', 'deliveries', 'analytics', 'reviews', 'notifications', 'activity', 'audit', 'settings'];
+
 const AdminPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const { products, loading, fetchProducts, saveProduct, deleteProduct, seedProducts, clearAllProducts } = useAdminProducts();
 
@@ -43,7 +45,23 @@ const AdminPage = () => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [confirmModal, setConfirmModal] = useState(CLOSED_CONFIRM);
   const [form, setForm] = useState(EMPTY_PRODUCT_FORM);
-  const [adminTab, setAdminTab] = useState('products');
+  const initialTab = searchParams.get('tab');
+  const [adminTab, setAdminTab] = useState(
+    initialTab && ADMIN_TABS.includes(initialTab) ? initialTab : 'products'
+  );
+
+  // URL-driven tab (?tab=users from the navbar admin menu). Unknown values
+  // fall back to products so deep-links never render a blank pane.
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot URL sync
+    if (tab && tab !== adminTab) setAdminTab(ADMIN_TABS.includes(tab) ? tab : 'products');
+  }, [searchParams, adminTab]);
+
+  const handleAdminTabChange = (tab) => {
+    setAdminTab(tab);
+    setSearchParams({ tab });
+  };
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
@@ -274,11 +292,11 @@ const AdminPage = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
       <nav className="flex gap-2 mb-6" role="group" aria-label="Admin sections">
-        {['control', 'users', 'orders', 'products', 'categories', 'warehouses', 'coupons', 'campaigns', 'deliveries', 'analytics', 'reviews', 'notifications', 'activity', 'audit', 'settings'].map((tab) => (
+        {ADMIN_TABS.map((tab) => (
           <button
             key={tab}
             type="button"
-            onClick={() => setAdminTab(tab)}
+            onClick={() => handleAdminTabChange(tab)}
             aria-pressed={adminTab === tab}
             className={`px-4 sm:px-5 py-2 rounded-full text-sm font-bold capitalize transition-colors min-h-[44px] ${
               adminTab === tab

@@ -152,9 +152,9 @@ function App() {
                 <Route
                   path="/delivery/*"
                   element={
-                    <RoleGuard allowedRoles={['delivery']}>
-                      <DeliveryPageWithError />
-                    </RoleGuard>
+                  <RoleGuard allowedRoles={['delivery', 'admin']}>
+                    <DeliveryPageWithError />
+                  </RoleGuard>
                   }
                 />
 
@@ -162,9 +162,9 @@ function App() {
                 <Route
                   path="/warehouse/*"
                   element={
-                    <RoleGuard allowedRoles={['warehouse']}>
-                      <WarehousePortalWithError />
-                    </RoleGuard>
+                  <RoleGuard allowedRoles={['warehouse', 'admin']}>
+                    <WarehousePortalWithError />
+                  </RoleGuard>
                   }
                 />
                 

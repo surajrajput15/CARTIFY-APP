@@ -1,29 +1,14 @@
-import { User, Package, MapPin, Settings, LogOut, Heart } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { User, Package, MapPin, Settings, LogOut, Ticket, Bell } from 'lucide-react';
 import { getFirstName, getInitial } from '../../utils/format';
 
 const TABS = [
   { key: 'profile', label: 'Profile Information', icon: User },
   { key: 'orders', label: 'My Orders', icon: Package },
+  { key: 'coupons', label: 'My Coupons', icon: Ticket },
+  { key: 'notifications', label: 'Notifications', icon: Bell },
   { key: 'addresses', label: 'Manage Addresses', icon: MapPin },
   { key: 'settings', label: 'Account Settings', icon: Settings },
 ];
-
-// Dedicated "wishlist" quick-access row rendered below the settings tab for
-// authenticated profile users. Navigates to the standalone /wishlist page
-// (wishlist is managed there instead of as a profile tab).
-const WishlistEntry = ({ onNavigate }) => (
-  <button
-    type="button"
-    onClick={onNavigate}
-    className="w-full flex items-center gap-2.5 px-4 py-3 rounded-xl text-sm font-semibold text-gray-600 hover:text-teal-700 hover:bg-teal-50 transition-colors min-h-[44px]"
-    aria-label="Open wishlist"
-  >
-    <Heart size={18} className="flex-shrink-0" aria-hidden="true" />
-    <span className="flex-1 text-left">Wishlist</span>
-    <span className="text-gray-300 text-xs" aria-hidden="true">→</span>
-  </button>
-);
 
 const ProfileSidebar = ({ user, activeTab, onTabChange, onLogout }) => (
   <div className="w-full md:w-1/4">

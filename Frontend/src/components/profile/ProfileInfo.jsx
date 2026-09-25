@@ -1,7 +1,9 @@
 import { Edit2, X, Loader2, Check, Lock } from 'lucide-react';
 import { formatDate, getInitial } from '../../utils/format';
 
-const ProfileInfo = ({ user, isEditing, editName, updateLoading, onToggleEdit, onEditNameChange, onSave, onGoToSettings }) => (
+const GENDER_LABELS = { male: 'Male', female: 'Female', other: 'Other' };
+
+const ProfileInfo = ({ user, isEditing, editName, editGender, updateLoading, onToggleEdit, onEditNameChange, onEditGenderChange, onSave, onGoToSettings }) => (
   <section
     className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 sm:p-8 animate-fade-in-up"
     aria-labelledby="profile-info-heading"
@@ -77,6 +79,26 @@ const ProfileInfo = ({ user, isEditing, editName, updateLoading, onToggleEdit, o
         {isEditing && (
           <p id="profile-name-hint" className="text-xs text-gray-400 mt-1.5">
             Press Enter to save — changes persist to your account.
+          </p>
+        )}
+      </div>
+      <div>
+        <label htmlFor="profile-gender" className="block text-sm font-medium text-gray-500 mb-2">Your Gender</label>
+        {isEditing ? (
+          <select
+            id="profile-gender"
+            value={editGender}
+            onChange={onEditGenderChange}
+            className="w-full px-4 py-2.5 rounded-lg border border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 font-medium min-h-[44px] bg-white"
+          >
+            <option value="">Prefer not to say</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
+        ) : (
+          <p className="text-gray-900 font-semibold bg-gray-50 p-3 rounded-lg border border-gray-200">
+            {GENDER_LABELS[user?.gender] || 'Not set'}
           </p>
         )}
       </div>

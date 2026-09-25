@@ -12,6 +12,10 @@ import ProfileInfo from '../components/profile/ProfileInfo';
 import OrdersTab from '../components/profile/OrdersTab';
 import AddressManager from '../components/profile/AddressManager';
 import SettingsTab from '../components/profile/SettingsTab';
+import CouponsTab from '../components/profile/CouponsTab';
+import NotificationsTab from '../components/profile/NotificationsTab';
+
+const VALID_TABS = ['profile', 'orders', 'coupons', 'notifications', 'addresses', 'settings'];
 
 const CLOSED_CONFIRM = { show: false, title: '', message: '', confirmLabel: 'Confirm', cancelLabel: 'Cancel', onConfirm: null, loading: false };
 
@@ -25,7 +29,7 @@ const ProfilePage = () => {
 
   const { orders, loadingOrders, fetchOrders } = useOrders(user?.id);
   const { addresses, addressesLoading, fetchAddresses, saveAddress, deleteAddress } = useAddresses(user?.id, false);
-  const { isEditing, editName, setEditName, updateLoading, handleToggleEdit, handleUpdateProfile, deleteAccount } = useProfile();
+  const { isEditing, editName, setEditName, editGender, setEditGender, updateLoading, handleToggleEdit, handleUpdateProfile, deleteAccount } = useProfile();
   const { changing: changingPassword, changePassword } = useChangePassword();
 
   useEffect(() => {
@@ -33,11 +37,12 @@ const ProfilePage = () => {
   }, [user, navigate]);
 
   // URL-driven tab (?tab=orders from checkout success / navbar). One-shot
-  // navigation sync, not a cascading render loop.
+  // navigation sync, not a cascading render loop. Unknown values fall back
+  // to the profile tab so deep-links never render a blank pane.
   useEffect(() => {
     const tab = searchParams.get('tab');
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot URL sync
-    if (tab && tab !== activeTab) setActiveTab(tab);
+    if (tab && tab !== activeTab) setActiveTab(VALID_TABS.includes(tab) ? tab : 'profile');
   }, [searchParams, activeTab]);
 
   useEffect(() => {
@@ -142,15 +147,21 @@ const ProfilePage = () => {
               user={user}
               isEditing={isEditing}
               editName={editName}
+              editGender={editGender}
               updateLoading={updateLoading}
               onToggleEdit={handleToggleEdit}
               onEditNameChange={(e) => setEditName(e.target.value)}
+              onEditGenderChange={(e) => setEditGender(e.target.value)}
               onSave={handleUpdateProfile}
               onGoToSettings={() => handleTabChange('settings')}
             />
           )}
 
           {activeTab === 'orders' && <OrdersTab orders={orders} loading={loadingOrders} />}
+
+          {activeTab === 'coupons' && <CouponsTab />}
+
+          {activeTab === 'notifications' && <NotificationsTab />}
 
           {activeTab === 'addresses' && (
             <AddressManager

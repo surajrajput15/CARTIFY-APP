@@ -2,7 +2,8 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   ShoppingCart, User, Search, LogOut, Shield, Truck, Warehouse,
-  Heart, Phone, HelpCircle, BadgePercent, Menu, ChevronDown
+  Heart, Phone, HelpCircle, BadgePercent, ChevronDown,
+  Ticket, Bell, Package
 } from 'lucide-react';
 import { useCart } from '../context/cartContext';
 import { useWishlist } from '../context/WishlistContext';
@@ -17,9 +18,6 @@ import { recordSearch } from '../utils/recentSearches';
 const linkBase = 'flex items-center gap-1.5 font-medium transition-colors';
 const linkInactive = 'text-gray-600 hover:text-teal-600';
 const linkActiveBase = 'text-teal-600';
-const linkBaseUtil = 'flex items-center gap-1 font-medium transition-colors';
-const linkInactiveUtil = 'text-gray-200 hover:text-white';
-const linkActiveBaseUtil = 'text-white';
 
 const navLinkClass = ({ isActive }) =>
   `${linkBase} ${isActive ? `${linkActiveBase} border-b-2 border-teal-500 pb-0.5` : linkInactive}`;
@@ -33,9 +31,10 @@ const Navbar = () => {
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState(false);
   const [categoryRetry, setCategoryRetry] = useState(0);
-  const [railOpen, setRailOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [adminMenuOpen, setAdminMenuOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const adminMenuRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -48,6 +47,7 @@ const Navbar = () => {
 
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial category fetch
     setCategoriesLoading(true);
     setCategoriesError(false);
     fetchCategories(true)
@@ -79,13 +79,42 @@ const Navbar = () => {
     }
   }, [navigate]);
 
+  // Both navbar menus: dismiss on outside click, Escape, or route change.
+  useEffect(() => {
+    if (!dropdownOpen && !adminMenuOpen) return undefined;
+
+    const onPointerDown = (event) => {
+      if (dropdownRef.current?.contains(event.target) || adminMenuRef.current?.contains(event.target)) return;
+      setDropdownOpen(false);
+      setAdminMenuOpen(false);
+    };
+    const onKeyDown = (event) => {
+      if (event.key !== 'Escape') return;
+      setDropdownOpen(false);
+      setAdminMenuOpen(false);
+    };
+
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [dropdownOpen, adminMenuOpen]);
+
+  // Navigating away (deep link from a menu, brand click, browser back) closes menus.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync menus to route change
+    setDropdownOpen(false);
+    setAdminMenuOpen(false);
+  }, [location.pathname, location.search]);
+
   const handleLogout = useCallback(() => {
     logout();
     navigate('/');
   }, [logout, navigate]);
 
   const goCategory = useCallback((slug) => {
-    setRailOpen(false);
     if (slug && slug !== 'all') {
       navigate(`/?category=${encodeURIComponent(String(slug).toLowerCase())}`);
     } else {
@@ -115,7 +144,7 @@ const Navbar = () => {
                 type="button"
                 className="flex items-center gap-1.5 text-teal-50 hover:text-white transition-colors min-w-[44px] min-h-[44px] -my-4 px-2 justify-center"
                 aria-label="Featured picks"
-                onClick={() => { navigate('/?category=all'); setRailOpen(false); setTimeout(() => document.querySelector('#featured-heading')?.scrollIntoView({ behavior: 'smooth' }), 120); }}
+                onClick={() => { navigate('/?category=all'); setTimeout(() => document.querySelector('#featured-heading')?.scrollIntoView({ behavior: 'smooth' }), 120); }}
               >
                 <BadgePercent size={13} aria-hidden="true" />
                 <span className="hidden sm:inline font-medium">Featured</span>
@@ -170,7 +199,8 @@ const Navbar = () => {
                   <div className="relative" ref={dropdownRef}>
                     <button
                       type="button"
-                      onClick={() => setDropdownOpen((o) => !o)}
+                      id="account-menu-button"
+                      onClick={() => { setDropdownOpen((o) => !o); setAdminMenuOpen(false); }}
                       aria-haspopup="true"
                       aria-expanded={dropdownOpen}
                       aria-label="Account menu"
@@ -197,21 +227,15 @@ const Navbar = () => {
                         <NavLink to="/profile?tab=orders" role="menuitem" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition-colors" onClick={() => setDropdownOpen(false)}>
                           <ShoppingCart size={16} aria-hidden="true" /> My Orders
                         </NavLink>
-                        {user.isAdmin && (
-                          <NavLink to="/admin" role="menuitem" className="flex items-center gap-2 px-4 py-2 text-sm text-teal-700 hover:bg-teal-50 transition-colors" onClick={() => setDropdownOpen(false)}>
-                            <Shield size={16} aria-hidden="true" /> Admin Dashboard
-                          </NavLink>
-                        )}
-                        {user.role === 'delivery' && (
-                          <NavLink to="/delivery" role="menuitem" className="flex items-center gap-2 px-4 py-2 text-sm text-teal-700 hover:bg-teal-50 transition-colors" onClick={() => setDropdownOpen(false)}>
-                            <Truck size={16} aria-hidden="true" /> Delivery Dashboard
-                          </NavLink>
-                        )}
-                        {user.role === 'warehouse' && (
-                          <NavLink to="/warehouse" role="menuitem" className="flex items-center gap-2 px-4 py-2 text-sm text-teal-700 hover:bg-teal-50 transition-colors" onClick={() => setDropdownOpen(false)}>
-                            <Warehouse size={16} aria-hidden="true" /> Warehouse Dashboard
-                          </NavLink>
-                        )}
+                        <NavLink to="/profile?tab=coupons" role="menuitem" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition-colors" onClick={() => setDropdownOpen(false)}>
+                          <Ticket size={16} aria-hidden="true" /> My Coupons
+                        </NavLink>
+                        <NavLink to="/wishlist" role="menuitem" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition-colors" onClick={() => setDropdownOpen(false)}>
+                          <Heart size={16} aria-hidden="true" /> Wishlist
+                        </NavLink>
+                        <NavLink to="/profile?tab=notifications" role="menuitem" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition-colors" onClick={() => setDropdownOpen(false)}>
+                          <Bell size={16} aria-hidden="true" /> Notifications
+                        </NavLink>
                         <div className="border-t border-gray-100 mt-1 pt-1">
                           <button type="button" role="menuitem" onClick={() => { setDropdownOpen(false); handleLogout(); }} className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
                             <LogOut size={16} aria-hidden="true" /> Logout
@@ -222,12 +246,55 @@ const Navbar = () => {
                   </div>
 
                   {user.isAdmin && (
-                    <NavLink to="/admin" aria-label="Admin dashboard" className={({ isActive }) =>
-                      `${linkBase} ${isActive ? `${linkActiveBase} border-b-2 border-teal-500 pb-0.5` : 'text-teal-700 hover:text-teal-800'}`
-                    }>
-                      <Shield size={20} aria-hidden="true" />
-                      <span className="hidden lg:inline">Admin</span>
-                    </NavLink>
+                    <div className="relative" ref={adminMenuRef}>
+                      <button
+                        type="button"
+                        onClick={() => { setAdminMenuOpen((o) => !o); setDropdownOpen(false); }}
+                        aria-haspopup="true"
+                        aria-expanded={adminMenuOpen}
+                        aria-label="Admin control menu"
+                        className="flex items-center gap-1 p-2 rounded-lg text-teal-700 hover:text-teal-800 hover:bg-teal-50 transition-colors min-h-[44px]"
+                      >
+                        <Shield size={20} aria-hidden="true" />
+                        <span className="hidden lg:inline font-semibold">Admin</span>
+                        <ChevronDown size={16} aria-hidden="true" className={`transition-transform ${adminMenuOpen ? 'rotate-180' : ''}`} />
+                      </button>
+                      {adminMenuOpen && (
+                        <div
+                          className="absolute right-0 mt-2 w-60 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50"
+                          role="menu"
+                          aria-label="Admin control menu"
+                        >
+                          <div className="px-4 py-2 border-b border-gray-100">
+                            <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Full control</p>
+                          </div>
+                          <NavLink to="/admin" role="menuitem" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition-colors" onClick={() => setAdminMenuOpen(false)}>
+                            <Shield size={16} aria-hidden="true" /> Admin Dashboard
+                          </NavLink>
+                          <NavLink to="/delivery" role="menuitem" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition-colors" onClick={() => setAdminMenuOpen(false)}>
+                            <Truck size={16} aria-hidden="true" /> Delivery Portal
+                          </NavLink>
+                          <NavLink to="/warehouse" role="menuitem" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition-colors" onClick={() => setAdminMenuOpen(false)}>
+                            <Warehouse size={16} aria-hidden="true" /> Warehouse Portal
+                          </NavLink>
+                          <div className="border-t border-gray-100 mt-1 pt-1">
+                            <p className="px-4 py-1 text-xs font-bold uppercase tracking-wider text-gray-400">Manage</p>
+                          </div>
+                          <NavLink to="/admin?tab=users" role="menuitem" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition-colors" onClick={() => setAdminMenuOpen(false)}>
+                            <User size={16} aria-hidden="true" /> Users
+                          </NavLink>
+                          <NavLink to="/admin?tab=orders" role="menuitem" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition-colors" onClick={() => setAdminMenuOpen(false)}>
+                            <ShoppingCart size={16} aria-hidden="true" /> Orders
+                          </NavLink>
+                          <NavLink to="/admin?tab=products" role="menuitem" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition-colors" onClick={() => setAdminMenuOpen(false)}>
+                            <Package size={16} aria-hidden="true" /> Products
+                          </NavLink>
+                          <NavLink to="/admin?tab=coupons" role="menuitem" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition-colors" onClick={() => setAdminMenuOpen(false)}>
+                            <Ticket size={16} aria-hidden="true" /> Coupons
+                          </NavLink>
+                        </div>
+                      )}
+                    </div>
                   )}
                   {user.role === 'delivery' && (
                     <NavLink to="/delivery" aria-label="Delivery dashboard" className={({ isActive }) =>
@@ -262,6 +329,7 @@ const Navbar = () => {
                 </NavLink>
               )}
 
+              {!user?.isAdmin && (
               <NavLink
                 to="/wishlist"
                 aria-label={`Wishlist, ${wishlistCount} item${wishlistCount === 1 ? '' : 's'}`}
@@ -285,6 +353,7 @@ const Navbar = () => {
                 </div>
                 <span className="hidden sm:inline">Wishlist</span>
               </NavLink>
+              )}
 
               <NavLink
                 to="/cart"

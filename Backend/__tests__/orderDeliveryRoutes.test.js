@@ -185,6 +185,18 @@ describe('Order Delivery Routes (Phase 1)', () => {
       await customerAgent.post(`/api/orders/${order._id}/accept-delivery`).expect(403);
     });
 
+    it('lets the owner admin accept another partner\'s job', async () => {
+      const order = await Order.create(baseOrder({
+        userId: customer._id,
+        deliveryPartnerId: partner._id,
+        deliveryStatus: 'assigned',
+        assignedAt: new Date(),
+      }));
+
+      const res = await adminAgent.post(`/api/orders/${order._id}/accept-delivery`).expect(200);
+      expect(res.body.order.deliveryStatus).toBe('accepted');
+    });
+
     it('rejects an illegal transition (already picked up)', async () => {
       const order = await Order.create(baseOrder({
         userId: customer._id,
@@ -409,7 +421,19 @@ describe('Order Delivery Routes (Phase 1)', () => {
 
     it('rejects a non-delivery caller', async () => {
       await customerAgent.get('/api/orders/delivery/assigned').expect(403);
-      await adminAgent.get('/api/orders/delivery/assigned').expect(403);
+    });
+
+    it('lets the owner admin see every partner\'s active jobs', async () => {
+      await Order.insertMany([
+        baseOrder({ userId: customer._id, deliveryPartnerId: partner._id, deliveryStatus: 'assigned', status: 'Processing' }),
+        baseOrder({ userId: customer._id, deliveryPartnerId: otherPartner._id, deliveryStatus: 'accepted', status: 'Processing' }),
+      ]);
+
+      const res = await adminAgent.get('/api/orders/delivery/assigned').expect(200);
+      expect(res.body.total).toBe(2);
+      const partnerIds = res.body.orders.map((o) => o.deliveryPartnerId._id);
+      expect(partnerIds).toContain(partner._id.toString());
+      expect(partnerIds).toContain(otherPartner._id.toString());
     });
   });
 
@@ -480,7 +504,20 @@ describe('Order Delivery Routes (Phase 1)', () => {
 
     it('rejects a non-delivery caller', async () => {
       await customerAgent.get('/api/orders/delivery/stats').expect(403);
-      await adminAgent.get('/api/orders/delivery/stats').expect(403);
+    });
+
+    it('aggregates every partner for the owner admin', async () => {
+      const today = new Date();
+      await Order.insertMany([
+        baseOrder({ userId: customer._id, deliveryPartnerId: partner._id, deliveryStatus: 'assigned', status: 'Processing' }),
+        baseOrder({ userId: customer._id, deliveryPartnerId: otherPartner._id, deliveryStatus: 'picked_up', status: 'Processing' }),
+        baseOrder({ userId: customer._id, deliveryPartnerId: otherPartner._id, deliveryStatus: 'delivered', status: 'Delivered', deliveredAt: today }),
+      ]);
+
+      const res = await adminAgent.get('/api/orders/delivery/stats').expect(200);
+      expect(res.body.active).toBe(2);
+      expect(res.body.todayCompleted).toBe(1);
+      expect(res.body.todayTotal).toBe(1);
     });
   });
 

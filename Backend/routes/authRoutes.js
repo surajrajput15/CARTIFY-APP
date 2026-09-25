@@ -66,9 +66,12 @@ const publicUser = (u) => ({
     email: u.email,
     isAdmin: Boolean(u.isAdmin),
     role: u.isAdmin ? 'admin' : (u.role || 'customer'),
+    gender: u.gender ?? null,
     hasPassword: Boolean(u.password),
     createdAt: u.createdAt,
 });
+
+const GENDER_OPTIONS = ['male', 'female', 'other'];
 
 // Constant-time comparison — mitigates OTP timing attacks regardless of rate limiting.
 const safeEqual = (a, b) => {
@@ -729,9 +732,20 @@ router.put('/update/:id', sessionGuard, protect, auditLogMiddleware('UPDATE_PROF
             return res.status(400).json({ message: "Name is required and must be non-empty" });
         }
 
+        // Gender is optional: null/'' clears it (user skipped), otherwise it
+        // must be one of the allowlisted values.
+        let newGender;
+        if (req.body.gender === undefined || req.body.gender === null || req.body.gender === '') {
+            newGender = null;
+        } else if (typeof req.body.gender === 'string' && GENDER_OPTIONS.includes(req.body.gender.trim().toLowerCase())) {
+            newGender = req.body.gender.trim().toLowerCase();
+        } else {
+            return res.status(400).json({ message: "Gender must be male, female, other, or empty." });
+        }
+
         const updatedUser = await User.findByIdAndUpdate(
-            req.params.id, 
-            { name: newName }, 
+            req.params.id,
+            { name: newName, gender: newGender },
             { returnDocument: 'after', runValidators: true, projection: '-otp -otpAttempts -otpExpire -refreshToken -refreshTokenExpire -previousRefreshToken -previousRefreshTokenExpire' }
         );
         
@@ -941,7 +955,7 @@ router.get('/me', sessionGuard, protect, async (req, res) => {
     try {
         // protect strips sensitive fields, so hasPassword needs a dedicated read.
         // The password itself is never included in the response — only its presence.
-        const me = await User.findById(req.user._id).select('name email isAdmin password createdAt role');
+        const me = await User.findById(req.user._id).select('name email isAdmin password createdAt role gender');
         if (!me) return res.status(404).json({ message: "User not found" });
         res.status(200).json({ user: publicUser(me) });
     } catch (error) {

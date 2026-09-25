@@ -12,16 +12,18 @@ export const useProfile = () => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(user?.name || '');
+  const [editGender, setEditGender] = useState(user?.gender || '');
   const [updateLoading, setUpdateLoading] = useState(false);
   const mountedRef = useRef(true);
   useEffect(() => () => { mountedRef.current = false; }, []);
 
   const handleToggleEdit = useCallback(() => {
-    // Reset the draft to the saved name every time edit mode opens so a
+    // Reset the drafts to the saved values every time edit mode opens so a
     // previously typed (unsaved) value never leaks into the next edit.
     setEditName(user?.name || '');
+    setEditGender(user?.gender || '');
     setIsEditing(prev => !prev);
-  }, [user?.name]);
+  }, [user?.name, user?.gender]);
 
   const handleUpdateProfile = useCallback(async () => {
     if (!editName.trim()) {
@@ -30,7 +32,7 @@ export const useProfile = () => {
     }
     if (mountedRef.current) setUpdateLoading(true);
     try {
-      const response = await updateProfile(user.id, { name: editName.trim() });
+      const response = await updateProfile(user.id, { name: editName.trim(), gender: editGender || null });
       login(response.data.user);
       if (mountedRef.current) setIsEditing(false);
       toast.success('Profile updated');
@@ -40,7 +42,7 @@ export const useProfile = () => {
     } finally {
       if (mountedRef.current) setUpdateLoading(false);
     }
-  }, [editName, user, login]);
+  }, [editName, editGender, user, login]);
 
   const deleteAccount = useCallback(async () => {
     try {
@@ -58,6 +60,8 @@ export const useProfile = () => {
     isEditing,
     editName,
     setEditName,
+    editGender,
+    setEditGender,
     updateLoading,
     handleToggleEdit,
     handleUpdateProfile,

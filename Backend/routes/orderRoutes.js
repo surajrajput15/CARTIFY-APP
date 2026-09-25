@@ -208,7 +208,8 @@ router.post('/:id/accept-delivery', protect, delivery, staffActionGuard, auditLo
             return res.status(400).json({ message: 'No delivery partner assigned to this order' });
         }
 
-        if (order.deliveryPartnerId.toString() !== req.user._id.toString()) {
+        // Admin full-control bypass: admins may act on any delivery order.
+        if (!req.user.isAdmin && order.deliveryPartnerId.toString() !== req.user._id.toString()) {
             return res.status(403).json({ message: 'You are not assigned to this order' });
         }
 
@@ -263,7 +264,8 @@ router.post('/:id/pickup-delivery', protect, delivery, staffActionGuard, auditLo
             return res.status(400).json({ message: 'No delivery partner assigned to this order' });
         }
 
-        if (order.deliveryPartnerId.toString() !== req.user._id.toString()) {
+        // Admin full-control bypass: admins may act on any delivery order.
+        if (!req.user.isAdmin && order.deliveryPartnerId.toString() !== req.user._id.toString()) {
             return res.status(403).json({ message: 'You are not assigned to this order' });
         }
 
@@ -318,7 +320,8 @@ router.post('/:id/out-for-delivery', protect, delivery, staffActionGuard, auditL
             return res.status(400).json({ message: 'No delivery partner assigned to this order' });
         }
 
-        if (order.deliveryPartnerId.toString() !== req.user._id.toString()) {
+        // Admin full-control bypass: admins may act on any delivery order.
+        if (!req.user.isAdmin && order.deliveryPartnerId.toString() !== req.user._id.toString()) {
             return res.status(403).json({ message: 'You are not assigned to this order' });
         }
 
@@ -380,7 +383,8 @@ router.post('/:id/complete-delivery', protect, delivery, staffActionGuard, audit
             return res.status(400).json({ message: 'No delivery partner assigned to this order' });
         }
 
-        if (order.deliveryPartnerId.toString() !== req.user._id.toString()) {
+        // Admin full-control bypass: admins may act on any delivery order.
+        if (!req.user.isAdmin && order.deliveryPartnerId.toString() !== req.user._id.toString()) {
             return res.status(403).json({ message: 'You are not assigned to this order' });
         }
 
@@ -441,7 +445,8 @@ router.post('/:id/fail-delivery', protect, delivery, staffActionGuard, auditLogM
             return res.status(400).json({ message: 'No delivery partner assigned to this order' });
         }
 
-        if (order.deliveryPartnerId.toString() !== req.user._id.toString()) {
+        // Admin full-control bypass: admins may act on any delivery order.
+        if (!req.user.isAdmin && order.deliveryPartnerId.toString() !== req.user._id.toString()) {
             return res.status(403).json({ message: 'You are not assigned to this order' });
         }
 
@@ -504,7 +509,8 @@ router.get('/delivery/stats', protect, delivery, async (req, res, next) => {
         startOfThisWeek.setHours(0, 0, 0, 0);
 
         const activeStatuses = ['assigned', 'accepted', 'picked_up', 'out_for_delivery'];
-        const base = { deliveryPartnerId: req.user._id };
+        // Admin full-control mode: aggregate across all partners.
+        const base = req.user.isAdmin ? {} : { deliveryPartnerId: req.user._id };
 
         const [active, todayCompleted, todayFailed, weekCompleted] = await Promise.all([
             Order.countDocuments({ ...base, deliveryStatus: { $in: activeStatuses } }),
@@ -540,7 +546,7 @@ router.get('/delivery/assigned', protect, delivery, async (req, res, next) => {
         const activeStatuses = ['assigned', 'accepted', 'picked_up', 'out_for_delivery'];
 
         const query = {
-            deliveryPartnerId: req.user._id,
+            ...(req.user.isAdmin ? {} : { deliveryPartnerId: req.user._id }),
             deliveryStatus: { $in: activeStatuses }
         };
 
@@ -581,7 +587,7 @@ router.get('/delivery/completed', protect, delivery, async (req, res, next) => {
         const skip = (pageNum - 1) * limitNum;
 
         const query = {
-            deliveryPartnerId: req.user._id,
+            ...(req.user.isAdmin ? {} : { deliveryPartnerId: req.user._id }),
             deliveryStatus: 'delivered',
             deliveredAt: { $exists: true, $ne: null }
         };
@@ -624,7 +630,7 @@ router.get('/delivery/failed', protect, delivery, async (req, res, next) => {
         const skip = (pageNum - 1) * limitNum;
 
         const query = {
-            deliveryPartnerId: req.user._id,
+            ...(req.user.isAdmin ? {} : { deliveryPartnerId: req.user._id }),
             deliveryStatus: 'failed',
             failedAt: { $exists: true, $ne: null }
         };

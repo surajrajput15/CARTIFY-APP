@@ -233,7 +233,60 @@ describe('Warehouse Staff Portal', () => {
 
   it('rejects non-warehouse callers', async () => {
     await customerAgent.get('/api/warehouse/dashboard').expect(403);
-    await adminAgent.get('/api/warehouse/dashboard').expect(403);
     await customerAgent.post('/api/warehouse/transfer').send({}).expect(403);
+  });
+
+  // Owner admins have no assignedWarehouseId, so they must scope explicitly.
+  it('asks the owner admin to pick a warehouse first', async () => {
+    const res = await adminAgent.get('/api/warehouse/dashboard').expect(403);
+    expect(res.body.message).toMatch(/select a warehouse/i);
+  });
+
+  it('rejects a malformed or unknown admin warehouse scope', async () => {
+    await adminAgent.get('/api/warehouse/dashboard?warehouseId=abc').expect(403);
+    await adminAgent
+      .get(`/api/warehouse/dashboard?warehouseId=${otherWarehouse._id.toString()}0`)
+      .expect(403);
+  });
+
+  it('scopes the owner admin to the warehouse they select', async () => {
+    await InventoryItem.create({ productId: product._id, warehouseId: warehouse._id, quantity: 3 });
+    await InventoryItem.create({ productId: product._id, warehouseId: otherWarehouse._id, quantity: 50 });
+
+    const noida = await adminAgent
+      .get(`/api/warehouse/dashboard?warehouseId=${warehouse._id.toString()}`)
+      .expect(200);
+    expect(noida.body.warehouse.code).toBe('NOIDA');
+    expect(noida.body.units).toBe(3);
+
+    const mumbai = await adminAgent
+      .get(`/api/warehouse/dashboard?warehouseId=${otherWarehouse._id.toString()}`)
+      .expect(200);
+    expect(mumbai.body.warehouse.code).toBe('MUM');
+    expect(mumbai.body.units).toBe(50);
+  });
+
+  it('lets the owner admin write stock to the warehouse they select', async () => {
+    await adminAgent
+      .put(`/api/warehouse/inventory/${product._id}?warehouseId=${otherWarehouse._id.toString()}`)
+      .send({ quantity: 42 })
+      .expect(200);
+
+    const row = await InventoryItem
+      .findOne({ warehouseId: otherWarehouse._id, productId: product._id })
+      .lean();
+    expect(row.quantity).toBe(42);
+  });
+
+  it('still isolates staff from each other after the admin change', async () => {
+    // A staff member cannot hijack the admin scope just by passing ?warehouseId=.
+    await InventoryItem.create({ productId: product._id, warehouseId: warehouse._id, quantity: 3 });
+    await InventoryItem.create({ productId: product._id, warehouseId: otherWarehouse._id, quantity: 50 });
+
+    const res = await staffAgent
+      .get(`/api/warehouse/dashboard?warehouseId=${otherWarehouse._id.toString()}`)
+      .expect(200);
+    expect(res.body.warehouse.code).toBe('NOIDA');
+    expect(res.body.units).toBe(3);
   });
 });

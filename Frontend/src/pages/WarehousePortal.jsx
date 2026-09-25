@@ -17,6 +17,7 @@ import {
 } from '../services/warehousePortalApi';
 import { isNetworkError } from '../utils/apiError';
 import { formatDate } from '../utils/format';
+import { fetchWarehouses } from '../services/warehousesApi';
 
 const TABS = [
   { key: 'dashboard', label: 'Dashboard' },
@@ -118,7 +119,7 @@ function StockRow({ row, onSave, savingId }) {
   );
 }
 
-function TransferForm({ onDone, onCancel }) {
+function TransferForm({ onDone, onCancel, warehouseId }) {
   const [targets, setTargets] = useState([]);
   const [items, setItems] = useState([]);
   const [search, setSearch] = useState('');
@@ -126,17 +127,17 @@ function TransferForm({ onDone, onCancel }) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetchTransferTargets().then(({ data }) => setTargets(data.warehouses || [])).catch(() => toast.error('Failed to load warehouses'));
-  }, []);
+    fetchTransferTargets(warehouseId).then(({ data }) => setTargets(data.warehouses || [])).catch(() => toast.error('Failed to load warehouses'));
+  }, [warehouseId]);
 
   useEffect(() => {
     const t = setTimeout(() => {
-      fetchWarehouseInventory(search ? { search } : undefined)
+      fetchWarehouseInventory(search ? { search } : undefined, warehouseId)
         .then(({ data }) => setItems(data.items || []))
         .catch(() => {});
     }, 250);
     return () => clearTimeout(t);
-  }, [search]);
+  }, [search, warehouseId]);
 
   const selected = items.find((i) => String(i.productId) === form.productId);
 
@@ -221,25 +222,42 @@ function TransferForm({ onDone, onCancel }) {
 
 function WarehousePortal() {
   const { user } = useAuth();
+  const isAdmin = Boolean(user?.isAdmin);
   const [tab, setTab] = useState('dashboard');
   const [dash, setDash] = useState(null);
   const [items, setItems] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [ledger, setLedger] = useState([]);
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
+  // Admins have no assignedWarehouseId, so they pick a warehouse to scope to.
+  const [warehouseList, setWarehouseList] = useState([]);
+  const [warehouseId, setWarehouseId] = useState('');
+  const needsPicker = isAdmin && !warehouseId;
+  const [loading, setLoading] = useState(() => !user?.isAdmin);
   const [savingId, setSavingId] = useState(null);
   const [showTransfer, setShowTransfer] = useState(false);
   const [expandedAlert, setExpandedAlert] = useState(null);
 
+  useEffect(() => {
+    if (!isAdmin) return;
+    fetchWarehouses()
+      .then(({ data }) => setWarehouseList(data.warehouses || []))
+      .catch(() => toast.error('Failed to load warehouses'));
+  }, [isAdmin]);
+
   const loadAll = useCallback(async () => {
+    if (isAdmin && !warehouseId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
+      const scope = warehouseId || undefined;
       const [d, inv, al, lg] = await Promise.all([
-        fetchWarehouseDashboard(),
-        fetchWarehouseInventory(),
-        fetchWarehouseAlerts(),
-        fetchWarehouseLedger(),
+        fetchWarehouseDashboard(scope),
+        fetchWarehouseInventory(undefined, scope),
+        fetchWarehouseAlerts(scope),
+        fetchWarehouseLedger(scope),
       ]);
       setDash(d.data);
       setItems(inv.data.items || []);
@@ -254,29 +272,32 @@ function WarehousePortal() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isAdmin, warehouseId]);
 
+  // Initial + warehouse-scope load. Refetches whenever the admin picks a warehouse.
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetch on scope change
   useEffect(() => { loadAll(); }, [loadAll]);
 
   const reloadTab = useCallback((which = tab) => {
+    const scope = warehouseId || undefined;
     if (which === 'inventory') {
-      fetchWarehouseInventory(search ? { search } : undefined).then(({ data }) => setItems(data.items || [])).catch(() => {});
+      fetchWarehouseInventory(search ? { search } : undefined, scope).then(({ data }) => setItems(data.items || [])).catch(() => {});
     } else if (which === 'alerts') {
-      fetchWarehouseAlerts().then(({ data }) => setAlerts(data.alerts || [])).catch(() => {});
+      fetchWarehouseAlerts(scope).then(({ data }) => setAlerts(data.alerts || [])).catch(() => {});
     } else if (which === 'ledger') {
-      fetchWarehouseLedger().then(({ data }) => setLedger(data.transactions || [])).catch(() => {});
+      fetchWarehouseLedger(scope).then(({ data }) => setLedger(data.transactions || [])).catch(() => {});
     } else {
-      fetchWarehouseDashboard().then(({ data }) => setDash(data)).catch(() => {});
+      fetchWarehouseDashboard(scope).then(({ data }) => setDash(data)).catch(() => {});
     }
-  }, [tab, search]);
+  }, [tab, search, warehouseId]);
 
   const handleSaveStock = async (row, qty) => {
     setSavingId(row._id);
     try {
-      await setWarehouseStock(row.productId, { quantity: qty, variantKey: row.variantKey || undefined });
+      await setWarehouseStock(row.productId, { quantity: qty, variantKey: row.variantKey || undefined }, warehouseId || undefined);
       toast.success('Stock updated');
       reloadTab('inventory');
-      fetchWarehouseDashboard().then(({ data }) => setDash(data)).catch(() => {});
+      fetchWarehouseDashboard(warehouseId || undefined).then(({ data }) => setDash(data)).catch(() => {});
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to update stock');
     } finally {
@@ -317,7 +338,23 @@ function WarehousePortal() {
             </p>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {isAdmin && (
+            <div className="flex items-center gap-2">
+              <label htmlFor="wh-scope-picker" className="text-xs font-bold text-gray-500 uppercase">Viewing</label>
+              <select
+                id="wh-scope-picker"
+                value={warehouseId}
+                onChange={(e) => { setWarehouseId(e.target.value); setTab('dashboard'); }}
+                className="px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white font-semibold text-gray-700"
+              >
+                <option value="">Select warehouse…</option>
+                {warehouseList.map((w) => (
+                  <option key={w._id} value={w._id}>{w.name} ({w.code})</option>
+                ))}
+              </select>
+            </div>
+          )}
           <Link to="/profile" className="inline-flex items-center gap-1.5 px-4 py-2 border border-gray-200 hover:bg-gray-50 rounded-xl text-sm font-semibold text-gray-600 transition-colors">
             <UserCircle2 size={16} aria-hidden="true" /> Profile
           </Link>
@@ -327,6 +364,19 @@ function WarehousePortal() {
         </div>
       </div>
 
+      {needsPicker && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
+          <Warehouse size={30} className="text-teal-600 mx-auto mb-3" aria-hidden="true" />
+          <h2 className="text-lg font-bold text-gray-800">Pick a warehouse to continue</h2>
+          <p className="text-sm text-gray-500 mt-1 max-w-md mx-auto">
+            As the owner you can operate any warehouse. Choose one from the picker above to view its
+            dashboard, inventory, alerts and activity.
+          </p>
+        </div>
+      )}
+
+      {!needsPicker && (
+      <>
       {/* Tabs */}
       <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
         {TABS.map((t) => (
@@ -437,7 +487,7 @@ function WarehousePortal() {
             </table>
           </div>
 
-          {showTransfer && <TransferForm onCancel={() => setShowTransfer(false)} onDone={() => { setShowTransfer(false); loadAll(); }} />}
+          {showTransfer && <TransferForm warehouseId={warehouseId || undefined} onCancel={() => setShowTransfer(false)} onDone={() => { setShowTransfer(false); loadAll(); }} />}
         </div>
       )}
 
@@ -524,6 +574,8 @@ function WarehousePortal() {
             </tbody>
           </table>
         </div>
+      )}
+      </>
       )}
     </div>
   );

@@ -40,18 +40,22 @@ const admin = (req, res, next) => {
   }
 };
 
-// Delivery partner middleware — checks role === 'delivery'
+// Delivery partner middleware — checks role === 'delivery'.
+// Admins pass too (full-control portal access); per-order/per-list scoping
+// for admin mode is enforced inside the route handlers, not here.
 const delivery = (req, res, next) => {
-  if (req.user && req.user.role === 'delivery') {
+  if (req.user && (req.user.role === 'delivery' || req.user.isAdmin)) {
     next();
   } else {
     return res.status(403).json({ message: 'Not authorized as delivery partner' });
   }
 };
 
-// Warehouse staff middleware — checks role === 'warehouse'
+// Warehouse staff middleware — checks role === 'warehouse'.
+// Admins pass too (full-control portal access); warehouse scoping for admin
+// mode is enforced inside myWarehouse (explicit ?warehouseId=), not here.
 const warehouse = (req, res, next) => {
-  if (req.user && req.user.role === 'warehouse') {
+  if (req.user && (req.user.role === 'warehouse' || req.user.isAdmin)) {
     next();
   } else {
     return res.status(403).json({ message: 'Not authorized as warehouse staff' });

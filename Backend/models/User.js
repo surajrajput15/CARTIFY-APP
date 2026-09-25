@@ -31,6 +31,14 @@ const userSchema = new mongoose.Schema({
         enum: ['customer', 'admin', 'delivery', 'warehouse'],
         default: 'customer'
     },
+    // Optional personal-information field, editable from the profile page.
+    // null/omitted means the user skipped it — old accounts backfill as null.
+    gender: {
+        type: String,
+        enum: ['male', 'female', 'other', null],
+        default: null,
+        trim: true
+    },
     // Warehouse-staff only: which warehouse this user manages. Set by an admin
     // when creating/promoting a warehouse partner; scopes every warehouse portal
     // route so staff can only see/edit their own warehouse's stock.

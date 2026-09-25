@@ -18,7 +18,24 @@ const { buildVariantKey } = require('../utils/variants');
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
 
 // Resolve the staff member's warehouse; 403 if admin hasn't assigned one.
+// Admin full-control mode: admins have no assignment, so they scope explicitly
+// via ?warehouseId= (the portal picker always sends it). Every portal route
+// funnels through here, so this single branch covers dashboard, inventory,
+// alerts, ledger, transfers and stock writes.
 const myWarehouse = async (req, res) => {
+  if (req.user.isAdmin) {
+    const id = req.query.warehouseId;
+    if (!isValidId(id)) {
+      res.status(403).json({ message: 'Select a warehouse first (pass ?warehouseId=).' });
+      return null;
+    }
+    const warehouseDoc = await Warehouse.findById(id);
+    if (!warehouseDoc) {
+      res.status(404).json({ message: 'Warehouse not found.' });
+      return null;
+    }
+    return warehouseDoc;
+  }
   const id = req.user.assignedWarehouseId;
   if (!isValidId(id)) {
     res.status(403).json({ message: 'No warehouse assigned to your account. Contact an admin.' });

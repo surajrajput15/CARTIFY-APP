@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Package, Phone, MapPin, Navigation, XCircle, Clock, ChevronDown, AlertTriangle, UserCircle2 } from 'lucide-react';
@@ -262,6 +262,7 @@ function DeliveryPage() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial stats fetch
     loadStats();
   }, [loadStats]);
 
@@ -293,6 +294,7 @@ function DeliveryPage() {
   );
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- refetch on tab change
     loadOrders(tab, 1);
   }, [tab, loadOrders]);
 
@@ -327,7 +329,9 @@ function DeliveryPage() {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Delivery Dashboard</h1>
           <p className="text-sm text-gray-500 mt-1">
-            {user?.name} · {user?.phone || 'Delivery partner'}
+            {user?.name}
+            <span className="mx-2">·</span>
+            {user?.isAdmin ? 'All delivery partners (owner view)' : (user?.phone || 'Delivery partner')}
             <span className="mx-2">·</span>
             <span className={`inline-flex items-center gap-1.5 font-semibold ${connected ? 'text-green-600' : 'text-red-500'}`}>
               <span className={`w-2 h-2 rounded-full ${connected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} aria-hidden="true" />
