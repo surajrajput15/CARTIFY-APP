@@ -6,6 +6,9 @@ export const validateCoupon = (code, orderAmount, items) =>
 export const findBestCoupon = (orderAmount, items) =>
   api.post('/api/coupons/best', { orderAmount, items });
 
+export const fetchAvailableCoupons = (orderAmount, items) =>
+  api.post('/api/coupons/available', { orderAmount, items });
+
 export const fetchCouponAnalytics = () => api.get('/api/coupons/analytics');
 
 export const fetchCoupons = (params) => api.get('/api/coupons', { params });

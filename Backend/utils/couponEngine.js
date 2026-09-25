@@ -153,10 +153,51 @@ async function findBestCoupon({ userId, orderAmount, items = [] }) {
   };
 }
 
+// Returns ALL eligible coupons for the given cart, sorted by discount descending.
+// Used for "Available Coupons" modal/dropdown.
+async function findAvailableCoupons({ userId, orderAmount, items = [] }) {
+  const active = await Coupon.find({
+    isActive: true,
+    validFrom: { $lte: new Date() },
+    validUntil: { $gte: new Date() },
+  });
+
+  const productCategories = await resolveItemCategories(items);
+
+  const eligible = [];
+
+  for (const coupon of active) {
+    if (coupon.usageLimit != null && coupon.usedCount >= coupon.usageLimit) continue;
+    if (userId != null && !coupon.canUserUse(userId)) continue;
+    const check = await evaluateCoupon(coupon, { orderAmount, items, productCategories });
+    if (check.valid) {
+      eligible.push({
+        code: coupon.code,
+        type: coupon.type,
+        value: coupon.value,
+        minOrderAmount: coupon.minOrderAmount,
+        maxDiscount: coupon.maxDiscount,
+        validUntil: coupon.validUntil,
+        applicableCategories: coupon.applicableCategories,
+        applicableProducts: coupon.applicableProducts,
+        excludedProducts: coupon.excludedProducts,
+        discount: check.discount,
+        finalAmount: check.finalAmount,
+      });
+    }
+  }
+
+  // Sort by discount descending (highest savings first)
+  eligible.sort((a, b) => b.discount - a.discount);
+
+  return { coupons: eligible };
+}
+
 module.exports = {
   computeDiscountPaise,
   evaluateCoupon,
   applyCouponAtCheckout,
   findBestCoupon,
+  findAvailableCoupons,
   resolveItemCategories,
 };

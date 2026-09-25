@@ -6,7 +6,7 @@ const Order = require('../models/Order');
 const { protect, admin } = require('../middleware/auth');
 const { auditLogMiddleware } = require('../middleware/auditLog');
 const { adminMutateGuard } = require('../utils/routeLimiters');
-const { evaluateCoupon, findBestCoupon } = require('../utils/couponEngine');
+const { evaluateCoupon, findBestCoupon, findAvailableCoupons } = require('../utils/couponEngine');
 
 // Validation helper
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -289,6 +289,33 @@ router.post('/best', protect, async (req, res) => {
     } catch (error) {
         logger.error({ err: error }, "❌ Coupon best-pick error:");
         res.status(500).json({ message: "Error finding best coupon" });
+    }
+});
+
+// 3c. GET ALL AVAILABLE COUPONS (customer) — returns all eligible coupons for
+// the cart, sorted by discount descending. Used for "Available Coupons" modal.
+router.post('/available', protect, async (req, res) => {
+    try {
+        const { orderAmount } = req.body;
+        const items = Array.isArray(req.body.items) ? req.body.items : [];
+
+        if (typeof orderAmount !== 'number' || orderAmount < 0) {
+            return res.status(400).json({ message: 'Valid order amount is required' });
+        }
+
+        const result = await findAvailableCoupons({
+            userId: req.user._id,
+            orderAmount,
+            items,
+        });
+
+        res.status(200).json({
+            coupons: result.coupons,
+            count: result.coupons.length,
+        });
+    } catch (error) {
+        logger.error({ err: error }, "❌ Coupon available list error:");
+        res.status(500).json({ message: "Error fetching available coupons" });
     }
 });
 

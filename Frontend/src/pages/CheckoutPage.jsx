@@ -90,6 +90,7 @@ const CheckoutPage = () => {
           loading={loading}
           canPay={Boolean(selectedAddress) && cart.length > 0}
           onPay={handlePayment}
+          cartItems={cart}
         />
       </div>
 

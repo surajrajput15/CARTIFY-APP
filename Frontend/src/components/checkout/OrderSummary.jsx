@@ -1,9 +1,9 @@
-import { Loader2, ShieldCheck, Lock, Truck } from 'lucide-react';
+import { Loader2, ShieldCheck, Lock, Truck, Ticket, CheckCircle2 } from 'lucide-react';
 import { formatPrice } from '../../utils/format';
 import { getShippingCost } from '../../utils/constants';
 import CouponInput from './CouponInput';
 
-const OrderSummary = ({ cart, total, discount = 0, appliedCoupon, couponCode, setCouponCode, couponLoading, couponError, onApplyCoupon, onRemoveCoupon, onFindBestCoupon, bestCouponLoading, loading, canPay, onPay }) => {
+const OrderSummary = ({ cart, total, discount = 0, appliedCoupon, couponCode, setCouponCode, couponLoading, couponError, onApplyCoupon, onRemoveCoupon, onFindBestCoupon, bestCouponLoading, loading, canPay, onPay, cartItems }) => {
   const normalizedDiscount = Math.min(Math.max(0, Number(discount) || 0), Math.max(0, Number(total) || 0));
   const discountedSubtotal = Math.max(0, total - normalizedDiscount);
   // Backend charges shipping on the discounted total and forces ₹0 shipping on
@@ -11,6 +11,9 @@ const OrderSummary = ({ cart, total, discount = 0, appliedCoupon, couponCode, se
   // while Razorpay charges ₹0.
   const shippingCost = discountedSubtotal <= 0 ? 0 : getShippingCost(discountedSubtotal);
   const finalTotal = Math.max(0, discountedSubtotal + shippingCost);
+
+  // Use cartItems if provided, otherwise fall back to cart
+  const itemsForCoupon = cartItems || cart;
 
   return (
     <aside
@@ -49,14 +52,26 @@ const OrderSummary = ({ cart, total, discount = 0, appliedCoupon, couponCode, se
 
       {setCouponCode && (
         <div className="mb-4 min-w-0">
-          <CouponInput code={couponCode} setCode={setCouponCode} applied={appliedCoupon} loading={couponLoading} error={couponError} onApply={onApplyCoupon} onRemove={onRemoveCoupon} onFindBest={onFindBestCoupon} bestLoading={bestCouponLoading} />
+          <CouponInput code={couponCode} setCode={setCouponCode} applied={appliedCoupon} loading={couponLoading} error={couponError} onApply={onApplyCoupon} onRemove={onRemoveCoupon} onFindBest={onFindBestCoupon} bestLoading={bestCouponLoading} cart={itemsForCoupon} totalAmount={total} />
         </div>
       )}
 
-      {normalizedDiscount > 0 && (
-        <div className="flex justify-between text-sm text-green-600 mb-4">
-          <span>Discount {appliedCoupon?.code ? `(${appliedCoupon.code})` : ''}</span>
-          <span className="font-bold">−{formatPrice(normalizedDiscount)}</span>
+      {normalizedDiscount > 0 && appliedCoupon && (
+        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-1.5">
+              <CheckCircle2 size={16} className="text-green-600 shrink-0" aria-hidden="true" />
+              <span className="text-sm font-bold text-green-800">Coupon Applied</span>
+            </div>
+            <span className="shrink-0 inline-flex items-center gap-1 bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium">
+              <Ticket size={10} aria-hidden="true" />
+              {appliedCoupon.type === 'percentage' ? `${appliedCoupon.value}% OFF` : `₹${appliedCoupon.value} OFF`}
+            </span>
+          </div>
+          <div className="flex justify-between text-sm text-green-700">
+            <span>Code: <span className="font-mono font-bold">{appliedCoupon.code}</span></span>
+            <span className="font-bold">Saved {formatPrice(normalizedDiscount)}</span>
+          </div>
         </div>
       )}
 

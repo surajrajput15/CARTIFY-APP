@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Ticket, Loader2, CheckCircle2, ChevronDown } from 'lucide-react';
+import { Ticket, Loader2, CheckCircle2, ChevronDown, Tag } from 'lucide-react';
 import { formatPrice } from '../../utils/format';
+import AvailableCouponsModal from './AvailableCouponsModal';
 
-const CouponInput = ({ code, setCode, applied, loading, error, onApply, onRemove, onFindBest, bestLoading }) => {
+const CouponInput = ({ code, setCode, applied, loading, error, onApply, onRemove, onFindBest, bestLoading, cart, totalAmount }) => {
   const [expanded, setExpanded] = useState(false);
+  const [showAvailableModal, setShowAvailableModal] = useState(false);
   const inputRef = useRef(null);
   const showForm = !applied && (expanded || Boolean(code?.trim()) || Boolean(error) || loading);
 
@@ -16,19 +18,45 @@ const CouponInput = ({ code, setCode, applied, loading, error, onApply, onRemove
     onRemove();
   };
 
+  const handleFindBest = () => {
+    if (!loading && !bestLoading) {
+      onFindBest();
+      // Open modal after best coupon search completes
+      setTimeout(() => {
+        setShowAvailableModal(true);
+      }, 500);
+    }
+  };
+
   return (
     <div className="border border-gray-100 rounded-xl px-3 py-2.5 sm:p-3.5 bg-gray-50/50 min-w-0">
+      <AvailableCouponsModal
+        isOpen={showAvailableModal}
+        onClose={() => setShowAvailableModal(false)}
+        cart={cart}
+        totalAmount={totalAmount}
+        onApplyCoupon={onApply}
+      />
+      
       {applied ? (
-        <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+        <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2.5">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="flex items-center gap-1.5 text-sm font-bold text-green-800">
                 <CheckCircle2 size={16} className="shrink-0" aria-hidden="true" />
                 <span className="truncate">{applied.code}</span>
               </p>
-              <p className="text-xs text-green-700 mt-0.5">
-                {Number(applied.discount) > 0 ? `You saved ${formatPrice(applied.discount)}` : 'Coupon applied successfully'}
-              </p>
+              <div className="flex items-center gap-2 mt-1.5">
+                <span className="text-xs text-green-700 font-medium">
+                  {Number(applied.discount) > 0 ? `You saved ${formatPrice(applied.discount)}` : 'Coupon applied successfully'}
+                </span>
+                {applied.type && applied.value && (
+                  <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium">
+                    <Tag size={10} aria-hidden="true" />
+                    {applied.type === 'percentage' ? `${applied.value}% OFF` : `₹${applied.value} OFF`}
+                  </span>
+                )}
+              </div>
             </div>
             <button
               type="button"
@@ -101,18 +129,16 @@ const CouponInput = ({ code, setCode, applied, loading, error, onApply, onRemove
             </span>
             <span className="shrink-0 text-sm font-bold text-teal-600">Apply</span>
           </button>
-          {onFindBest && (
-            <button
-              type="button"
-              onClick={onFindBest}
-              disabled={loading || bestLoading}
-              className="shrink-0 px-4 py-2 border border-teal-600 text-teal-700 bg-white rounded-lg text-sm font-bold hover:bg-teal-50 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] inline-flex items-center justify-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-1"
-              aria-label="Apply the best available coupon for this cart"
-            >
-              {bestLoading ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <Ticket size={15} aria-hidden="true" />}
-              Best Coupon
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={handleFindBest}
+            disabled={loading || bestLoading}
+            className="shrink-0 px-4 py-2 border border-teal-600 text-teal-700 bg-white rounded-lg text-sm font-bold hover:bg-teal-50 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] inline-flex items-center justify-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-1"
+            aria-label="View and apply the best available coupon for this cart"
+          >
+            {bestLoading ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <Ticket size={15} aria-hidden="true" />}
+            Best Coupon
+          </button>
         </div>
       )}
     </div>
