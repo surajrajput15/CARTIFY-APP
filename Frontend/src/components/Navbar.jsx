@@ -99,8 +99,8 @@ const Navbar = () => {
   return (
     <header className="sticky top-0 z-50 bg-white shadow-sm">
 
-      {/* TIER 1 — utility strip (Deliver-to / Help / Offers) */}
-      <div className="bg-teal-700 text-white">
+      {/* TIER 1 — utility strip (desktop only; hidden on mobile to save 32px) */}
+      <div className="hidden md:block bg-teal-700 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-8 text-xs">
             <div className="flex items-center gap-4 text-teal-50">
@@ -141,7 +141,7 @@ const Navbar = () => {
       {/* TIER 2 — main bar */}
       <nav aria-label="Main navigation">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16 gap-2 sm:gap-3">
+          <div className="flex justify-between items-center h-14 md:h-16 gap-1.5 sm:gap-3">
 
             <NavLink to="/" className="flex-shrink-0">
               <span className="text-2xl sm:text-3xl font-extrabold text-teal-600 tracking-tight whitespace-nowrap">
@@ -273,7 +273,7 @@ const Navbar = () => {
                   <Heart size={20} aria-hidden="true" />
                   {wishlistCount > 0 && (
                     <span
-                      className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-teal-600 text-white text-[10px] font-bold flex items-center justify-center shadow-sm px-1 leading-none"
+                      className="absolute top-1 right-1 min-w-[18px] h-[18px] rounded-full bg-teal-600 text-white text-[10px] font-bold flex items-center justify-center shadow-sm px-1 leading-none"
                       aria-hidden="true"
                     >
                       {wishlistCount > 99 ? '99+' : wishlistCount}
@@ -295,12 +295,14 @@ const Navbar = () => {
               >
                 <div className="relative inline-flex items-center justify-center min-w-[44px] min-h-[44px]">
                   <ShoppingCart size={20} aria-hidden="true" />
-                  <span
-                    className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shadow-sm px-1 leading-none"
-                    aria-hidden="true"
-                  >
-                    {cartItemCount > 99 ? '99+' : cartItemCount}
-                  </span>
+                  {cartItemCount > 0 && (
+                    <span
+                      className="absolute top-1 right-1 min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shadow-sm px-1 leading-none"
+                      aria-hidden="true"
+                    >
+                      {cartItemCount > 99 ? '99+' : cartItemCount}
+                    </span>
+                  )}
                   <span className="sr-only" aria-live="polite" aria-atomic="true">
                     {cartItemCount} {cartItemCount === 1 ? 'item' : 'items'} in cart
                   </span>
@@ -315,16 +317,19 @@ const Navbar = () => {
       {/* TIER 3 — sticky category rail (real categories, loading/error handled) */}
       <div className="bg-white border-t border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center h-11 gap-1 overflow-x-auto scrollbar-thin whitespace-nowrap">
+          <div className="flex items-center h-11 gap-1 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <button
               type="button"
               onClick={() => goCategory('all')}
-              className={`flex-shrink-0 min-w-[44px] min-h-[44px] px-3 rounded-full text-sm font-medium transition-colors ${
+              className={`relative flex-shrink-0 min-w-[44px] min-h-[44px] px-3 rounded-full text-sm font-medium transition-colors ${
                 activeCat === 'all' ? 'bg-teal-600 text-white' : 'text-gray-600 hover:bg-teal-50 hover:text-teal-700'
               }`}
               aria-pressed={activeCat === 'all'}
             >
               All
+              {activeCat === 'all' && (
+                <span className="absolute bottom-1.5 left-4 right-4 h-[3px] rounded-full bg-white" aria-hidden="true" />
+              )}
             </button>
             <span className="flex-shrink-0 w-px h-4 bg-gray-200" aria-hidden="true" />
             {categoriesLoading ? (
@@ -352,12 +357,15 @@ const Navbar = () => {
                 key={c._id || c.name}
                 type="button"
                 onClick={() => goCategory(c.slug || c.name)}
-                className={`flex-shrink-0 min-w-[44px] min-h-[44px] px-3 rounded-full text-sm font-medium capitalize transition-colors ${
+                className={`relative flex-shrink-0 min-w-[44px] min-h-[44px] px-3 rounded-full text-sm font-medium capitalize transition-colors ${
                   activeCat === (c.slug || c.name) ? 'bg-teal-600 text-white' : 'text-gray-600 hover:bg-teal-50 hover:text-teal-700'
                 }`}
                 aria-pressed={activeCat === (c.slug || c.name)}
               >
                 {c.name}
+                {activeCat === (c.slug || c.name) && (
+                  <span className="absolute bottom-1.5 left-4 right-4 h-[3px] rounded-full bg-white" aria-hidden="true" />
+                )}
               </button>
             )) : (
               // API reachable but empty taxonomy — show canonical list so the rail is usable.
@@ -366,12 +374,15 @@ const Navbar = () => {
                   key={cat}
                   type="button"
                   onClick={() => goCategory(cat)}
-                  className={`flex-shrink-0 min-w-[44px] min-h-[44px] px-3 rounded-full text-sm font-medium capitalize transition-colors ${
+                  className={`relative flex-shrink-0 min-w-[44px] min-h-[44px] px-3 rounded-full text-sm font-medium capitalize transition-colors ${
                     activeCat === cat ? 'bg-teal-600 text-white' : 'text-gray-600 hover:bg-teal-50 hover:text-teal-700'
                   }`}
                   aria-pressed={activeCat === cat}
                 >
                   {cat}
+                  {activeCat === cat && (
+                    <span className="absolute bottom-1.5 left-4 right-4 h-[3px] rounded-full bg-white" aria-hidden="true" />
+                  )}
                 </button>
               ))
             )}

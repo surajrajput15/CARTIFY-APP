@@ -6,7 +6,6 @@ import {
   Pause,
   Headphones,
   Zap,
-  Smartphone,
   Monitor,
   Truck,
   Package,
@@ -43,7 +42,6 @@ const SLIDES = [
       { icon: Headphones, className: 'left-[6%] top-[12%]', anim: 'hero-float-slow' },
       { icon: Zap, className: 'right-[8%] top-[18%]', anim: 'hero-float' },
       { icon: Monitor, className: 'left-[10%] bottom-[16%]', anim: 'hero-float' },
-      { icon: Smartphone, className: 'right-[12%] bottom-[24%]', anim: 'hero-float-slow' },
     ],
   },
   {
@@ -63,7 +61,6 @@ const SLIDES = [
       { icon: Sparkles, className: 'left-[6%] top-[14%]', anim: 'hero-float' },
       { icon: Star, className: 'right-[7%] top-[22%]', anim: 'hero-float-slow' },
       { icon: Zap, className: 'left-[11%] bottom-[20%]', anim: 'hero-float-slow' },
-      { icon: Star, className: 'right-[10%] bottom-[18%]', anim: 'hero-float' },
     ],
   },
   {
@@ -82,8 +79,7 @@ const SLIDES = [
     floaters: [
       { icon: Truck, className: 'left-[6%] top-[18%]', anim: 'hero-float' },
       { icon: Package, className: 'right-[7%] top-[12%]', anim: 'hero-float-slow' },
-      { icon: Truck, className: 'left-[10%] bottom-[18%]', anim: 'hero-float-slow' },
-      { icon: Package, className: 'right-[11%] bottom-[26%]', anim: 'hero-float' },
+      { icon: Star, className: 'right-[11%] bottom-[26%]', anim: 'hero-float' },
     ],
   },
 ];
@@ -111,7 +107,7 @@ const SlidePanel = ({ slide, animate, productCountText, onShopNow }) => (
         return (
           <span
             key={`${slide.id}-${index}`}
-            className={`absolute ${floater.className} ${animate ? floater.anim : ''} text-4xl sm:text-5xl md:text-6xl select-none drop-shadow-lg`}
+            className={`absolute ${floater.className} ${animate ? floater.anim : ''} text-3xl sm:text-4xl md:text-6xl opacity-80 select-none drop-shadow-lg`}
             style={{ animationDirection: `${index % 2 === 0 ? 'alternate' : 'normal'}` }}
           >
             <Icon strokeWidth={1.5} aria-hidden="true" />
@@ -120,7 +116,7 @@ const SlidePanel = ({ slide, animate, productCountText, onShopNow }) => (
       })}
     </div>
 
-    <div className="relative flex flex-col md:flex-row items-center justify-between px-6 sm:px-8 md:px-14 pt-6 sm:pt-8 md:pt-14 pb-24 md:pb-20 gap-6 md:gap-8">
+    <div className="relative flex flex-col md:flex-row items-center justify-between px-5 sm:px-8 md:px-14 pt-5 sm:pt-8 md:pt-14 pb-20 md:pb-20 gap-4 md:gap-8">
       {/* Left Side: Text and Button */}
       <div className="text-white z-10 md:w-3/5 text-center md:text-left">
         <div
@@ -177,10 +173,10 @@ const SlidePanel = ({ slide, animate, productCountText, onShopNow }) => (
 
       {/* Right Side: Inline SVG Illustration with spring entrance */}
       <div
-        className={`mt-4 md:mt-0 md:w-2/5 flex justify-center z-10 w-full ${animate ? 'hero-bounce-in' : ''}`}
+        className={`mt-2 md:mt-0 md:w-2/5 flex justify-center z-10 w-full ${animate ? 'hero-bounce-in' : ''}`}
         style={{ animationDelay: '0.4s' }}
       >
-        <HeroIllustration className="w-full max-w-xs sm:max-w-sm h-56 sm:h-64 md:h-72" />
+        <HeroIllustration className="w-full max-w-[240px] sm:max-w-sm h-48 sm:h-56 md:h-72" />
       </div>
     </div>
   </div>
@@ -284,7 +280,7 @@ const HeroBanner = () => {
       onMouseLeave={() => setPaused(false)}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
-      className="relative overflow-hidden rounded-3xl shadow-xl mb-10 border border-teal-500/20 bg-gradient-to-r from-teal-800 via-teal-600 to-teal-500"
+      className="relative overflow-hidden rounded-3xl shadow-xl mb-8 md:mb-10 border border-teal-500/20 bg-gradient-to-r from-teal-800 via-teal-600 to-teal-500 scroll-mt-32"
       aria-label="Feature highlights carousel"
       aria-roledescription="carousel"
     >
@@ -315,19 +311,19 @@ const HeroBanner = () => {
       {/* Controls: fixed overlay strip so they never slide with the content */}
       <div className="absolute inset-x-0 bottom-0 z-20">
         <div className="absolute inset-0 bg-gradient-to-t from-black/25 to-transparent" aria-hidden="true"></div>
-        <div className="relative flex items-center justify-between px-6 sm:px-8 pb-4">
-          <div className="flex items-center gap-2">
+        <div className="relative flex items-center justify-between px-5 sm:px-8 pb-3 sm:pb-4">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <button
               onClick={prev}
               aria-label="Previous slide"
-              className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/25 flex items-center justify-center transition-colors cursor-pointer min-h-[44px]"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/25 flex items-center justify-center transition-colors cursor-pointer min-h-[44px] min-w-[44px]"
             >
               <ArrowLeft size={18} aria-hidden="true" />
             </button>
             <button
               onClick={next}
               aria-label="Next slide"
-              className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/25 flex items-center justify-center transition-colors cursor-pointer min-h-[44px]"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/25 flex items-center justify-center transition-colors cursor-pointer min-h-[44px] min-w-[44px]"
             >
               <ArrowRight size={18} aria-hidden="true" />
             </button>
@@ -345,10 +341,10 @@ const HeroBanner = () => {
                 className="w-9 h-9 rounded-full transition-all duration-300 cursor-pointer flex items-center justify-center p-0"
               >
                 <span
-                  className={`block w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+                  className={`block w-2.5 h-2.5 rounded-full shadow transition-all duration-300 ${
                     index === activeIndex
-                      ? 'bg-white scale-125'
-                      : 'bg-white/50 hover:bg-white/80'
+                      ? 'bg-white scale-150'
+                      : 'bg-white/70 hover:bg-white'
                   }`}
                 ></span>
               </button>
@@ -360,9 +356,9 @@ const HeroBanner = () => {
             onClick={() => setAutoPlay((v) => !v)}
             aria-pressed={autoPlay}
             aria-label={autoPlay ? 'Pause automatic slide rotation' : 'Play automatic slide rotation'}
-            className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/25 flex items-center justify-center transition-colors cursor-pointer min-h-[44px]"
+            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/25 flex items-center justify-center transition-colors cursor-pointer min-h-[44px] min-w-[44px]"
           >
-            {autoPlay ? <Pause size={16} aria-hidden="true" /> : <Play size={16} aria-hidden="true" />}
+            {autoPlay ? <Pause size={14} aria-hidden="true" /> : <Play size={14} aria-hidden="true" />}
           </button>
         </div>
       </div>

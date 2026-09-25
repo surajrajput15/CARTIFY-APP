@@ -58,6 +58,20 @@ export const getFirstName = (fullName) => {
 };
 
 /**
+ * Title-case a raw category slug/name for display headings.
+ * @param {string} value - e.g. "home-furniture" or "furniture"
+ * @returns {string} e.g. "Home Furniture" or "Furniture"
+ */
+export const titleCase = (value) => {
+  if (!value || typeof value !== 'string') return '';
+  return value
+    .split(/[\s-_]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
+/**
  * Safely get the first character of a name (uppercased) for avatar display.
  * @param {string} fullName - The full name
  * @returns {string} First character uppercase, or '?' as fallback

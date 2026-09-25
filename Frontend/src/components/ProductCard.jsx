@@ -50,7 +50,7 @@ const ProductCard = memo(({ product }) => {
     <div className="bg-white rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden border border-gray-100 flex flex-col h-full">
       <Link
         to={`/product/${product._id}`}
-        className="h-56 overflow-hidden bg-gray-50 block cursor-pointer relative flex items-center justify-center border-b border-gray-100 group"
+        className="h-44 sm:h-56 overflow-hidden bg-gray-50 block cursor-pointer relative flex items-center justify-center border-b border-gray-100 group"
         aria-label={`View ${product.title}`}
       >
         {(stock || product.category) && (
@@ -97,14 +97,14 @@ const ProductCard = memo(({ product }) => {
         />
       </Link>
 
-      <div className="p-5 flex flex-col flex-grow">
+      <div className="p-3 sm:p-5 flex flex-col flex-grow">
         <Link to={`/product/${product._id}`}>
-          <h3 className="text-base font-semibold text-gray-800 line-clamp-2 mb-2 hover:text-teal-600 transition-colors leading-snug min-h-[3rem]">
+          <h3 className="text-sm sm:text-base font-semibold text-gray-800 line-clamp-2 mb-2 hover:text-teal-600 transition-colors leading-snug min-h-[2.5rem] sm:min-h-[3rem]">
             {product.title}
           </h3>
         </Link>
 
-        <div className="flex items-center gap-1.5 mb-4">
+        <div className="flex items-center gap-1.5 mb-3 sm:mb-4">
           <StarRating rating={product.rating?.rate} size={14} />
           <span className="text-xs text-gray-600 font-bold" aria-label={`Rating ${Number(product.rating?.rate) || 0} out of 5`}>
             {Number(product.rating?.rate) || 0}
@@ -117,12 +117,12 @@ const ProductCard = memo(({ product }) => {
           </span>
         </div>
 
-        <div className="mt-auto flex items-center justify-between pt-2">
-          <div>
+        <div className="mt-auto flex items-center justify-between gap-2 pt-2">
+          <div className="min-w-0">
             {campaign && (
-              <span className="block text-xs text-gray-400 line-through" aria-hidden="true">{formatPrice(product.price)}</span>
+              <span className="block text-xs text-gray-400 line-through truncate" aria-hidden="true">{formatPrice(product.price)}</span>
             )}
-            <span className="text-xl font-black text-gray-900">
+            <span className="text-lg sm:text-xl font-black text-gray-900 whitespace-nowrap">
               {formatPrice(displayPrice)}
             </span>
           </div>

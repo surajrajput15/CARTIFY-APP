@@ -118,6 +118,13 @@
   100% { background-position: 0% 50%; }
 }
 
+/* Mobile: swap the springy bounce for a gentle rise — less motion on small screens */
+@media (max-width: 639px) {
+  .hero-bounce-in {
+    animation: hero-rise 0.6s ease-out both;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in-up,
   .animate-ping,

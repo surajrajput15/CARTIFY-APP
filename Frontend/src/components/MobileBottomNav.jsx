@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
   Home, ShoppingCart, Heart, User, LayoutGrid,
   Shield, Truck, Package, Warehouse
@@ -17,20 +17,23 @@ const MobileBottomNav = () => {
 
   const isDelivery = user?.role === 'delivery' || user?.role === 'driver';
   const isAdmin = user?.isAdmin || user?.role === 'admin';
+  // NavLink matches pathname only, so on "/" both Home and Categories would
+  // appear active. Use the ?category= query to keep exactly one tab active.
+  const hasCategoryQuery = useLocation().search.includes('category');
 
   const base = 'flex flex-col items-center justify-center gap-0.5 flex-1 min-w-[44px] min-h-[52px] text-[10px] font-medium transition-colors';
   const inactive = 'text-gray-500 hover:text-teal-600';
-  const active = 'text-teal-600';
+  const active = 'text-teal-600 font-bold shadow-[inset_0_2px_0_0_#0d9488]';
 
   const items = [];
   items.push(
-    <NavLink key="home" to="/" end className={({ isActive }) => `${base} ${isActive ? active : inactive}`} aria-label="Home">
+    <NavLink key="home" to="/" end className={({ isActive }) => `${base} ${isActive && !hasCategoryQuery ? active : inactive}`} aria-label="Home">
       <Home size={20} aria-hidden="true" />
       <span>Home</span>
     </NavLink>
   );
   items.push(
-    <NavLink key="shop" to="/?category=all" className={({ isActive }) => `${base} ${isActive ? active : inactive}`} aria-label="Browse by category">
+    <NavLink key="shop" to="/?category=all" className={() => `${base} ${hasCategoryQuery ? active : inactive}`} aria-label="Browse by category">
       <LayoutGrid size={20} aria-hidden="true" />
       <span>Categories</span>
     </NavLink>
@@ -62,7 +65,7 @@ const MobileBottomNav = () => {
         <span className="relative inline-flex items-center justify-center">
           <Heart size={20} aria-hidden="true" />
           {wishCount > 0 && (
-            <span className="absolute -top-1 -right-2.5 min-w-[16px] h-[16px] rounded-full bg-teal-600 text-white text-[9px] font-bold flex items-center justify-center px-1 leading-none" aria-hidden="true">
+            <span className="absolute -top-1 -right-2 min-w-[16px] h-[16px] rounded-full bg-teal-600 text-white text-[9px] font-bold flex items-center justify-center px-1 leading-none" aria-hidden="true">
               {wishCount > 99 ? '99+' : wishCount}
             </span>
           )}
@@ -82,8 +85,8 @@ const MobileBottomNav = () => {
     <NavLink key="cart" to="/cart" className={({ isActive }) => `${base} ${isActive ? active : inactive}`} aria-label={`Cart, ${cartCount} item${cartCount === 1 ? '' : 's'}`}>
       <span className="relative inline-flex items-center justify-center">
         <ShoppingCart size={20} aria-hidden="true" />
-        {cartCount > 0 && (
-          <span className="absolute -top-1 -right-2.5 min-w-[16px] h-[16px] rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center px-1 leading-none" aria-hidden="true">
+          {cartCount > 0 && (
+            <span className="absolute -top-1 -right-2 min-w-[16px] h-[16px] rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center px-1 leading-none" aria-hidden="true">
             {cartCount > 99 ? '99+' : cartCount}
           </span>
         )}

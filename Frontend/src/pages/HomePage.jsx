@@ -7,7 +7,7 @@ import ProductCard from '../components/ProductCard';
 import { SkeletonList } from '../components/Skeleton';
 import { SearchEmptyIllustration } from '../components/illustrations/EmptyStateIllustrations';
 import { isNetworkError } from '../utils/apiError';
-import { formatNumber, truncate } from '../utils/format';
+import { formatNumber, truncate, titleCase } from '../utils/format';
 import { logError } from '../utils/logger';
 import HomeSections from '../components/HomeSections';
 
@@ -111,7 +111,7 @@ const HomePage = () => {
   const heading = searchQuery
     ? `Search results for "${truncate(searchQuery, 40)}"`
     : selectedCategory !== 'all'
-      ? `${truncate(selectedCategory, 20)} products`
+      ? `${titleCase(truncate(selectedCategory, 20))} Products`
       : 'All Products';
   const gridIds = useMemo(
     () => products.map((p) => String(p._id || p.id || '')).filter(Boolean),

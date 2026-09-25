@@ -101,7 +101,7 @@ function App() {
   return (
     <Router>
       <GoogleIdentityProvider>
-        <div className="min-h-screen bg-gray-50 font-sans pb-24 md:pb-10">
+        <div className="min-h-screen bg-gray-50 font-sans pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-10">
 
           <a
             href="#main-content"
