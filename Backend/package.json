@@ -34,7 +34,7 @@
     "jsonwebtoken": "^9.0.3",
     "migrate-mongo": "^14.0.7",
     "mongoose": "^9.7.3",
-    "multer": "^2.2.0",
+    "multer": "^2.4.0",
     "node-fetch": "^3.3.2",
     "nodemailer": "^9.0.3",
     "pino": "^10.3.1",
