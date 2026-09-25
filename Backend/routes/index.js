@@ -23,6 +23,8 @@ const adminRoutes = require('./adminRoutes');
 const adminDeliveryRoutes = require('./adminDeliveryRoutes');
 const adminStaffRoutes = require('./adminStaffRoutes');
 const adminUserRoutes = require('./adminUserRoutes');
+const adminNotificationRoutes = require('./adminNotificationRoutes');
+const adminReviewRoutes = require('./adminReviewRoutes');
 const locationRoutes = require('./locationRoutes');
 const warehouseRoutes = require('./warehouseRoutes');
 const warehousePortalRoutes = require('./warehousePortalRoutes');
@@ -49,6 +51,8 @@ router.use('/admin/analytics', adminRoutes);
 router.use('/admin', adminDeliveryRoutes);
 router.use('/admin/staff', adminStaffRoutes);
 router.use('/admin/users', adminUserRoutes);
+router.use('/admin/notifications', adminNotificationRoutes);
+router.use('/admin/reviews', adminReviewRoutes);
 router.use('/admin/audit-logs', auditRoutes);
 router.use('/admin/user-activity', activityRoutes);
 router.use('/locations', locationRoutes);
@@ -79,6 +83,8 @@ router.get('/', (req, res) => {
       categories: '/api/v1/categories',
       'admin-analytics': '/api/v1/admin/analytics',
       'admin-users': '/api/v1/admin/users',
+      'admin-notifications': '/api/v1/admin/notifications',
+      'admin-reviews': '/api/v1/admin/reviews',
       'admin-audit-logs': '/api/v1/admin/audit-logs',
       'admin-user-activity': '/api/v1/admin/user-activity',
       reviews: '/api/v1/reviews',
