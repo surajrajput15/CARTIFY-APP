@@ -334,7 +334,8 @@ const Navbar = () => {
                 to="/wishlist"
                 aria-label={`Wishlist, ${wishlistCount} item${wishlistCount === 1 ? '' : 's'}`}
                 className={({ isActive }) =>
-                  `${linkBase} ${isActive ? `${linkActiveBase} border-b-2 border-teal-500 pb-0.5` : 'text-teal-700 hover:text-teal-800'}`
+                  // F-60: hidden below md — the mobile bottom bar owns wishlist there.
+                  `hidden md:flex ${linkBase} ${isActive ? `${linkActiveBase} border-b-2 border-teal-500 pb-0.5` : 'text-teal-700 hover:text-teal-800'}`
                 }
               >
                 <div className="relative inline-flex items-center justify-center min-w-[44px] min-h-[44px]">
@@ -359,7 +360,8 @@ const Navbar = () => {
                 to="/cart"
                 aria-label={`Cart, ${cartItemCount} item${cartItemCount === 1 ? '' : 's'}`}
                 className={({ isActive }) =>
-                  `${linkBase} ${isActive ? `${linkActiveBase} border-b-2 border-teal-500 pb-0.5` : 'text-teal-700 hover:text-teal-800'}`
+                  // F-61: hidden below md — the mobile bottom bar owns cart there too.
+                  `hidden md:flex ${linkBase} ${isActive ? `${linkActiveBase} border-b-2 border-teal-500 pb-0.5` : 'text-teal-700 hover:text-teal-800'}`
                 }
               >
                 <div className="relative inline-flex items-center justify-center min-w-[44px] min-h-[44px]">
@@ -390,15 +392,15 @@ const Navbar = () => {
             <button
               type="button"
               onClick={() => goCategory('all')}
-              className={`relative flex-shrink-0 min-w-[44px] min-h-[44px] px-3 rounded-full text-sm font-medium transition-colors ${
-                activeCat === 'all' ? 'bg-teal-600 text-white' : 'text-gray-600 hover:bg-teal-50 hover:text-teal-700'
+              className={`relative flex-shrink-0 min-w-[44px] min-h-[44px] px-3 rounded-md flex items-center text-sm font-medium transition-colors ${
+                activeCat === 'all' ? 'text-teal-600' : 'text-gray-600 hover:bg-teal-50 hover:text-teal-700'
               }`}
               aria-pressed={activeCat === 'all'}
             >
-              All
-              {activeCat === 'all' && (
-                <span className="absolute bottom-1.5 left-4 right-4 h-[3px] rounded-full bg-white" aria-hidden="true" />
-              )}
+              {/* F-59: minimal underline — transparent border when inactive keeps the box identical (no shift). */}
+              <span className={`border-b-2 pb-1.5 ${activeCat === 'all' ? 'border-teal-600' : 'border-transparent'}`}>
+                All
+              </span>
             </button>
             <span className="flex-shrink-0 w-px h-4 bg-gray-200" aria-hidden="true" />
             {categoriesLoading ? (
@@ -426,33 +428,33 @@ const Navbar = () => {
                 key={c._id || c.name}
                 type="button"
                 onClick={() => goCategory(c.slug || c.name)}
-                className={`relative flex-shrink-0 min-w-[44px] min-h-[44px] px-3 rounded-full text-sm font-medium capitalize transition-colors ${
-                  activeCat === (c.slug || c.name) ? 'bg-teal-600 text-white' : 'text-gray-600 hover:bg-teal-50 hover:text-teal-700'
+                className={`relative flex-shrink-0 min-w-[44px] min-h-[44px] px-3 rounded-md flex items-center text-sm font-medium capitalize transition-colors ${
+                  activeCat === (c.slug || c.name) ? 'text-teal-600' : 'text-gray-600 hover:bg-teal-50 hover:text-teal-700'
                 }`}
                 aria-pressed={activeCat === (c.slug || c.name)}
               >
-                {c.name}
-                {activeCat === (c.slug || c.name) && (
-                  <span className="absolute bottom-1.5 left-4 right-4 h-[3px] rounded-full bg-white" aria-hidden="true" />
-                )}
+                {/* F-59: minimal underline — no pill, no overlapping bar. */}
+                <span className={`border-b-2 pb-1.5 ${activeCat === (c.slug || c.name) ? 'border-teal-600' : 'border-transparent'}`}>
+                  {c.name}
+                </span>
               </button>
             )) : (
               // API reachable but empty taxonomy — show canonical list so the rail is usable.
               PRODUCT_CATEGORIES.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => goCategory(cat)}
-                  className={`relative flex-shrink-0 min-w-[44px] min-h-[44px] px-3 rounded-full text-sm font-medium capitalize transition-colors ${
-                    activeCat === cat ? 'bg-teal-600 text-white' : 'text-gray-600 hover:bg-teal-50 hover:text-teal-700'
-                  }`}
-                  aria-pressed={activeCat === cat}
-                >
+              <button
+                key={cat}
+                type="button"
+                onClick={() => goCategory(cat)}
+                className={`relative flex-shrink-0 min-w-[44px] min-h-[44px] px-3 rounded-md flex items-center text-sm font-medium capitalize transition-colors ${
+                  activeCat === cat ? 'text-teal-600' : 'text-gray-600 hover:bg-teal-50 hover:text-teal-700'
+                }`}
+                aria-pressed={activeCat === cat}
+              >
+                {/* F-59: minimal underline — transparent border keeps height identical. */}
+                <span className={`border-b-2 pb-1.5 ${activeCat === cat ? 'border-teal-600' : 'border-transparent'}`}>
                   {cat}
-                  {activeCat === cat && (
-                    <span className="absolute bottom-1.5 left-4 right-4 h-[3px] rounded-full bg-white" aria-hidden="true" />
-                  )}
-                </button>
+                </span>
+              </button>
               ))
             )}
           </div>
