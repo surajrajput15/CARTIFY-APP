@@ -11,9 +11,13 @@ const CartContext = createContext();
 const CartActionsContext = createContext();
 
 // Products from the API always expose `_id`; normalize a stray `id` so legacy
-// localStorage carts keep working across versions.
+// localStorage carts keep working across versions. Imageless entries are dead
+// references (deleted product or corrupt stored data) — drop them at load time
+// so the cart can never render a "No Image" ghost (deleted-product hygiene).
 const normalizeCart = (items) =>
-  items.map((item) => ({ ...item, _id: item._id || item.id, id: undefined }));
+  items
+    .filter((item) => item && typeof item.image === 'string' && item.image.trim() !== '')
+    .map((item) => ({ ...item, _id: item._id || item.id, id: undefined }));
 
 const getInitialCart = () => {
   try {

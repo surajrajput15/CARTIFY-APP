@@ -111,12 +111,13 @@ describe('Product Routes', () => {
     });
 
     it('should default to newest first and ignore hostile/unknown sort keys', async () => {
+      // Mongoose 9 marks timestamps.createdAt immutable in updates, so
+      // updateMany({ $set: { createdAt } }) is silently stripped — set the
+      // explicit createdAt at insert time instead (still respected on insert).
       await Product.insertMany([
-        { title: 'Older', price: 1, description: 'd', category: 'sort-test', image: 'img.jpg' },
-        { title: 'Newer', price: 2, description: 'd', category: 'sort-test', image: 'img.jpg' },
+        { title: 'Older', price: 1, description: 'd', category: 'sort-test', image: 'img.jpg', createdAt: new Date('2024-01-01T00:00:00Z') },
+        { title: 'Newer', price: 2, description: 'd', category: 'sort-test', image: 'img.jpg', createdAt: new Date('2025-06-01T00:00:00Z') },
       ]);
-      await Product.updateMany({ title: 'Older' }, { $set: { createdAt: new Date('2024-01-01T00:00:00Z') } });
-      await Product.updateMany({ title: 'Newer' }, { $set: { createdAt: new Date('2025-06-01T00:00:00Z') } });
 
       const def = await request(app).get('/api/products').expect(200);
       expect(def.body.products[0].title).toBe('Newer');
