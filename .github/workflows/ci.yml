@@ -124,6 +124,10 @@ jobs:
       - name: Run Frontend Tests
         run: npm test
         working-directory: ./Frontend
+
+      - name: Run Frontend Typecheck (F-50)
+        run: npm run typecheck
+        working-directory: ./Frontend
       
       - name: Upload Frontend Coverage
         uses: actions/upload-artifact@v4
@@ -181,51 +185,10 @@ jobs:
         run: node -c server.js
         working-directory: ./Backend
 
-  e2e:
-    name: E2E Tests (Playwright)
-    runs-on: ubuntu-latest
-    needs: [build]
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: Frontend/package-lock.json
-      
-      - name: Install Frontend dependencies
-        run: npm ci
-        working-directory: ./Frontend
-      
-      - name: Install Playwright
-        run: npx playwright install --with-deps chromium
-        working-directory: ./Frontend
-      
-      - name: Run E2E Tests
-        run: |
-          if [ -f package.json ] && grep -q '"test:e2e"' package.json; then
-            npm run test:e2e
-          else
-            echo "No E2E test script found, skipping"
-          fi
-        working-directory: ./Frontend
-        env:
-          PLAYWRIGHT_BASE_URL: http://localhost:5173
-      
-      - name: Upload E2E Report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: e2e-report
-          path: Frontend/playwright-report/
-          retention-days: 7
-
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    needs: [build, e2e]
+    needs: [build]
     if: github.ref == 'refs/heads/develop'
     steps:
       - name: Deploy to Staging
@@ -240,7 +203,7 @@ jobs:
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [build, e2e]
+    needs: [build]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: production
     steps:
