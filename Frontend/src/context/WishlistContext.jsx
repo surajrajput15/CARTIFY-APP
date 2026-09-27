@@ -1,6 +1,7 @@
 import { createContext, useState, useContext, useCallback, useEffect, useRef, useMemo } from 'react';
 import { fetchWishlist, addToWishlist, removeFromWishlist } from '../services/wishlistApi';
 import { useAuth } from './authContext';
+import toast from 'react-hot-toast';
 import { logError } from '../utils/logger';
 
 const WishlistContext = createContext();
@@ -53,6 +54,12 @@ export const WishlistProvider = ({ children }) => {
   }, []);
 
   const fetchWishlistFromServer = useCallback(async () => {
+    // Wishlist is server-only: guests have no session, so a fetch would just
+    // 401 (POST /wishlist/add noise). Bail out without hitting the API.
+    if (!user?.id) {
+      setWishlistLoading(false);
+      return wishlistRef.current;
+    }
     try {
       const { data } = await fetchWishlist();
       const items = Array.isArray(data.products) ? data.products : [];
@@ -64,7 +71,7 @@ export const WishlistProvider = ({ children }) => {
       setWishlistLoading(false);
       return wishlistRef.current;
     }
-  }, [saveToLocal]);
+  }, [saveToLocal, user?.id]);
 
   // Server reconciliation on auth changes. setState only happens inside the
   // async callback below (never synchronously in the effect body), so this
@@ -119,8 +126,14 @@ export const WishlistProvider = ({ children }) => {
 
   const addToWishlistHandler = useCallback(async (product) => {
     const productId = extractId(product);
-    if (!productId) return;
-    if (isWishlistedCheck(productId)) return;
+    if (!productId) return false;
+    if (isWishlistedCheck(productId)) return true;
+    // The API requires a session — a guest call only produces a 401. Prompt
+    // for login instead of firing an unauthorized request.
+    if (!user?.id) {
+      toast.error('Please log in to save items to your wishlist');
+      return false;
+    }
     try {
       await addToWishlist(productId);
       setWishlist((prev) => {
@@ -129,22 +142,32 @@ export const WishlistProvider = ({ children }) => {
         }
         return [...prev, { productId, ...(typeof product === 'object' ? product : {}) }];
       });
+      return true;
     } catch (err) {
       logError('Add to wishlist failed:', err);
+      toast.error('Could not save to wishlist. Please try again.');
+      return false;
     }
-  }, [isWishlistedCheck]);
+  }, [isWishlistedCheck, user?.id]);
 
   const removeFromWishlistHandler = useCallback(async (product) => {
     const productId = extractId(product);
-    if (!productId) return;
-    if (!isWishlistedCheck(productId)) return;
+    if (!productId) return false;
+    if (!isWishlistedCheck(productId)) return true;
+    if (!user?.id) {
+      toast.error('Please log in to manage your wishlist');
+      return false;
+    }
     try {
       await removeFromWishlist(productId);
       setWishlist((prev) => prev.filter((p) => String(getProductId(p)) !== String(productId)));
+      return true;
     } catch (err) {
       logError('Remove from wishlist failed:', err);
+      toast.error('Could not update wishlist. Please try again.');
+      return false;
     }
-  }, [isWishlistedCheck]);
+  }, [isWishlistedCheck, user?.id]);
 
   const value = useMemo(
     () => ({

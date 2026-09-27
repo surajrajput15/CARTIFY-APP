@@ -189,16 +189,22 @@ const ProductDetailsPage = () => {
     toast.success(`Added ${quantity} ${quantity === 1 ? 'item' : 'items'} to cart`);
   };
 
-  const handleWishlistToggle = () => {
+  // Optimistic flip + success toast only after the context accepts the change
+  // (guests are rejected with a login prompt, API failures surface an error).
+  const handleWishlistToggle = async () => {
     if (!product) return;
     if (wishlisted) {
-      removeFromWishlist(product);
-      setWishlisted(false);
-      toast.success('Removed from wishlist');
+      const ok = await removeFromWishlist(product);
+      if (ok) {
+        setWishlisted(false);
+        toast.success('Removed from wishlist');
+      }
     } else {
-      addToWishlist(product);
-      setWishlisted(true);
-      toast.success('Saved to wishlist');
+      const ok = await addToWishlist(product);
+      if (ok) {
+        setWishlisted(true);
+        toast.success('Saved to wishlist');
+      }
     }
   };
 
