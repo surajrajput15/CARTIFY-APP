@@ -667,3 +667,41 @@ cd Frontend && npm run lint && npm run test
   verification, guarded against StrictMode double-init.
 - `HeroBanner` refuses to fabricate a product count when the API is unreachable.
 - No fake customer counts, testimonials, revenue or discounts were found anywhere in the UI.
+
+---
+
+## Phase 8 - Post-audit UI polish (round 2)
+
+> Owner-reported on localhost after the Phase 1-7 push. Gate = lint + typecheck + vitest + build.
+
+- [x] **F-59 - Category rail active state is sloppy** - P2 - `Navbar.jsx` TIER 3 sticky category
+  rail (All / Electronics / Clothing...) renders the active tab as a solid `bg-teal-600` pill
+  (`rounded-full`) with a white 3px `<span>` underline overlapping it.
+  *Fix:* minimal underline - no background, no pill, no white bar; `text-teal-600` (#0d9488 brand),
+  `border-b-2 border-teal-600`, `pb-1.5`; inactive keeps `border-transparent` (identical box -
+  zero layout shift); all three branches (All / API categories / fallback list);
+  `min-h-[44px]` touch target retained.
+  **Done 2026-09-27:** all three rail branches rebuilt - `rounded-md flex items-center` button,
+  label wrapped in `<span class="border-b-2 pb-1.5">` with `border-teal-600` active /
+  `border-transparent` inactive (identical box - zero shift); pill bg + white overlap bar deleted.
+  Gate: lint 0 / tsc 0 / 164 tests / build 4.8s.
+
+- [x] **F-60 - Duplicate wishlist entry on mobile** - P2 - on `<md` viewports the wishlist appears
+  twice: header top-right icon (`Navbar.jsx`, shown for every non-admin) AND the mobile bottom bar
+  (`MobileBottomNav.jsx`, `md:hidden`).
+  *Fix:* breakpoint ownership - header wishlist gets `hidden md:flex`; the bottom bar owns mobile,
+  the header owns desktop. Admin rule (`!user?.isAdmin`) unchanged.
+  **Done 2026-09-27:** header wishlist NavLink prefixed `hidden md:flex`; below md only the bottom
+  bar shows wishlist, at md+ only the header. Admin rule untouched.
+
+- [x] **F-61 - Duplicate cart entry on mobile** - P2 - same duplication as F-60 (header cart +
+  bottom-bar cart). *Fix:* header cart also gets `hidden md:flex`. Account avatar stays in the
+  header on both breakpoints (dropdown hosts desktop menus; avatar+bottom-tab coexistence is the
+  established convention).
+  **Done 2026-09-27:** header cart NavLink prefixed `hidden md:flex`; bottom bar owns cart below
+  md. Account avatar kept at all breakpoints (dropdown + convention).
+
+- [x] **F-62 - Phase 8 gate** - `npm run lint` + `npm run typecheck` + `npx vitest run` +
+  `npm run build`, localhost visual check of the rail + mobile header, then commit + push.
+  **Done 2026-09-27:** lint 0 errors (4 warnings) / tsc 0 / 164 of 164 tests (30 files) /
+  build 4.79s. Committed + pushed.
