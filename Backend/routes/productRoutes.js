@@ -80,7 +80,7 @@ router.get('/', softProtect, activityLogger('PRODUCT_SEARCH', (req) => ({
     try {
         // Product list is safe to cache briefly — stale-while-revalidate keeps it fresh.
         res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=30');
-        const { search, category, page, limit } = req.query;
+        const { search, category, page, limit, sort, minPrice, maxPrice } = req.query;
         const query = {};
 
         if (search) {
@@ -107,6 +107,36 @@ router.get('/', softProtect, activityLogger('PRODUCT_SEARCH', (req) => ({
             query.category = category;
         }
 
+        // F-17: price range filter — only finite non-negative numbers are
+        // honoured, so junk/empty params leave the query untouched.
+        const parsePrice = (value) => {
+            if (value === undefined || value === '') return null;
+            const n = Number(value);
+            return Number.isFinite(n) && n >= 0 ? n : null;
+        };
+        const priceMin = parsePrice(minPrice);
+        const priceMax = parsePrice(maxPrice);
+        if (priceMin !== null || priceMax !== null) {
+            const priceRange = {};
+            if (priceMin !== null) priceRange.$gte = priceMin;
+            if (priceMax !== null) priceRange.$lte = priceMax;
+            query.price = priceRange;
+        }
+
+        // F-17: whitelisted sort specs — raw query input never becomes a sort
+        // key. Default is newest-first (covered by the createdAt index).
+        const SORTS = {
+            newest: { createdAt: -1 },
+            price_asc: { price: 1 },
+            price_desc: { price: -1 },
+            rating: { rating: -1 },
+        };
+        // hasOwnProperty guard: keys like 'constructor' exist on Object.prototype
+        // and must not resolve to a bogus sort spec.
+        const sortSpec = (sort && Object.prototype.hasOwnProperty.call(SORTS, sort))
+            ? SORTS[sort]
+            : SORTS.newest;
+
         // Clamp pagination: page >= 1, limit 1..100 (negative/NaN/huge
         // values previously produced negative skip or unbounded reads).
         const pageNum = Math.max(1, parseInt(page) || 1);
@@ -114,7 +144,7 @@ router.get('/', softProtect, activityLogger('PRODUCT_SEARCH', (req) => ({
         const skip = (pageNum - 1) * limitNum;
 
         const [products, total] = await Promise.all([
-            Product.find(query).skip(skip).limit(limitNum).lean(),
+            Product.find(query).sort(sortSpec).skip(skip).limit(limitNum).lean(),
             Product.countDocuments(query),
         ]);
 

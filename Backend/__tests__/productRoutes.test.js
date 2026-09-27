@@ -85,6 +85,70 @@ describe('Product Routes', () => {
       const res = await request(app).get('/api/products?search=(a+)+').expect(200);
       expect(res.body.products).toHaveLength(0);
     });
+
+    // --- F-17: server-side sort + price range -------------------------------
+
+    it('should sort by price ascending when asked', async () => {
+      await Product.insertMany([
+        { title: 'High', price: 1000, description: 'd', category: 'sort-test', image: 'img.jpg' },
+        { title: 'Low', price: 50, description: 'd', category: 'sort-test', image: 'img.jpg' },
+        { title: 'Mid', price: 500, description: 'd', category: 'sort-test', image: 'img.jpg' },
+      ]);
+
+      const res = await request(app).get('/api/products?sort=price_asc').expect(200);
+      expect(res.body.products.map((p) => p.price)).toEqual([50, 500, 1000]);
+    });
+
+    it('should sort by price descending when asked', async () => {
+      await Product.insertMany([
+        { title: 'High', price: 1000, description: 'd', category: 'sort-test', image: 'img.jpg' },
+        { title: 'Low', price: 50, description: 'd', category: 'sort-test', image: 'img.jpg' },
+        { title: 'Mid', price: 500, description: 'd', category: 'sort-test', image: 'img.jpg' },
+      ]);
+
+      const res = await request(app).get('/api/products?sort=price_desc').expect(200);
+      expect(res.body.products.map((p) => p.price)).toEqual([1000, 500, 50]);
+    });
+
+    it('should default to newest first and ignore hostile/unknown sort keys', async () => {
+      await Product.insertMany([
+        { title: 'Older', price: 1, description: 'd', category: 'sort-test', image: 'img.jpg' },
+        { title: 'Newer', price: 2, description: 'd', category: 'sort-test', image: 'img.jpg' },
+      ]);
+      await Product.updateMany({ title: 'Older' }, { $set: { createdAt: new Date('2024-01-01T00:00:00Z') } });
+      await Product.updateMany({ title: 'Newer' }, { $set: { createdAt: new Date('2025-06-01T00:00:00Z') } });
+
+      const def = await request(app).get('/api/products').expect(200);
+      expect(def.body.products[0].title).toBe('Newer');
+
+      // Unknown values and prototype keys must fall back to the default spec.
+      const unknown = await request(app).get('/api/products?sort=drop_table').expect(200);
+      expect(unknown.body.products[0].title).toBe('Newer');
+      const hostile = await request(app).get('/api/products?sort=constructor').expect(200);
+      expect(hostile.body.products[0].title).toBe('Newer');
+    });
+
+    it('should filter by price range', async () => {
+      await Product.insertMany([
+        { title: 'Cheap', price: 100, description: 'd', category: 'price-test', image: 'img.jpg' },
+        { title: 'Mid', price: 500, description: 'd', category: 'price-test', image: 'img.jpg' },
+        { title: 'Pricey', price: 5000, description: 'd', category: 'price-test', image: 'img.jpg' },
+      ]);
+
+      const res = await request(app).get('/api/products?minPrice=150&maxPrice=1000').expect(200);
+      expect(res.body.products).toHaveLength(1);
+      expect(res.body.products[0].title).toBe('Mid');
+    });
+
+    it('should ignore invalid or empty price params', async () => {
+      await Product.insertMany([
+        { title: 'A', price: 100, description: 'd', category: 'price-test', image: 'img.jpg' },
+        { title: 'B', price: 900, description: 'd', category: 'price-test', image: 'img.jpg' },
+      ]);
+
+      const res = await request(app).get('/api/products?minPrice=abc&maxPrice=').expect(200);
+      expect(res.body.products).toHaveLength(2);
+    });
   });
 
   describe('GET /api/products/:id', () => {
