@@ -2,6 +2,7 @@ import { useAuth } from '../context/authContext';
 import { useNavigate } from 'react-router-dom';
 import { ShieldX, Home, LogIn } from 'lucide-react';
 import Spinner from '../components/Spinner';
+import Button from '../components/ui/Button';
 
 const AccessDenied = () => {
   const { user, authLoading } = useAuth();
@@ -38,20 +39,20 @@ const AccessDenied = () => {
                 )}
               </>
             ) : (
-              <span className="text-gray-400">Not signed in</span>
+              <span className="text-gray-500">Not signed in</span>
             )}
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
-          <button
-            type="button"
+          <Button
+             type="button"
             onClick={() => navigate('/')}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-teal-600 text-white font-medium hover:bg-teal-700 transition-colors min-h-[44px]"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium transition-colors min-h-[44px]"
           >
             <Home size={18} aria-hidden="true" />
             Go Home
-          </button>
+          </Button>
           {!user && (
             <button
               type="button"

@@ -1,5 +1,7 @@
 import { Component } from 'react';
 import { AlertTriangle, Home, RefreshCw } from 'lucide-react';
+import Button from './ui/Button';
+import Card from './ui/Card';
 
 const isDev = import.meta.env.DEV;
 
@@ -31,7 +33,7 @@ class ErrorBoundary extends Component {
     if (this.state.hasError) {
       return (
         <div className="min-h-[70vh] flex flex-col items-center justify-center px-4">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 max-w-md w-full text-center">
+          <Card className="rounded-2xl border p-12 max-w-md w-full text-center">
             <div className="bg-red-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
               <AlertTriangle size={40} className="text-red-500" aria-hidden="true" />
             </div>
@@ -40,13 +42,13 @@ class ErrorBoundary extends Component {
               An unexpected error occurred. Please try again or return to the home page.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <button
+              <Button
                 onClick={this.handleGoHome}
-                className="inline-flex items-center justify-center gap-2 bg-teal-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-teal-700 transition-colors shadow-md"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold transition-colors shadow-md"
               >
                 <Home size={20} aria-hidden="true" />
                 Go Home
-              </button>
+              </Button>
               <button
                 onClick={this.handleReload}
                 className="inline-flex items-center justify-center gap-2 bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors"
@@ -55,7 +57,7 @@ class ErrorBoundary extends Component {
                 Try Again
               </button>
             </div>
-          </div>
+          </Card>
         </div>
       );
     }

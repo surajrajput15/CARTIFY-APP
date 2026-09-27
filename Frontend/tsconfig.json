@@ -11,6 +11,10 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
+    // DEC-4 / F-50: include .js files in the program so typecheck is honest
+    // about what it resolves. checkJs stays off for now — it is flipped on
+    // incrementally file-by-file as types are adopted.
+    "allowJs": true,
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,

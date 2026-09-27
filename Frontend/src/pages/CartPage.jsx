@@ -3,18 +3,19 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Trash2, Plus, Minus, Lock } from 'lucide-react';
 import { useCart } from '../context/cartContext';
-import { resolveImageUrl } from '../utils/imageUrl';
+import { useAuth } from '../context/authContext';
+import { resolveImageUrl, PLACEHOLDER_IMG } from '../utils/imageUrl';
 import { formatPrice, truncate } from '../utils/format';
-import { getShippingCost, getShippingMessage, SHIPPING_CONFIG } from '../utils/constants';
-import { useCoupon } from '../hooks/useCoupon';
+import { getShippingMessage, SHIPPING_CONFIG } from '../utils/constants';
+import { useSharedCoupon } from '../context/couponContext';
 import CouponInput from '../components/checkout/CouponInput';
 import { EmptyCartIllustration } from '../components/illustrations/EmptyStateIllustrations';
 import { variantLabel } from '../utils/variants';
-
-const PLACEHOLDER_IMG = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzeXN0ZW0tdWkiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5Y2EzYWYiPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg==';
+import Card from '../components/ui/Card';
 
 const CartPage = () => {
   const { cart, removeFromCart, updateQuantity } = useCart();
+  const { user } = useAuth();
 
   const { totalAmount, totalItems } = useMemo(() => {
     let amount = 0;
@@ -28,14 +29,16 @@ const CartPage = () => {
     return { totalAmount: amount, totalItems: items };
   }, [cart]);
 
-  const { code, setCode, applied, loading: couponLoading, error: couponError, applyCoupon, applyBestCoupon, bestLoading, clearCoupon } = useCoupon(cart, totalAmount);
+  // F-33: one shared coupon instance (CartProvider tree) instead of a per-page hook
+  const { code, setCode, applied, loading: couponLoading, error: couponError, applyCoupon, applyBestCoupon, bestLoading, clearCoupon } = useSharedCoupon();
   const discount = Math.min(Math.max(0, Number(applied?.discount) || 0), Math.max(0, totalAmount));
   const discountedSubtotal = Math.max(0, totalAmount - discount);
-  const effectiveShipping = discountedSubtotal <= 0 ? 0 : getShippingCost(discountedSubtotal);
+  // DEC-1A: the backend never charges shipping, so the displayed total must not
+  // add any either — "free shipping over ₹999" is marketing copy only.
   const effectiveShippingMsg = discountedSubtotal <= 0
     ? { text: 'Free', className: 'text-green-600 font-medium' }
     : getShippingMessage(discountedSubtotal);
-  const finalTotal = Math.max(0, discountedSubtotal + effectiveShipping);
+  const finalTotal = discountedSubtotal;
 
   // Empty cart state
   if (cart.length === 0) {
@@ -68,7 +71,7 @@ const CartPage = () => {
         {/* Left Side: Cart Items List */}
         <div className="lg:w-2/3 space-y-4">
           {cart.map((item) => (
-            <div key={`${item._id || item.id}::${item.variantKey || ''}`} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row items-center gap-4">
+            <Card key={`${item._id || item.id}::${item.variantKey || ''}`} className="p-4 rounded-xl border flex flex-col sm:flex-row items-center gap-4">
               <img
                 src={resolveImageUrl(item.image)}
                 alt={item.title || 'Cart item'}
@@ -89,44 +92,59 @@ const CartPage = () => {
                 <p className="text-teal-600 font-bold text-xl mt-1">{formatPrice(item.price)}</p>
               </div>
 
-              {/* Quantity Controls */}
-              <div className="flex items-center gap-3 bg-gray-50 p-2 rounded-lg border">
-                <button
-                  onClick={() => updateQuantity(item._id || item.id, 'decrease', item.variantKey || null)}
-                  className="p-2 hover:bg-white rounded shadow-sm text-gray-600 min-w-[44px] min-h-[44px] flex items-center justify-center"
-                  aria-label="Decrease quantity"
-                >
-                  <Minus size={16} aria-hidden="true" />
-                </button>
-                <span className="font-semibold w-6 text-center" aria-live="polite" aria-label={`Quantity ${item.quantity || 1}`}>
-                  {item.quantity || 1}
-                </span>
-                <button
-                  onClick={() => updateQuantity(item._id || item.id, 'increase', item.variantKey || null)}
-                  disabled={Number.isInteger(Number(item.countInStock)) && (item.quantity || 1) >= Number(item.countInStock)}
-                  title={Number.isInteger(Number(item.countInStock)) && (item.quantity || 1) >= Number(item.countInStock) ? `Only ${item.countInStock} available in stock` : undefined}
-                  className="p-2 hover:bg-white rounded shadow-sm text-gray-600 min-w-[44px] min-h-[44px] flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
-                  aria-label="Increase quantity"
-                >
-                  <Plus size={16} aria-hidden="true" />
-                </button>
-              </div>
+              {/* F-25: qty + remove share one row at every width (no orphaned button at 320px) */}
+              <div className="flex flex-col items-center gap-2">
+                <div className="flex items-center gap-4">
+                {/* Quantity Controls */}
+                <div className="flex items-center gap-3 bg-gray-50 p-2 rounded-lg border">
+                  <button
+                    onClick={() => updateQuantity(item._id || item.id, 'decrease', item.variantKey || null)}
+                    disabled={Number(item.quantity || 1) <= 1}
+                    title={Number(item.quantity || 1) <= 1 ? 'Minimum quantity is 1 — use Remove instead' : undefined}
+                    className="p-2 hover:bg-white rounded shadow-sm text-gray-600 min-w-[44px] min-h-[44px] flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                    aria-label="Decrease quantity"
+                  >
+                    <Minus size={16} aria-hidden="true" />
+                  </button>
+                  <span className="font-semibold w-6 text-center" aria-live="polite" aria-label={`Quantity ${item.quantity || 1}`}>
+                    {item.quantity || 1}
+                  </span>
+                  <button
+                    onClick={() => updateQuantity(item._id || item.id, 'increase', item.variantKey || null)}
+                    disabled={Number.isInteger(Number(item.countInStock)) && (item.quantity || 1) >= Number(item.countInStock)}
+                    title={Number.isInteger(Number(item.countInStock)) && (item.quantity || 1) >= Number(item.countInStock) ? `Only ${item.countInStock} available in stock` : undefined}
+                    className="p-2 hover:bg-white rounded shadow-sm text-gray-600 min-w-[44px] min-h-[44px] flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                    aria-label="Increase quantity"
+                  >
+                    <Plus size={16} aria-hidden="true" />
+                  </button>
+                </div>
 
-              {/* Delete Button */}
-              <button
-                onClick={() => removeFromCart(item._id || item.id, item.variantKey || null)}
-                className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                aria-label={`Remove ${item.title} from cart`}
-              >
-                <Trash2 size={24} aria-hidden="true" />
-              </button>
-            </div>
+                {/* Delete Button */}
+                <button
+                  onClick={() => removeFromCart(item._id || item.id, item.variantKey || null)}
+                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                  aria-label={`Remove ${item.title} from cart`}
+                >
+                  <Trash2 size={24} aria-hidden="true" />
+                </button>
+                </div>
+
+                {/* F-35: visible stock cap (title tooltip alone was hover-only) */}
+                {Number.isInteger(Number(item.countInStock)) &&
+                  (item.quantity || 1) >= Number(item.countInStock) && (
+                  <p className="text-xs font-semibold text-orange-700 bg-orange-50 border border-orange-200 rounded-lg px-3 py-1.5 text-center">
+                    Only {item.countInStock} left in stock
+                  </p>
+                )}
+              </div>
+            </Card>
           ))}
         </div>
 
         {/* Right Side: Order Summary (Desktop only) */}
         <div className="hidden lg:block lg:w-1/3">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 sticky top-24">
+          <Card className="p-6 rounded-xl border sticky top-24">
             <h2 className="text-xl font-bold text-gray-800 mb-4">Order Summary</h2>
 
             <div className="space-y-3 text-gray-600 border-b pb-4 mb-4">
@@ -146,12 +164,34 @@ const CartPage = () => {
               </div>
             </div>
 
-            <CouponInput code={code} setCode={setCode} applied={applied} loading={couponLoading} error={couponError} onApply={applyCoupon} onRemove={clearCoupon} onFindBest={applyBestCoupon} bestLoading={bestLoading} />
+            {user ? (
+              <CouponInput code={code} setCode={setCode} applied={applied} loading={couponLoading} error={couponError} onApply={applyCoupon} onRemove={clearCoupon} onFindBest={applyBestCoupon} bestLoading={bestLoading} cart={cart} totalAmount={totalAmount} />
+            ) : (
+              /* F-11: /api/coupons/validate is auth-protected — a guest can
+                 never apply a coupon, so don't offer an input that 401s. */
+              <p className="text-sm text-gray-500 bg-gray-50 border border-gray-100 rounded-lg p-3 text-center">
+                <Link
+                  to="/login"
+                  onClick={() => sessionStorage.setItem('redirectAfterLogin', '/cart')}
+                  className="font-bold text-teal-600 hover:text-teal-700"
+                >
+                  Log in
+                </Link>{' '}
+                to apply a coupon.
+              </p>
+            )}
 
             <div className="flex justify-between items-center mt-4 mb-6">
               <span className="text-lg font-bold text-gray-800">Total</span>
-              <span className="text-2xl font-bold text-teal-600">{formatPrice(finalTotal)}</span>
+              {/* F-40: applying/removing a coupon changes this figure — announce politely. */}
+              <span className="text-2xl font-bold text-teal-600" aria-live="polite" aria-atomic="true">{formatPrice(finalTotal)}</span>
             </div>
+
+            {/* F-34: honest pricing — displayed totals are estimates; the exact
+                figure (incl. any server-side adjustments) is confirmed at checkout. */}
+            <p className="text-xs text-center text-gray-500 -mt-4 mb-5">
+              Final price confirmed at checkout.
+            </p>
 
             <Link
               to="/checkout"
@@ -164,7 +204,7 @@ const CartPage = () => {
             <p className="text-xs text-center text-gray-500 mt-3">
               Estimated delivery: {SHIPPING_CONFIG.ESTIMATED_DELIVERY_DAYS} business days
             </p>
-          </div>
+          </Card>
         </div>
 
       </div>
@@ -176,7 +216,7 @@ const CartPage = () => {
       >
         <div className="flex-1 min-w-0">
           <p className="text-xs text-gray-500 font-medium">{totalItems} {totalItems === 1 ? 'item' : 'items'}</p>
-          <p className="text-lg font-bold text-teal-600 truncate">{formatPrice(finalTotal)}</p>
+          <p className="text-lg font-bold text-teal-600 truncate" aria-live="polite" aria-atomic="true">{formatPrice(finalTotal)}</p>
         </div>
 
         <Link

@@ -11,13 +11,9 @@
     "test": "vitest run --coverage",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@sentry/browser": "^10.73.0",
-    "@sentry/react": "^10.73.0",
     "axios": "^1.18.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.21.0",
@@ -41,6 +37,7 @@
     "@vitejs/plugin-react": "^6.0.2",
     "@vitest/coverage-v8": "^4.1.11",
     "autoprefixer": "^10.5.2",
+    "axe-core": "^4.13.0",
     "eslint": "^10.5.0",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",

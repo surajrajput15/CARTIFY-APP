@@ -9,17 +9,26 @@ export const useAddresses = (userId, initialLoading = false) => {
   const [addressesLoading, setAddressesLoading] = useState(initialLoading);
   const [addressesError, setAddressesError] = useState('');
   const mountedRef = useRef(true);
+  // Request-sequence token: only the newest in-flight fetch may write state,
+  // so a slow response can never clobber newer data (F-01).
+  const requestSeqRef = useRef(0);
   useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
 
+  // Invalidate in-flight responses when the owner changes.
+  useEffect(() => {
+    requestSeqRef.current += 1;
+  }, [userId]);
+
 const fetchAddresses = useCallback(async () => {
     if (!userId) return [];
+    const seq = ++requestSeqRef.current;
     if (mountedRef.current) setAddressesLoading(true);
     try {
       const response = await addressesApi.fetchAddresses(userId);
-      if (mountedRef.current) {
+      if (mountedRef.current && seq === requestSeqRef.current) {
         // Server is the source of truth — always adopt it, including [].
         setAddresses(response.data);
         setAddressesError('');
@@ -27,13 +36,13 @@ const fetchAddresses = useCallback(async () => {
       return response.data;
     } catch (error) {
       logError("Failed to fetch addresses", error);
-      if (mountedRef.current) {
+      if (mountedRef.current && seq === requestSeqRef.current) {
         setAddressesError(handleApiError(error, "Failed to load addresses"));
       }
       toast.error(handleApiError(error, "Failed to load addresses"));
       return [];
     } finally {
-      if (mountedRef.current) setAddressesLoading(false);
+      if (mountedRef.current && seq === requestSeqRef.current) setAddressesLoading(false);
     }
   }, [userId]);
 
@@ -68,29 +77,6 @@ const saveAddress = useCallback(async (address) => {
     }
   }, [fetchAddresses]);
 
-  const updateAddress = useCallback(async (id, address) => {
-    try {
-      // Strip server-managed fields before PUT — the backend only accepts the
-      // six address fields (F-01 follow-up hygiene).
-      const { ...cleanAddress } = address || {};
-      delete cleanAddress._id;
-      delete cleanAddress.userId;
-      delete cleanAddress.__v;
-      delete cleanAddress.createdAt;
-      delete cleanAddress.updatedAt;
-      const res = await addressesApi.updateAddress(id, cleanAddress);
-      const saved = res.data;
-      if (mountedRef.current && saved && saved._id) {
-        setAddresses((prev) => prev.map((a) => (a._id === saved._id ? saved : a)));
-      }
-      await fetchAddresses();
-      return saved;
-    } catch (err) {
-      logError("Failed to update address", err);
-      throw err;
-    }
-  }, [fetchAddresses]);
-
   const deleteAddress = useCallback(async (id) => {
     try {
       await addressesApi.deleteAddress(id);
@@ -105,5 +91,5 @@ const saveAddress = useCallback(async (address) => {
     }
   }, [fetchAddresses]);
 
-  return { addresses, addressesLoading, addressesError, fetchAddresses, saveAddress, updateAddress, deleteAddress };
+  return { addresses, addressesLoading, addressesError, fetchAddresses, saveAddress, deleteAddress };
 };

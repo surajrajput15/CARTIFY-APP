@@ -1,5 +1,6 @@
 import { Edit2, X, Loader2, Check, Lock } from 'lucide-react';
 import { formatDate, getInitial } from '../../utils/format';
+import Button from '../ui/Button';
 
 const GENDER_LABELS = { male: 'Male', female: 'Female', other: 'Other' };
 
@@ -41,7 +42,7 @@ const ProfileInfo = ({ user, isEditing, editName, editGender, updateLoading, onT
         </p>
         <p className="text-sm text-gray-500 truncate" title={user?.email || ''}>{user?.email || 'Not set'}</p>
         {user?.createdAt && (
-          <p className="text-xs text-gray-400 mt-0.5">Member since {formatDate(user.createdAt)}</p>
+          <p className="text-xs text-gray-500 mt-0.5">Member since {formatDate(user.createdAt)}</p>
         )}
       </div>
     </div>
@@ -62,14 +63,14 @@ const ProfileInfo = ({ user, isEditing, editName, editGender, updateLoading, onT
               maxLength={100}
               aria-describedby="profile-name-hint"
             />
-            <button
+            <Button
               onClick={onSave}
               disabled={updateLoading}
               aria-label="Save name"
-              className="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 flex items-center justify-center min-w-[44px] min-h-[44px] disabled:opacity-50"
+              className="px-4 py-2 rounded-lg flex items-center justify-center min-w-[44px] min-h-[44px] disabled:opacity-50"
             >
               {updateLoading ? <Loader2 size={18} className="animate-spin" aria-hidden="true" /> : <Check size={18} aria-hidden="true" />}
-            </button>
+            </Button>
           </div>
         ) : (
           <p className="text-gray-900 font-semibold bg-gray-50 p-3 rounded-lg border border-gray-200">
@@ -77,7 +78,7 @@ const ProfileInfo = ({ user, isEditing, editName, editGender, updateLoading, onT
           </p>
         )}
         {isEditing && (
-          <p id="profile-name-hint" className="text-xs text-gray-400 mt-1.5">
+          <p id="profile-name-hint" className="text-xs text-gray-500 mt-1.5">
             Press Enter to save — changes persist to your account.
           </p>
         )}
@@ -104,7 +105,7 @@ const ProfileInfo = ({ user, isEditing, editName, editGender, updateLoading, onT
       </div>
       <div>
         <label htmlFor="profile-email" className="block text-sm font-medium text-gray-500 mb-2">
-          Email Address <span className="text-xs text-gray-400">(cannot be changed)</span>
+          Email Address <span className="text-xs text-gray-500">(cannot be changed)</span>
         </label>
         <p
           id="profile-email"
@@ -119,7 +120,7 @@ const ProfileInfo = ({ user, isEditing, editName, editGender, updateLoading, onT
         {user?.hasPassword ? (
           <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-200">
             <span className="flex items-center gap-2 text-gray-700 font-semibold" aria-label="Password is set">
-              <Lock size={16} className="text-gray-400" aria-hidden="true" /> ••••••••
+              <Lock size={16} className="text-gray-500" aria-hidden="true" /> ••••••••
             </span>
             <button
               onClick={onGoToSettings}
@@ -131,9 +132,9 @@ const ProfileInfo = ({ user, isEditing, editName, editGender, updateLoading, onT
         ) : (
           <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
             <span className="flex items-center gap-2 text-gray-700 font-semibold">
-              <Lock size={16} className="text-gray-400" aria-hidden="true" /> Not set
+              <Lock size={16} className="text-gray-500" aria-hidden="true" /> Not set
             </span>
-            <p className="text-xs text-gray-400 mt-1">You signed in with Google or an OTP — use “Forgot password” on the login page to add one.</p>
+            <p className="text-xs text-gray-500 mt-1">You signed in with Google or an OTP — use “Forgot password” on the login page to add one.</p>
           </div>
         )}
       </div>

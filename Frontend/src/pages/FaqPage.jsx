@@ -17,7 +17,7 @@ const FAQS = [
   },
   {
     q: 'What is the shipping cost?',
-    a: `Orders above ${'₹'}${SHIPPING_CONFIG.FREE_SHIPPING_THRESHOLD} ship free. Standard shipping is ${'₹'}${SHIPPING_CONFIG.STANDARD_SHIPPING_COST}.`,
+    a: 'Delivery is free on every order — the total you see at checkout is exactly what you pay.',
   },
   {
     q: 'Can I cancel or return an order?',

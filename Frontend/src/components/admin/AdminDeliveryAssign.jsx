@@ -4,6 +4,8 @@ import { ClipboardList, UserCheck, Users, RefreshCw, Loader2 } from 'lucide-reac
 import { fetchAdminDeliveryOrders, fetchDeliveryPartners, assignDeliveryPartner } from '../../services/deliveryApi';
 import { formatPrice, formatDate } from '../../utils/format';
 import { isNetworkError } from '../../utils/apiError';
+import Button from '../ui/Button';
+import Card from '../ui/Card';
 
 const AdminDeliveryAssign = () => {
   const [orders, setOrders] = useState([]);
@@ -28,6 +30,7 @@ const AdminDeliveryAssign = () => {
     }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- load() only flips its own loading flag around an awaited fetch
   useEffect(() => { load(); }, [load]);
 
   const handleAssign = async (order) => {
@@ -50,7 +53,7 @@ const AdminDeliveryAssign = () => {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <Card className="rounded-2xl border overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-5 py-4 border-b border-gray-100">
         <div className="flex items-center gap-3">
           <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-teal-50 text-teal-600">
@@ -112,7 +115,7 @@ const AdminDeliveryAssign = () => {
                       value={selected[o._id] || ''}
                       onChange={(e) => setSelected((prev) => ({ ...prev, [o._id]: e.target.value }))}
                       aria-label={`Delivery partner for order ${o.orderId || String(o._id).slice(-8).toUpperCase()}`}
-                      className="w-full px-2.5 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 focus:ring-teal-500 focus:border-teal-500 min-h-[40px]"
+                      className="w-full px-2.5 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 focus:ring-teal-500 focus:border-teal-500 min-h-[44px]"
                     >
                       <option value="">Select partner…</option>
                       {partners.map((p) => (
@@ -123,14 +126,14 @@ const AdminDeliveryAssign = () => {
                     </select>
                   </td>
                   <td className="p-4 text-right">
-                    <button
+                    <Button
                       onClick={() => handleAssign(o)}
                       disabled={busyId === o._id || !selected[o._id]}
-                      className="inline-flex items-center gap-1 px-3.5 py-2 bg-teal-600 hover:bg-teal-700 disabled:bg-gray-200 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl transition-colors min-h-[40px]"
+                      className="inline-flex items-center gap-1 px-3.5 py-2 disabled:bg-gray-200 disabled:cursor-not-allowed text-sm font-bold rounded-xl transition-colors min-h-[44px]"
                     >
                       {busyId === o._id ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <UserCheck size={14} aria-hidden="true" />}
                       Assign
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               ))}
@@ -138,7 +141,7 @@ const AdminDeliveryAssign = () => {
           </table>
         </div>
       )}
-    </div>
+    </Card>
   );
 };
 

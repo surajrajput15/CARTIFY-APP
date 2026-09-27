@@ -125,6 +125,57 @@
   }
 }
 
+/* Splash intro keyframes ----------------------------------------------------
+   Transform/opacity only (spec: prefer compositor-friendly properties).
+   Every entrance uses `both` fill so content stays invisible until its delay
+   elapses — otherwise the whole intro would pop in at once. */
+
+@keyframes intro-veil-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes intro-word-in {
+  from { opacity: 0; transform: translateY(18px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes intro-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes intro-icon-in {
+  from { opacity: 0; transform: translateY(22px) scale(0.82); }
+  to   { opacity: 0.45; transform: translateY(0) scale(1); }
+}
+
+/* Exit: the overlay scales up slightly while fading, so the store already
+   loaded underneath is revealed instead of cut to. */
+@keyframes intro-exit {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(1.05); }
+}
+
+.intro-veil {
+  animation: intro-veil-in 0.35s ease both;
+}
+.intro-word {
+  animation: intro-word-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.25s both;
+}
+.intro-tagline {
+  animation: intro-rise 0.7s ease-out 0.85s both;
+}
+.intro-icon-in {
+  animation: intro-icon-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.intro-message {
+  animation: intro-rise 0.7s ease-out 2.4s both;
+}
+.intro-exit {
+  animation: intro-exit 0.5s ease-in both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in-up,
   .animate-ping,
@@ -134,6 +185,9 @@
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    /* Without this, delayed entrances (intro + hero stagger) stay invisible for
+       their full delay — leaving reduced-motion users staring at a blank layer. */
+    animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;

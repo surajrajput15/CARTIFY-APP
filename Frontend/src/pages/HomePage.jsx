@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { fetchProducts } from '../services/productsApi';
 import HeroBanner from '../components/HeroBanner';
@@ -10,6 +10,11 @@ import { isNetworkError } from '../utils/apiError';
 import { formatNumber, truncate, titleCase } from '../utils/format';
 import { logError } from '../utils/logger';
 import HomeSections from '../components/HomeSections';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+
+// Whitelisted ?sort= values (F-17) — anything else falls back to 'newest'.
+const SORT_VALUES = ['newest', 'price_asc', 'price_desc', 'rating'];
 
 const getPageNumbers = (current, total) => {
   if (total <= 7) {
@@ -31,36 +36,39 @@ const HomePage = () => {
   const [products, setProducts] = useState([]);
   const [total, setTotal] = useState(0);
   const [pages, setPages] = useState(1);
-  const [page, setPage] = useState(1);
-  const [selectedCategory, setSelectedCategory] = useState('all');
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
   const [retryKey, setRetryKey] = useState(0);
 
-  const [searchParams] = useSearchParams();
+  // F-12: the URL is the single source of truth for the whole result view —
+  // ?search= ?category= and ?page= are read straight from it (Navbar rail,
+  // ShopByCategory cards and search all drive these params), so filters
+  // deep-link, survive refresh and the back button restores the exact view.
+  const [searchParams, setSearchParams] = useSearchParams();
   const searchQuery = searchParams.get('search') || '';
-  const categoryParam = searchParams.get('category') || 'all';
+  const selectedCategory = searchParams.get('category') || 'all';
+  const pageParam = parseInt(searchParams.get('page') || '1', 10);
+  const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+  // F-17: sort + price range are URL params too (?sort= ?min= ?max=), so the
+  // whole result view stays shareable/deep-linkable. Unknown values fall back
+  // to the defaults (never trust a URL).
+  const sortParam = searchParams.get('sort') || 'newest';
+  const sortValue = SORT_VALUES.includes(sortParam) ? sortParam : 'newest';
+  const minParam = searchParams.get('min') || '';
+  const maxParam = searchParams.get('max') || '';
 
-  // URL is the single source of truth for filters: Navbar rail, ShopByCategory
-  // cards and search all drive /?category= / ?search=, so keep local state in sync.
+  // F-13: exactly one effect owns fetching. The old category/page sync
+  // effects re-triggered state on every filter change and duplicated fetches.
   useEffect(() => {
-    setSelectedCategory(categoryParam);
-    setPage(1);
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot sync from URL
-  }, [categoryParam]);
-
-  // Reset loading when search/category changes (URL-driven).
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot UI reset on filter change
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch cycle opens with its loading/error state
     setLoading(true);
-    setPage(1);
     setFetchError(null);
-  }, [selectedCategory, searchQuery]);
-
-  useEffect(() => {
     const params = { page, limit: 12 };
     if (selectedCategory !== 'all') params.category = selectedCategory;
     if (searchQuery) params.search = searchQuery;
+    if (sortValue !== 'newest') params.sort = sortValue;
+    if (minParam !== '') params.minPrice = minParam;
+    if (maxParam !== '') params.maxPrice = maxParam;
 
     let cancelled = false;
     fetchProducts(params)
@@ -95,11 +103,45 @@ const HomePage = () => {
       .finally(() => { if (!cancelled) setLoading(false); });
 
     return () => { cancelled = true; };
-  }, [page, selectedCategory, searchQuery, retryKey]);
+  }, [page, selectedCategory, searchQuery, sortValue, minParam, maxParam, retryKey]);
 
   const goToPage = (p) => {
-    setPage(p);
+    // Page lives in the URL (F-12): rewrite only ?page= so ?category=/?search=
+    // survive, and drop it entirely for page 1 to keep URLs canonical.
+    const next = new URLSearchParams(searchParams);
+    if (p > 1) next.set('page', String(p));
+    else next.delete('page');
+    setSearchParams(next);
     document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  // F-17: changing sort/price returns to page 1 so the new result set starts
+  // at the top (same contract the category/search writers already have).
+  const applySort = (value) => {
+    const next = new URLSearchParams(searchParams);
+    if (value === 'newest') next.delete('sort');
+    else next.set('sort', value);
+    next.delete('page');
+    setSearchParams(next);
+  };
+
+  // Uncontrolled price inputs: typing must not hit the network per keystroke —
+  // Apply commits them to the URL (keys remount the fields when the URL
+  // changes underneath, e.g. the back button).
+  const minRef = useRef(null);
+  const maxRef = useRef(null);
+  const applyPriceFilter = () => {
+    const next = new URLSearchParams(searchParams);
+    const commit = (key, input) => {
+      const raw = input?.value?.trim() ?? '';
+      const n = Number(raw);
+      if (raw !== '' && Number.isFinite(n) && n >= 0) next.set(key, String(n));
+      else next.delete(key);
+    };
+    commit('min', minRef.current);
+    commit('max', maxRef.current);
+    next.delete('page');
+    setSearchParams(next);
   };
 
   const handleRetry = () => {
@@ -118,9 +160,23 @@ const HomePage = () => {
     [products]
   );
 
+  // F-45: the hero's product count comes from THIS fetch — the old duplicate
+  // `limit: 1` request is gone. Only the unfiltered catalog total is shown;
+  // filtered/errored/loading views fall back to the honest neutral copy.
+  const catalogCount =
+    !loading &&
+    !fetchError &&
+    !searchQuery &&
+    selectedCategory === 'all' &&
+    sortValue === 'newest' &&
+    minParam === '' &&
+    maxParam === ''
+      ? total
+      : null;
+
   return (
     <main className="max-w-7xl mx-auto p-4 md:p-6 mt-4">
-      <HeroBanner />
+      <HeroBanner productCount={catalogCount} />
 
       {!searchQuery && selectedCategory === 'all' && <ShopByCategory />}
 
@@ -137,6 +193,60 @@ const HomePage = () => {
           </span>
         )}
       </div>
+
+      {/* F-17: server-side sort + price range — everything here is a URL param */}
+      <Card className="mb-6 flex flex-wrap items-end gap-3 border rounded-2xl p-3 sm:p-4">
+        <label className="flex flex-col gap-1 text-xs font-bold text-gray-500">
+          Sort by
+          <select
+            value={sortValue}
+            onChange={(e) => applySort(e.target.value)}
+            aria-label="Sort products"
+            className="min-h-[44px] rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
+          >
+            <option value="newest">Newest</option>
+            <option value="price_asc">Price: Low to High</option>
+            <option value="price_desc">Price: High to Low</option>
+            <option value="rating">Top Rated</option>
+          </select>
+        </label>
+        <div className="flex items-end gap-2">
+          <label className="flex flex-col gap-1 text-xs font-bold text-gray-500">
+            Min ₹
+            <input
+              key={`min-${minParam}`}
+              ref={minRef}
+              defaultValue={minParam}
+              type="number"
+              min="0"
+              inputMode="numeric"
+              placeholder="0"
+              aria-label="Minimum price"
+              className="w-24 min-h-[44px] rounded-lg border border-gray-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-bold text-gray-500">
+            Max ₹
+            <input
+              key={`max-${maxParam}`}
+              ref={maxRef}
+              defaultValue={maxParam}
+              type="number"
+              min="0"
+              inputMode="numeric"
+              placeholder="Any"
+              aria-label="Maximum price"
+              className="w-24 min-h-[44px] rounded-lg border border-gray-200 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+          </label>
+          <Button
+            onClick={applyPriceFilter}
+            className="min-h-[44px] rounded-lg px-4 text-sm font-bold transition-colors"
+          >
+            Apply
+          </Button>
+        </div>
+      </Card>
 
       {loading ? (
         <SkeletonList count={8} />
@@ -155,12 +265,12 @@ const HomePage = () => {
           <p className="text-gray-500 max-w-md mx-auto text-sm sm:text-base mb-6">
             We couldn't load products just now. Please try again.
           </p>
-          <button
+          <Button
             onClick={handleRetry}
-            className="bg-teal-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-teal-700 transition-colors min-h-[44px] inline-flex items-center"
+            className="px-6 py-3 rounded-lg font-bold transition-colors min-h-[44px] inline-flex items-center"
           >
             Try Again
-          </button>
+          </Button>
         </div>
       ) : products.length > 0 ? (
         <>
@@ -175,10 +285,11 @@ const HomePage = () => {
               className="mt-10 flex justify-center items-center gap-1.5 flex-wrap"
               aria-label="Pagination"
             >
+              {/* F-19: below sm only Prev / "Page X of Y" / Next — numeric row from sm up */}
               <button
                 onClick={() => goToPage(1)}
                 disabled={page === 1}
-                className="px-3 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[44px]"
+                className="hidden sm:inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[44px]"
                 aria-label="First page"
               >
                 First
@@ -192,23 +303,29 @@ const HomePage = () => {
                 Prev
               </button>
 
-              {getPageNumbers(page, pages).map((item, i) =>
-                item === '...' ? (
-                  <span key={`ellipsis-${i}`} className="px-2 text-gray-400 font-bold" aria-hidden="true">…</span>
-                ) : (
-                  <button
-                    key={item}
-                    onClick={() => goToPage(item)}
-                    aria-label={`Page ${item}`}
-                    aria-current={page === item ? 'page' : undefined}
-                    className={`w-9 h-9 min-w-[44px] min-h-[44px] rounded-lg text-sm font-bold transition-colors ${
-                      page === item ? 'bg-teal-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {item}
-                  </button>
-                )
-              )}
+              <span className="sm:hidden px-2 text-sm font-medium text-gray-600">
+                Page {page} of {pages}
+              </span>
+
+              <span className="hidden sm:flex items-center gap-1.5">
+                {getPageNumbers(page, pages).map((item, i) =>
+                  item === '...' ? (
+                    <span key={`ellipsis-${i}`} className="px-2 text-gray-500 font-bold" aria-hidden="true">…</span>
+                  ) : (
+                    <button
+                      key={item}
+                      onClick={() => goToPage(item)}
+                      aria-label={`Page ${item}`}
+                      aria-current={page === item ? 'page' : undefined}
+                      className={`w-9 h-9 min-w-[44px] min-h-[44px] rounded-lg text-sm font-bold transition-colors ${
+                        page === item ? 'bg-teal-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  )
+                )}
+              </span>
 
               <button
                 onClick={() => goToPage(Math.min(pages, page + 1))}
@@ -221,7 +338,7 @@ const HomePage = () => {
               <button
                 onClick={() => goToPage(pages)}
                 disabled={page === pages}
-                className="px-3 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[44px]"
+                className="hidden sm:inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors min-h-[44px]"
                 aria-label="Last page"
               >
                 Last

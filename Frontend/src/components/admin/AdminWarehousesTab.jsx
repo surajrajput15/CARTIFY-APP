@@ -1,10 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { Plus, Edit, Trash2, Loader2, X, Warehouse as WarehouseIcon, Package, ArrowDownUp, TrendingUp, ArrowLeftRight, History } from 'lucide-react';
-import { fetchWarehouses, createWarehouse, updateWarehouse, deleteWarehouse, fetchInventory, setStock, clearProductRows, recomputeAllStock, fetchStockLedger, fetchStockWarehouses, transferStock, fetchInventoryAlerts } from '../../services/warehousesApi';
+import { fetchWarehouses, createWarehouse, updateWarehouse, deleteWarehouse, fetchInventory, setStock, recomputeAllStock, fetchStockLedger, fetchStockWarehouses, transferStock, fetchInventoryAlerts } from '../../services/warehousesApi';
 import { isNetworkError } from '../../utils/apiError';
 import ConfirmModal from '../ConfirmModal';
 import { formatPrice } from '../../utils/format';
+import Button from '../ui/Button';
+import Card from '../ui/Card';
+import Input from '../ui/Input';
 
 const EMPTY_FORM = { name: '', code: '', city: '', state: '', addressLine: '', managerName: '', isActive: true };
 
@@ -65,7 +68,9 @@ function AdminWarehousesTab() {
     }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- load() only flips its own loading flag around an awaited fetch
   useEffect(() => { load(); }, [load]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- loadAlerts() only flips its own loading flag around an awaited fetch
   useEffect(() => { loadAlerts(); }, [loadAlerts]);
 
   const loadInventory = useCallback(async (whId, search) => {
@@ -209,6 +214,7 @@ function AdminWarehousesTab() {
     }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- loadLedger() only flips its own loading flag around an awaited fetch
   useEffect(() => { loadLedger(); }, [loadLedger]);
 
   const openTransfer = async () => {
@@ -282,7 +288,7 @@ function AdminWarehousesTab() {
 
   return (
     <div className="space-y-4 animate-fade-in-up">
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5">
+      <Card className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4 sm:p-5">
         <div className="flex items-center gap-3">
           <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-teal-50 text-teal-600">
             <WarehouseIcon size={20} aria-hidden="true" />
@@ -306,14 +312,14 @@ function AdminWarehousesTab() {
           >
             <TrendingUp size={16} aria-hidden="true" /> Resync
           </button>
-          <button
+          <Button
             onClick={openCreate}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold rounded-xl transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold rounded-xl transition-colors"
           >
             <Plus size={16} aria-hidden="true" /> Add warehouse
-          </button>
+          </Button>
         </div>
-      </div>
+      </Card>
 
       {(totalSkus > 0 || totalUnits > 0) && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -369,7 +375,7 @@ function AdminWarehousesTab() {
                           {a.critical ? 'Out' : 'Low'}
                         </span>
                       </td>
-                      <td className="p-2 text-gray-500">{a.warehouseName} <span className="text-gray-400">({a.warehouseCode})</span></td>
+                      <td className="p-2 text-gray-500">{a.warehouseName} <span className="text-gray-500">({a.warehouseCode})</span></td>
                       <td className="p-2 text-gray-500">{a.variantKey || '—'}</td>
                       <td className="p-2 font-bold text-gray-800">{a.quantity}</td>
                       <td className="p-2 text-gray-500">{a.lowStockThreshold}</td>
@@ -388,10 +394,10 @@ function AdminWarehousesTab() {
         <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-12 text-center">
           <WarehouseIcon size={36} className="mx-auto text-gray-300 mb-3" aria-hidden="true" />
           <p className="font-semibold text-gray-600">No warehouses yet</p>
-          <p className="text-sm text-gray-400 mt-1">Create a hub to start tracking per-warehouse stock.</p>
+          <p className="text-sm text-gray-500 mt-1">Create a hub to start tracking per-warehouse stock.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <Card className="rounded-2xl border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead className="bg-gray-50 text-xs font-bold text-gray-500 uppercase tracking-wider">
@@ -411,7 +417,7 @@ function AdminWarehousesTab() {
                     <td className="p-3">
                       <button onClick={() => openWarehouse(w)} className="text-left group">
                         <p className="font-bold text-gray-800 group-hover:text-teal-600">{w.name}</p>
-                        {w.managerName && <p className="text-xs text-gray-400">{w.managerName}</p>}
+                        {w.managerName && <p className="text-xs text-gray-500">{w.managerName}</p>}
                       </button>
                     </td>
                     <td className="p-3 font-bold tracking-widest text-gray-500">{w.code}</td>
@@ -430,13 +436,13 @@ function AdminWarehousesTab() {
                     </td>
                     <td className="p-3">
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => openWarehouse(w)} className="p-2 text-gray-400 hover:text-teal-600 rounded-lg hover:bg-teal-50" aria-label="View inventory">
+                        <button onClick={() => openWarehouse(w)} className="p-2 text-gray-500 hover:text-teal-600 rounded-lg hover:bg-teal-50" aria-label="View inventory">
                           <Package size={16} aria-hidden="true" />
                         </button>
-                        <button onClick={() => openEdit(w)} className="p-2 text-gray-400 hover:text-teal-600 rounded-lg hover:bg-teal-50" aria-label="Edit">
+                        <button onClick={() => openEdit(w)} className="p-2 text-gray-500 hover:text-teal-600 rounded-lg hover:bg-teal-50" aria-label="Edit">
                           <Edit size={16} aria-hidden="true" />
                         </button>
-                        <button onClick={() => handleDelete(w)} className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50" aria-label="Delete">
+                        <button onClick={() => handleDelete(w)} className="p-2 text-gray-500 hover:text-red-600 rounded-lg hover:bg-red-50" aria-label="Delete">
                           <Trash2 size={16} aria-hidden="true" />
                         </button>
                       </div>
@@ -446,10 +452,10 @@ function AdminWarehousesTab() {
               </tbody>
             </table>
           </div>
-        </div>
+        </Card>
       )}
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <Card className="rounded-2xl border overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5 border-b border-gray-100">
           <div className="flex items-center gap-3">
             <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600">
@@ -460,7 +466,7 @@ function AdminWarehousesTab() {
               <p className="text-xs text-gray-500">Latest movements across every warehouse — transfers and adjustments. Immutable audit trail.</p>
             </div>
           </div>
-          <span className="text-xs font-bold text-gray-400">{ledger.length} entries</span>
+          <span className="text-xs font-bold text-gray-500">{ledger.length} entries</span>
         </div>
 
         {ledgerLoading ? (
@@ -469,7 +475,7 @@ function AdminWarehousesTab() {
           <div className="p-10 text-center">
             <History size={28} className="mx-auto text-gray-300 mb-3" aria-hidden="true" />
             <p className="font-semibold text-gray-600">No movements yet</p>
-            <p className="text-sm text-gray-400 mt-1">Edits and transfers will appear here automatically.</p>
+            <p className="text-sm text-gray-500 mt-1">Edits and transfers will appear here automatically.</p>
           </div>
         ) : (
           <div className="overflow-x-auto max-h-[420px] overflow-y-auto">
@@ -505,12 +511,12 @@ function AdminWarehousesTab() {
                       <p className="font-semibold text-gray-800 max-w-[200px] truncate" title={tx.productTitle}>{tx.productTitle || 'Unknown product'}</p>
                     </td>
                     <td className="p-3">
-                      {tx.variantKey ? <span className="px-2 py-0.5 rounded bg-gray-100 text-xs font-semibold text-gray-600">{tx.variantKey}</span> : <span className="text-xs text-gray-400">Base</span>}
+                      {tx.variantKey ? <span className="px-2 py-0.5 rounded bg-gray-100 text-xs font-semibold text-gray-600">{tx.variantKey}</span> : <span className="text-xs text-gray-500">Base</span>}
                     </td>
                     <td className="p-3">
                       <span className="text-gray-600">{tx.warehouseName || '—'}</span>
                       {tx.oppositeWarehouseName && (
-                        <span className="text-gray-400 text-xs"> ⇄ {tx.oppositeWarehouseName}</span>
+                        <span className="text-gray-500 text-xs"> ⇄ {tx.oppositeWarehouseName}</span>
                       )}
                     </td>
                     <td className="p-3">
@@ -519,17 +525,17 @@ function AdminWarehousesTab() {
                       </span>
                     </td>
                     <td className="p-3 font-semibold text-gray-700">{tx.balanceAfter}</td>
-                    <td className="p-3 text-xs text-gray-400 max-w-[180px] truncate">{tx.note || '—'}</td>
+                    <td className="p-3 text-xs text-gray-500 max-w-[180px] truncate">{tx.note || '—'}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-      </div>
+      </Card>
 
       {active && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <Card className="rounded-2xl border overflow-hidden">
           <div className="flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5 border-b border-gray-100">
             <div className="flex items-center gap-3">
               <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-teal-50 text-teal-600">
@@ -540,11 +546,11 @@ function AdminWarehousesTab() {
                 <p className="text-xs text-gray-500">Per-product stock at this warehouse. Edits resync the sellable number automatically.</p>
               </div>
             </div>
-            <input
+            <Input
               value={invSearch}
               onChange={(e) => setInvSearch(e.target.value)}
               placeholder="Search products…"
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              className="px-3 py-2 border-gray-200 rounded-lg text-sm focus:ring-2"
             />
           </div>
 
@@ -554,7 +560,7 @@ function AdminWarehousesTab() {
             <div className="p-10 text-center">
               <Package size={32} className="mx-auto text-gray-300 mb-3" aria-hidden="true" />
               <p className="font-semibold text-gray-600">{invSearch ? 'No matching products' : 'No stock tracked here yet'}</p>
-              <p className="text-sm text-gray-400 mt-1">
+              <p className="text-sm text-gray-500 mt-1">
                 {invSearch
                   ? 'Try a different search term.'
                   : 'Stock is created from the Products tab: any product with stock gains inventory rows across warehouses on resync.'}
@@ -581,11 +587,11 @@ function AdminWarehousesTab() {
                           {row.productImage ? (
                             <img src={row.productImage} alt="" className="w-10 h-10 rounded-lg object-cover" />
                           ) : (
-                            <span className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400"><Package size={16} aria-hidden="true" /></span>
+                            <span className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500"><Package size={16} aria-hidden="true" /></span>
                           )}
                           <div>
                             <p className="font-bold text-gray-800 max-w-[220px] truncate" title={row.productTitle}>{row.productTitle}</p>
-                            <p className="text-xs text-gray-400"></p>
+                            <p className="text-xs text-gray-500"></p>
                           </div>
                         </div>
                       </td>
@@ -593,7 +599,7 @@ function AdminWarehousesTab() {
                         {row.variantKey ? (
                           <span className="px-2 py-0.5 rounded bg-gray-100 text-xs font-semibold text-gray-600">{row.variantKey}</span>
                         ) : (
-                          <span className="text-xs text-gray-400">Base</span>
+                          <span className="text-xs text-gray-500">Base</span>
                         )}
                       </td>
                       <td className="p-3 text-gray-600 capitalize">{row.productCategory}</td>
@@ -616,13 +622,13 @@ function AdminWarehousesTab() {
                         <div className="flex items-center justify-end gap-1">
                           {editingStock !== null && editingStock.rowId === row._id ? (
                             <>
-                              <button
+                              <Button
                                 onClick={() => saveStock(row)}
                                 disabled={stockSavingId === row._id}
-                                className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-lg disabled:opacity-50"
+                                className="px-3 py-1.5 text-xs font-bold rounded-lg disabled:opacity-50"
                               >
                                 {stockSavingId === row._id ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : 'Save'}
-                              </button>
+                              </Button>
                               <button
                                 onClick={() => { setEditingStock(null); }}
                                 className="px-3 py-1.5 text-gray-500 hover:bg-gray-100 text-xs font-bold rounded-lg"
@@ -646,7 +652,7 @@ function AdminWarehousesTab() {
               </table>
             </div>
           )}
-        </div>
+        </Card>
       )}
 
       {showTransfer && (
@@ -656,7 +662,7 @@ function AdminWarehousesTab() {
               <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                 <ArrowLeftRight size={18} className="text-indigo-600" aria-hidden="true" /> Transfer stock
               </h3>
-              <button type="button" onClick={() => setShowTransfer(false)} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg" aria-label="Close">
+              <button type="button" onClick={() => setShowTransfer(false)} className="p-2 text-gray-500 hover:text-gray-600 rounded-lg" aria-label="Close">
                 <X size={18} aria-hidden="true" />
               </button>
             </div>
@@ -710,12 +716,12 @@ function AdminWarehousesTab() {
 
                 <div>
                   <label htmlFor="x-qty" className="block text-sm font-medium text-gray-600 mb-1">Quantity *</label>
-                  <input id="x-qty" type="number" min={1} value={transferForm.quantity} onChange={(e) => setTransferForm({ ...transferForm, quantity: e.target.value })} placeholder="Units to move" className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm" />
+                  <Input id="x-qty" type="number" min={1} value={transferForm.quantity} onChange={(e) => setTransferForm({ ...transferForm, quantity: e.target.value })} placeholder="Units to move" className="w-full px-4 py-2.5 border-gray-200 rounded-lg focus:ring-2 text-sm" />
                 </div>
 
                 <div>
                   <label htmlFor="x-note" className="block text-sm font-medium text-gray-600 mb-1">Note</label>
-                  <input id="x-note" value={transferForm.note} onChange={(e) => setTransferForm({ ...transferForm, note: e.target.value })} maxLength={300} placeholder="Optional reference" className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm" />
+                  <Input id="x-note" value={transferForm.note} onChange={(e) => setTransferForm({ ...transferForm, note: e.target.value })} maxLength={300} placeholder="Optional reference" className="w-full px-4 py-2.5 border-gray-200 rounded-lg focus:ring-2 text-sm" />
                 </div>
 
                 <div className="flex justify-end gap-2 mt-2">
@@ -735,7 +741,7 @@ function AdminWarehousesTab() {
           <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-800">{editingId ? 'Edit warehouse' : 'Add warehouse'}</h3>
-              <button type="button" onClick={() => setShowForm(false)} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg" aria-label="Close">
+              <button type="button" onClick={() => setShowForm(false)} className="p-2 text-gray-500 hover:text-gray-600 rounded-lg" aria-label="Close">
                 <X size={18} aria-hidden="true" />
               </button>
             </div>
@@ -743,30 +749,30 @@ function AdminWarehousesTab() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="wh-name" className="block text-sm font-medium text-gray-600 mb-1">Name *</label>
-                  <input id="wh-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} maxLength={80} required className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm" />
+                  <Input id="wh-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} maxLength={80} required className="w-full px-4 py-2.5 border-gray-200 rounded-lg focus:ring-2 text-sm" />
                 </div>
                 <div>
                   <label htmlFor="wh-code" className="block text-sm font-medium text-gray-600 mb-1">Code *</label>
-                  <input id="wh-code" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} maxLength={10} required placeholder="DEL" className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm uppercase" />
+                  <Input id="wh-code" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} maxLength={10} required placeholder="DEL" className="w-full px-4 py-2.5 border-gray-200 rounded-lg focus:ring-2 text-sm uppercase" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="wh-city" className="block text-sm font-medium text-gray-600 mb-1">City *</label>
-                  <input id="wh-city" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} maxLength={60} required className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm" />
+                  <Input id="wh-city" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} maxLength={60} required className="w-full px-4 py-2.5 border-gray-200 rounded-lg focus:ring-2 text-sm" />
                 </div>
                 <div>
                   <label htmlFor="wh-state" className="block text-sm font-medium text-gray-600 mb-1">State *</label>
-                  <input id="wh-state" value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} maxLength={60} required className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm" />
+                  <Input id="wh-state" value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} maxLength={60} required className="w-full px-4 py-2.5 border-gray-200 rounded-lg focus:ring-2 text-sm" />
                 </div>
               </div>
               <div>
                 <label htmlFor="wh-addr" className="block text-sm font-medium text-gray-600 mb-1">Address</label>
-                <input id="wh-addr" value={form.addressLine} onChange={(e) => setForm({ ...form, addressLine: e.target.value })} maxLength={300} className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm" />
+                <Input id="wh-addr" value={form.addressLine} onChange={(e) => setForm({ ...form, addressLine: e.target.value })} maxLength={300} className="w-full px-4 py-2.5 border-gray-200 rounded-lg focus:ring-2 text-sm" />
               </div>
               <div>
                 <label htmlFor="wh-mgr" className="block text-sm font-medium text-gray-600 mb-1">Manager name</label>
-                <input id="wh-mgr" value={form.managerName} onChange={(e) => setForm({ ...form, managerName: e.target.value })} maxLength={80} className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm" />
+                <Input id="wh-mgr" value={form.managerName} onChange={(e) => setForm({ ...form, managerName: e.target.value })} maxLength={80} className="w-full px-4 py-2.5 border-gray-200 rounded-lg focus:ring-2 text-sm" />
               </div>
               <label className="inline-flex items-center gap-2 text-sm font-medium text-gray-600">
                 <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} className="w-4 h-4 text-teal-600 rounded border-gray-300 focus:ring-teal-500" />
@@ -775,9 +781,9 @@ function AdminWarehousesTab() {
             </div>
             <div className="flex justify-end gap-2 mt-6">
               <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50">Cancel</button>
-              <button type="submit" disabled={saving} className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold rounded-xl transition-colors disabled:opacity-50">
+              <Button type="submit" disabled={saving} className="px-5 py-2 text-sm font-bold rounded-xl transition-colors disabled:opacity-50">
                 {saving ? 'Saving…' : editingId ? 'Save changes' : 'Create'}
-              </button>
+              </Button>
             </div>
           </form>
         </div>

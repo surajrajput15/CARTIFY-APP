@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { fetchCategories } from '../services/categoriesApi';
 import { PRODUCT_CATEGORIES } from '../utils/constants';
+import Button from './ui/Button';
 
 const ICON_MAP = {
   electronics: Cpu,
@@ -33,8 +34,10 @@ const ShopByCategory = () => {
   const [error, setError] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
 
+  // Refetch effect keyed on retryKey (manual retry / mount).
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- clears loading/error for the new fetch attempt
     setLoading(true);
     setError(false);
     fetchCategories(true)
@@ -81,13 +84,13 @@ const ShopByCategory = () => {
       ) : error && categories.length === 0 ? (
         <div role="alert" className="text-center py-8 bg-white rounded-2xl border border-gray-100 px-4">
           <p className="text-gray-600 mb-3 text-sm">Couldn't load categories.</p>
-          <button
+          <Button
             type="button"
             onClick={() => setRetryKey((k) => k + 1)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white rounded-lg font-bold hover:bg-teal-700 transition-colors min-h-[44px]"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold transition-colors min-h-[44px]"
           >
             Try Again
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">

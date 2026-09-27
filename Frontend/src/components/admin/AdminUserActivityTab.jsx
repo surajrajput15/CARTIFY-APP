@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { fetchActivities, fetchActivityMeta } from '../../services/activityApi';
 import { formatDate } from '../../utils/format';
 import Spinner from '../Spinner';
+import Button from '../ui/Button';
 
 const EMPTY_FILTERS = { user: '', event: '', from: '', to: '' };
 
@@ -156,7 +157,7 @@ const AdminUserActivityTab = () => {
           </div>
         </div>
         <div className="col-span-2 md:col-span-4 flex gap-2">
-          <button onClick={applyFilters} className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold rounded-xl min-h-[44px]">Apply</button>
+          <Button onClick={applyFilters} className="px-5 py-2 text-sm font-bold rounded-xl min-h-[44px]">Apply</Button>
           <button onClick={clearFilters} className="px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 rounded-xl min-h-[44px]">Clear</button>
         </div>
       </div>
@@ -183,7 +184,7 @@ const AdminUserActivityTab = () => {
                       <td className="p-3">
                         <button
                           onClick={() => setExpanded((x) => (x === e._id ? null : e._id))}
-                          className="p-1.5 hover:bg-gray-100 rounded min-w-[36px] min-h-[36px] inline-flex items-center justify-center"
+                          className="p-1.5 hover:bg-gray-100 rounded min-w-[44px] min-h-[44px] inline-flex items-center justify-center"
                           aria-label={expanded === e._id ? 'Collapse details' : 'Expand details'}
                           aria-expanded={expanded === e._id}
                         >
@@ -194,7 +195,7 @@ const AdminUserActivityTab = () => {
                       <td className="p-3">
                         <p className="font-semibold truncate max-w-[220px]" title={e.userEmail}>{e.userEmail || '—'}</p>
                         {e.userId && (
-                          <span className="block text-xs text-gray-400 font-mono">{(e.userId._id || e.userId).slice ? String(e.userId._id || e.userId).slice(-8) : ''}</span>
+                          <span className="block text-xs text-gray-500 font-mono">{(e.userId._id || e.userId).slice ? String(e.userId._id || e.userId).slice(-8) : ''}</span>
                         )}
                       </td>
                       <td className="p-3">
@@ -205,7 +206,7 @@ const AdminUserActivityTab = () => {
                       <td className="p-3 text-gray-600 text-xs">
                         {e.details
                           ? <span className="font-mono">{Object.entries(e.details).map(([k, v]) => `${k}: ${v}`).join(', ')}</span>
-                          : <span className="text-gray-400">—</span>}
+                          : <span className="text-gray-500">—</span>}
                       </td>
                     </tr>
                     {expanded === e._id && (
@@ -220,7 +221,7 @@ const AdminUserActivityTab = () => {
                               </div>
                             )}
                             {(e.ip || e.userAgent) && (
-                              <p className="text-gray-400">
+                              <p className="text-gray-500">
                                 {e.ip && <span className="mr-3">IP: {e.ip}</span>}
                                 {e.userAgent && <span>Device: {e.userAgent.slice(0, 90)}</span>}
                               </p>

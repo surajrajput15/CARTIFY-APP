@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io } from 'socket.io-client';
-import api from '../api/axios';
 
 /**
  * Socket.IO Hook — manages Socket.IO connection with auth, rooms, and events.
@@ -63,7 +62,7 @@ export function useSocket() {
       reconnectDelayRef.current = 1000;
     });
 
-    newSocket.on('disconnect', (reason) => {
+    newSocket.on('disconnect', () => {
       setConnected(false);
     });
 
@@ -75,7 +74,7 @@ export function useSocket() {
       reconnectAttemptsRef.current = attempt;
     });
 
-    newSocket.on('reconnect', (attempt) => {
+    newSocket.on('reconnect', () => {
       reconnectAttemptsRef.current = 0;
     });
 
@@ -85,6 +84,7 @@ export function useSocket() {
 
   // Initialize socket on mount
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- getSocket() creates the instance and registers its listeners
     const s = getSocket();
     return () => {
       if (s.connected) s.disconnect();
@@ -143,6 +143,7 @@ export function useSocket() {
 
   // Expose connection status
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- getSocket() creates the instance and registers its listeners
     const s = getSocket();
     if (!s) return;
     const onConnect = () => setConnected(true);

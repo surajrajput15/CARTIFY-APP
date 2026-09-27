@@ -1,13 +1,12 @@
 import { Edit3, Trash2 } from 'lucide-react';
 import { getStockStatus } from '../../utils/stockStatus';
-import { resolveImageUrl } from '../../utils/imageUrl';
+import { resolveImageUrl, PLACEHOLDER_IMG } from '../../utils/imageUrl';
 import { formatPrice, formatNumber } from '../../utils/format';
 import StockBadge from '../StockBadge';
-
-const PLACEHOLDER_IMG = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzeXN0ZW0tdWkiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5Y2EzYWYiPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg==';
+import Card from '../ui/Card';
 
 const ProductTable = ({ products, onEdit, onDelete }) => (
-  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+  <Card className="rounded-2xl border overflow-hidden">
     <div className="overflow-x-auto" role="region" aria-label="Products table (scroll horizontally)" tabIndex={0}>
       <table className="w-full text-sm min-w-[800px]">
         <thead className="bg-gray-50 border-b border-gray-100">
@@ -40,7 +39,7 @@ const ProductTable = ({ products, onEdit, onDelete }) => (
                 </td>
                 <td className="p-4 capitalize text-gray-600 whitespace-nowrap">{p.category}</td>
                 <td className="p-4">
-                  {stock ? <StockBadge countInStock={p.countInStock} size="sm" /> : <span className="text-gray-400">&mdash;</span>}
+                  {stock ? <StockBadge countInStock={p.countInStock} size="sm" /> : <span className="text-gray-500">&mdash;</span>}
                 </td>
                 <td className="p-4 font-bold text-gray-900 whitespace-nowrap">{formatPrice(p.price)}</td>
                 <td className="p-4 text-gray-600 whitespace-nowrap">
@@ -70,7 +69,7 @@ const ProductTable = ({ products, onEdit, onDelete }) => (
         </tbody>
       </table>
     </div>
-  </div>
+  </Card>
 );
 
 export default ProductTable;

@@ -18,6 +18,7 @@ import { onBackendStatusChange } from './api/axios';
 import { registerNavigator } from './utils/navigation';
 import ErrorBoundary from './components/ErrorBoundary';
 import RoleGuard from './components/routeGuards/RoleGuard';
+import IntroGate from './components/IntroGate';
 
 const CartPage = lazy(() => import('./pages/CartPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
@@ -31,11 +32,15 @@ const WarehousePortal = lazy(() => import('./pages/WarehousePortal'));
 const OrderTrackingPage = lazy(() => import('./pages/OrderTrackingPage'));
 const FaqPage = lazy(() => import('./pages/FaqPage'));
 
+// F-49: per-route Suspense — a lazy chunk only swaps its own route element;
+// the navbar/footer shell never flashes away behind a whole-app spinner.
 function withErrorBoundary(Component) {
   return function WithErrorBoundary() {
     return (
       <ErrorBoundary>
-        <Component />
+        <Suspense fallback={<Spinner />}>
+          <Component />
+        </Suspense>
       </ErrorBoundary>
     );
   };
@@ -53,6 +58,7 @@ const DeliveryPageWithError = withErrorBoundary(DeliveryPage);
 const WarehousePortalWithError = withErrorBoundary(WarehousePortal);
 const OrderTrackingPageWithError = withErrorBoundary(OrderTrackingPage);
 const AccessDeniedWithError = withErrorBoundary(AccessDenied);
+const FaqPageWithError = withErrorBoundary(FaqPage);
 
 function NavigationBridge() {
   const navigate = useNavigate();
@@ -101,7 +107,10 @@ function App() {
   return (
     <Router>
       <GoogleIdentityProvider>
-        <div className="min-h-screen bg-gray-50 font-sans pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-10">
+        {/* data-app-shell: IntroGate marks this inert + locks scroll while the
+            splash plays. IntroGate itself must stay OUTSIDE the shell, otherwise
+            `inert` would hide the intro from screen readers too. */}
+        <div data-app-shell className="min-h-screen bg-gray-50 font-sans pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-10">
 
           <a
             href="#main-content"
@@ -122,18 +131,33 @@ function App() {
           />
           
           <main id="main-content">
-            <Suspense fallback={<Spinner />}>
-              <Routes>
+            <Routes>
                 {/* Public routes */}
                 <Route path="/" element={<HomePageWithError />} />
                 <Route path="/cart" element={<CartPageWithError />} />
                 <Route path="/login" element={<LoginPageWithError />} />
-                <Route path="/profile" element={<ProfilePageWithError />} />
+                {/* F-15: signed-in users only — RoleGuard records the intended
+                    path so login returns the user here instead of home. */}
+                <Route
+                  path="/profile"
+                  element={
+                    <RoleGuard>
+                      <ProfilePageWithError />
+                    </RoleGuard>
+                  }
+                />
                 <Route path="/wishlist" element={<WishlistPageWithError />} />
-                <Route path="/checkout" element={<CheckoutPageWithError />} />
+                <Route
+                  path="/checkout"
+                  element={
+                    <RoleGuard>
+                      <CheckoutPageWithError />
+                    </RoleGuard>
+                  }
+                />
                 <Route path="/product/:id" element={<ProductDetailsPageWithError />} />
                 <Route path="/track/:id" element={<OrderTrackingPageWithError />} />
-                <Route path="/faq" element={<FaqPage />} />
+                <Route path="/faq" element={<FaqPageWithError />} />
                 
                 {/* Access denied page - also reachable directly */}
                 <Route path="/access-denied" element={<AccessDeniedWithError />} />
@@ -171,7 +195,6 @@ function App() {
                 {/* 404 catch-all */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
-            </Suspense>
           </main>
 
           <Footer />
@@ -181,6 +204,8 @@ function App() {
           <InstallButton />
           
         </div>
+
+        <IntroGate />
       </GoogleIdentityProvider>
     </Router>
   );

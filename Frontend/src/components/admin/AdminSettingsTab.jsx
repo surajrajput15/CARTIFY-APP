@@ -1,4 +1,5 @@
-import { Shield, Mail, Database, AlertTriangle, ExternalLink, User, Lock, WifiOff, Info } from 'lucide-react';
+import { Shield, Mail, Database, AlertTriangle, ExternalLink, User, Lock, Info } from 'lucide-react';
+import { PACKAGE_VERSION } from '../../version';
 
 const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || 'surajdona2005@gmail.com').split(',').map(e => e.trim()).filter(Boolean);
 
@@ -53,7 +54,7 @@ export default function AdminSettingsTab() {
                     </div>
                     <div className="p-3 bg-gray-50 rounded-lg">
                         <dt className="text-gray-500">Frontend Version</dt>
-                        <dd className="font-mono text-gray-900">{import.meta.env.VITE_APP_VERSION || '2.0.0'}</dd>
+                        <dd className="font-mono text-gray-900">{import.meta.env.VITE_APP_VERSION || PACKAGE_VERSION}</dd>
                     </div>
                     <div className="p-3 bg-gray-50 rounded-lg">
                         <dt className="text-gray-500">Build Time</dt>
@@ -73,7 +74,7 @@ export default function AdminSettingsTab() {
                         <AlertTriangle size={16} /> Clear All Products (Dev Only)
                     </button>
                 </div>
-                <p className="text-xs text-gray-400 mt-2">Access via Control Center → Quick Actions in development mode.</p>
+                <p className="text-xs text-gray-500 mt-2">Access via Control Center → Quick Actions in development mode.</p>
             </section>
 
             <section className="bg-white rounded-2xl border border-gray-100 p-6">

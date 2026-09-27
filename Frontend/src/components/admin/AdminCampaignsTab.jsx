@@ -3,9 +3,10 @@ import { Plus, Trash2, Edit2, Power, Megaphone, Calendar, Tag } from 'lucide-rea
 import toast from 'react-hot-toast';
 import { fetchCampaigns, createCampaign, updateCampaign, toggleCampaign, deleteCampaign } from '../../services/campaignsApi';
 import { fetchProducts } from '../../services/productsApi';
-import { formatDate } from '../../utils/format';
+import { formatDate, formatPrice } from '../../utils/format';
 import ConfirmModal from '../ConfirmModal';
 import Spinner from '../Spinner';
+import Button from '../ui/Button';
 
 const CLOSED_CONFIRM = { show: false };
 const EMPTY_FORM = {
@@ -16,7 +17,7 @@ const EMPTY_FORM = {
 
 const DATE_INPUT = (d) => (d ? new Date(d).toISOString().slice(0, 16) : '');
 
-export const computeCampaignStatus = (c) => {
+const computeCampaignStatus = (c) => {
   const now = Date.now();
   const start = new Date(c.startDate).getTime();
   const end = new Date(c.endDate).getTime();
@@ -158,9 +159,9 @@ const AdminCampaignsTab = () => {
           <h2 className="text-xl font-bold flex items-center gap-2"><Megaphone size={20} className="text-teal-600" aria-hidden="true" /> Festival Campaigns</h2>
           <p className="text-sm text-gray-500">Seasonal discounts auto-apply to eligible products during the campaign window — no code needed.</p>
         </div>
-        <button onClick={openAdd} className="inline-flex items-center gap-2 bg-teal-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-teal-700 min-h-[44px]">
+        <Button onClick={openAdd} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-bold min-h-[44px]">
           <Plus size={18} /> Add Campaign
-        </button>
+        </Button>
       </div>
 
       {showForm && (
@@ -168,7 +169,7 @@ const AdminCampaignsTab = () => {
           <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl w-full max-w-xl p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-800">{editing ? 'Edit campaign' : 'Add campaign'}</h3>
-              <button type="button" onClick={() => { setShowForm(false); setEditing(null); }} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg" aria-label="Close">✕</button>
+              <button type="button" onClick={() => { setShowForm(false); setEditing(null); }} className="p-2 text-gray-500 hover:text-gray-600 rounded-lg" aria-label="Close">✕</button>
             </div>
             <div className="space-y-4">
               <div>
@@ -214,10 +215,10 @@ const AdminCampaignsTab = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">Eligible categories <span className="text-gray-400">(empty = all)</span></label>
+                <label className="block text-sm font-medium text-gray-600 mb-1">Eligible categories <span className="text-gray-500">(empty = all)</span></label>
                 <div className="flex flex-wrap gap-2">
                   {allCategories.length === 0 ? (
-                    <p className="text-xs text-gray-400">Loading categories…</p>
+                    <p className="text-xs text-gray-500">Loading categories…</p>
                   ) : (
                     allCategories.map((cat) => (
                       <button
@@ -256,9 +257,9 @@ const AdminCampaignsTab = () => {
             </div>
             <div className="flex justify-end gap-2 mt-6">
               <button type="button" onClick={() => { setShowForm(false); setEditing(null); }} className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50">Cancel</button>
-              <button type="submit" disabled={saving} className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold rounded-xl disabled:opacity-50 min-h-[44px]">
+              <Button type="submit" disabled={saving} className="px-5 py-2 text-sm font-bold rounded-xl disabled:opacity-50 min-h-[44px]">
                 {saving ? 'Saving…' : editing ? 'Save changes' : 'Create'}
-              </button>
+              </Button>
             </div>
           </form>
         </div>
@@ -284,13 +285,13 @@ const AdminCampaignsTab = () => {
                 <tr key={c._id} className="border-b hover:bg-gray-50">
                   <td className="p-3">
                     <p className="font-bold">{c.name}</p>
-                    {c.bannerText && <p className="text-xs text-gray-400 truncate max-w-[200px]">{c.bannerText}</p>}
+                    {c.bannerText && <p className="text-xs text-gray-500 truncate max-w-[200px]">{c.bannerText}</p>}
                   </td>
                   <td className="p-3">
                     <span className="inline-flex items-center gap-1 text-teal-700 font-bold"><Tag size={13} aria-hidden="true" />
-                      {c.discountType === 'percentage' ? `${c.discountValue}%` : `₹${c.discountValue}`}
+                      {c.discountType === 'percentage' ? `${c.discountValue}%` : formatPrice(c.discountValue, { showDecimals: false })}
                     </span>
-                    {c.maxDiscount ? <span className="text-xs text-gray-400 block">max ₹{c.maxDiscount}</span> : null}
+                    {c.maxDiscount ? <span className="text-xs text-gray-500 block">max ₹{c.maxDiscount}</span> : null}
                   </td>
                   <td className="p-3">
                     <p className="flex items-center gap-1 text-gray-600"><Calendar size={13} aria-hidden="true" /> {formatDate(c.startDate)} → {formatDate(c.endDate)}</p>
@@ -299,14 +300,14 @@ const AdminCampaignsTab = () => {
                     {c.eligibleCategories?.length ? (
                       <div className="flex flex-wrap gap-1">{c.eligibleCategories.slice(0, 3).map((x) => <span key={x} className="px-1.5 py-0.5 rounded bg-gray-100 text-xs font-semibold capitalize">{x}</span>)}{c.eligibleCategories.length > 3 ? `+${c.eligibleCategories.length - 3}` : ''}</div>
                     ) : (
-                      <span className="text-gray-400">All products</span>
+                      <span className="text-gray-500">All products</span>
                     )}
                   </td>
                   <td className="p-3">{statusBadge(c)}</td>
                   <td className="p-3 flex justify-end gap-1">
-                    <button onClick={() => handleToggle(c._id)} className="p-2 hover:bg-gray-100 rounded min-w-[40px] min-h-[40px]" aria-label="Toggle"><Power size={16} /></button>
-                    <button onClick={() => openEdit(c)} className="p-2 hover:bg-gray-100 rounded min-w-[40px] min-h-[40px]" aria-label="Edit"><Edit2 size={16} /></button>
-                    <button onClick={() => handleDelete(c._id)} className="p-2 hover:bg-red-50 text-red-600 rounded min-w-[40px] min-h-[40px]" aria-label="Delete"><Trash2 size={16} /></button>
+                    <button onClick={() => handleToggle(c._id)} className="p-2 hover:bg-gray-100 rounded min-w-[44px] min-h-[44px]" aria-label="Toggle"><Power size={16} /></button>
+                    <button onClick={() => openEdit(c)} className="p-2 hover:bg-gray-100 rounded min-w-[44px] min-h-[44px]" aria-label="Edit"><Edit2 size={16} /></button>
+                    <button onClick={() => handleDelete(c._id)} className="p-2 hover:bg-red-50 text-red-600 rounded min-w-[44px] min-h-[44px]" aria-label="Delete"><Trash2 size={16} /></button>
                   </td>
                 </tr>
               ))}

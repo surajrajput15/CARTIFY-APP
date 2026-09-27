@@ -38,14 +38,6 @@ export const SHIPPING_CONFIG = {
 };
 
 /**
- * Get product count for a given category
- */
-export const getCategoryCount = (products, category) => {
-  if (!category) return products.length;
-  return products.filter((p) => p.category === category).length;
-};
-
-/**
  * Get the shipping cost for a given order total
  */
 export const getShippingCost = (total) => {

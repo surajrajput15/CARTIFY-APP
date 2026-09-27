@@ -18,6 +18,9 @@ import {
 import { isNetworkError } from '../utils/apiError';
 import { formatDate } from '../utils/format';
 import { fetchWarehouses } from '../services/warehousesApi';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+import Badge from '../components/ui/Badge';
 
 const TABS = [
   { key: 'dashboard', label: 'Dashboard' },
@@ -49,7 +52,7 @@ function StockRow({ row, onSave, savingId }) {
         <td className="p-3">
           <button
             onClick={() => setExpanded((e) => !e)}
-            className="p-1.5 hover:bg-gray-100 rounded min-w-[36px] min-h-[36px] inline-flex items-center justify-center"
+            className="p-1.5 hover:bg-gray-100 rounded min-w-[44px] min-h-[44px] inline-flex items-center justify-center"
             aria-label={expanded ? 'Collapse details' : 'Expand details'}
             aria-expanded={expanded}
           >
@@ -58,12 +61,12 @@ function StockRow({ row, onSave, savingId }) {
         </td>
         <td className="p-3">
           <p className="font-semibold text-gray-800 truncate max-w-[260px]" title={row.productTitle}>{row.productTitle}</p>
-          <p className="text-xs text-gray-400">{row.productCategory || ''}</p>
+          <p className="text-xs text-gray-500">{row.productCategory || ''}</p>
         </td>
         <td className="p-3">
           {row.variantKey
             ? <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded font-mono">{row.variantKey}</code>
-            : <span className="text-xs text-gray-400">Base</span>}
+            : <span className="text-xs text-gray-500">Base</span>}
         </td>
         <td className="p-3">
           {editing ? (
@@ -83,19 +86,19 @@ function StockRow({ row, onSave, savingId }) {
         <td className="p-3">
           {editing ? (
             <div className="flex items-center gap-1.5">
-              <button
+              <Button
                 onClick={() => onSave(row, Number(qty))}
                 disabled={savingId === row._id || !Number.isFinite(Number(qty)) || Number(qty) < 0}
-                className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-lg disabled:opacity-50 min-h-[36px]"
+                className="px-3 py-1.5 text-xs font-bold rounded-lg disabled:opacity-50 min-h-[44px]"
               >
                 {savingId === row._id ? 'Saving…' : 'Save'}
-              </button>
-              <button onClick={() => { setEditing(false); setQty(row.quantity); }} className="px-2 py-1.5 text-xs font-semibold text-gray-500 hover:bg-gray-100 rounded-lg min-h-[36px]">Cancel</button>
+              </Button>
+              <button onClick={() => { setEditing(false); setQty(row.quantity); }} className="px-2 py-1.5 text-xs font-semibold text-gray-500 hover:bg-gray-100 rounded-lg min-h-[44px]">Cancel</button>
             </div>
           ) : (
             <button
               onClick={() => { setEditing(true); setQty(row.quantity); }}
-              className="px-3 py-1.5 border border-gray-200 hover:bg-gray-50 text-xs font-bold text-gray-700 rounded-lg min-h-[36px]"
+              className="px-3 py-1.5 border border-gray-200 hover:bg-gray-50 text-xs font-bold text-gray-700 rounded-lg min-h-[44px]"
             >
               Update
             </button>
@@ -163,7 +166,7 @@ function TransferForm({ onDone, onCancel, warehouseId }) {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6 space-y-4">
+    <Card className="rounded-2xl border p-4 sm:p-6 space-y-4">
       <h3 className="font-bold text-gray-800 flex items-center gap-2"><ArrowLeftRight size={18} className="text-teal-600" /> Transfer Stock Out</h3>
 
       <div>
@@ -211,12 +214,12 @@ function TransferForm({ onDone, onCancel, warehouseId }) {
       )}
 
       <div className="flex gap-2 pt-1">
-        <button onClick={submit} disabled={saving} className="px-5 py-2 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl min-h-[44px]">
+        <Button onClick={submit} disabled={saving} className="px-5 py-2 disabled:opacity-50 text-sm font-bold rounded-xl min-h-[44px]">
           {saving ? 'Transferring…' : 'Transfer Stock'}
-        </button>
+        </Button>
         <button onClick={onCancel} className="px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 rounded-xl min-h-[44px]">Cancel</button>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -365,14 +368,14 @@ function WarehousePortal() {
       </div>
 
       {needsPicker && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
+        <Card className="rounded-2xl border p-10 text-center">
           <Warehouse size={30} className="text-teal-600 mx-auto mb-3" aria-hidden="true" />
           <h2 className="text-lg font-bold text-gray-800">Pick a warehouse to continue</h2>
           <p className="text-sm text-gray-500 mt-1 max-w-md mx-auto">
             As the owner you can operate any warehouse. Choose one from the picker above to view its
             dashboard, inventory, alerts and activity.
           </p>
-        </div>
+        </Card>
       )}
 
       {!needsPicker && (
@@ -392,25 +395,25 @@ function WarehousePortal() {
         <div className="space-y-6">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {statCards.map((c) => (
-              <div key={c.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
+              <Card key={c.label} className="rounded-2xl border p-4 flex items-center gap-3">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${c.color}`} aria-hidden="true"><c.icon size={20} /></div>
                 <div className="min-w-0">
                   <p className="text-2xl font-bold text-gray-900 leading-none">{c.value}</p>
                   <p className="text-xs text-gray-500 mt-1">{c.label}</p>
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
 
           <div className="grid lg:grid-cols-2 gap-6">
             {/* Recent alerts */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <Card className="rounded-2xl border overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                 <h3 className="font-bold text-gray-800 flex items-center gap-2"><AlertTriangle size={18} className="text-amber-500" /> Low-Stock Alerts</h3>
                 <button onClick={() => setTab('alerts')} className="text-xs font-bold text-teal-600 hover:text-teal-700">View all</button>
               </div>
               <div className="divide-y divide-gray-50">
-                {alerts.length === 0 && <p className="px-4 py-8 text-center text-sm text-gray-400">No low-stock alerts 🎉</p>}
+                {alerts.length === 0 && <p className="px-4 py-8 text-center text-sm text-gray-500">No low-stock alerts 🎉</p>}
                 {alerts.slice(0, 5).map((a) => (
                   <div key={a._id} className={`px-4 py-3 flex items-center justify-between gap-3 ${a.critical ? 'bg-red-50/50' : 'bg-amber-50/40'}`}>
                     <div className="min-w-0">
@@ -418,26 +421,26 @@ function WarehousePortal() {
                       <p className="text-xs text-gray-500">{a.variantKey ? <code className="font-mono">{a.variantKey}</code> : 'Base'} · qty {a.quantity} / threshold {a.lowStockThreshold}</p>
                     </div>
                     {a.critical
-                      ? <span className="shrink-0 px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200">Critical</span>
+                      ? <Badge variant="danger" className="shrink-0 px-2 py-0.5 rounded-full text-xs font-bold border border-red-200">Critical</Badge>
                       : <span className="shrink-0 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200">Low</span>}
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
 
             {/* Recent ledger activity */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <Card className="rounded-2xl border overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                 <h3 className="font-bold text-gray-800 flex items-center gap-2"><History size={18} className="text-teal-600" /> Recent Movements</h3>
                 <button onClick={() => setTab('ledger')} className="text-xs font-bold text-teal-600 hover:text-teal-700">View all</button>
               </div>
               <div className="divide-y divide-gray-50">
-                {ledger.length === 0 && <p className="px-4 py-8 text-center text-sm text-gray-400">No movements yet.</p>}
+                {ledger.length === 0 && <p className="px-4 py-8 text-center text-sm text-gray-500">No movements yet.</p>}
                 {ledger.slice(0, 6).map((t) => (
                   <div key={t._id} className="px-4 py-3 flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-sm text-gray-700 truncate">{t.productTitle}</p>
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-gray-500">
                         {t.type === 'transfer_in' ? `In from ${t.oppositeWarehouseName || 'other'}` : t.type === 'transfer_out' ? `Out to ${t.oppositeWarehouseName || 'other'}` : 'Adjustment'} · {timeAgo(t.createdAt)}
                       </p>
                     </div>
@@ -447,7 +450,7 @@ function WarehousePortal() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
           </div>
         </div>
       )}
@@ -457,13 +460,13 @@ function WarehousePortal() {
         <div className="space-y-4">
           <div className="flex flex-wrap justify-between items-center gap-2">
             <div className="relative flex-1 max-w-md">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" aria-hidden="true" />
               <input value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && saveSearch()}
                 placeholder="Search your stock…" className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm" />
             </div>
-            <button onClick={() => setShowTransfer(true)} className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold rounded-xl min-h-[44px] inline-flex items-center gap-2">
+            <Button onClick={() => setShowTransfer(true)} className="px-4 py-2 text-sm font-bold rounded-xl min-h-[44px] inline-flex items-center gap-2">
               <ArrowLeftRight size={16} aria-hidden="true" /> Transfer Stock
-            </button>
+            </Button>
           </div>
 
           <div className="bg-white rounded-xl border overflow-x-auto">
@@ -480,7 +483,7 @@ function WarehousePortal() {
               </thead>
               <tbody>
                 {items.length === 0 && (
-                  <tr><td colSpan={6} className="p-10 text-center text-sm text-gray-400">No stock rows match.</td></tr>
+                  <tr><td colSpan={6} className="p-10 text-center text-sm text-gray-500">No stock rows match.</td></tr>
                 )}
                 {items.map((row) => <StockRow key={row._id} row={row} onSave={handleSaveStock} savingId={savingId} />)}
               </tbody>
@@ -499,7 +502,7 @@ function WarehousePortal() {
             <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-10 text-center">
               <CheckCircle2 size={40} className="mx-auto text-green-300 mb-3" aria-hidden="true" />
               <p className="font-semibold text-gray-600">All stock is healthy</p>
-              <p className="text-sm text-gray-400 mt-1">No rows at or below their low-stock threshold.</p>
+              <p className="text-sm text-gray-500 mt-1">No rows at or below their low-stock threshold.</p>
             </div>
           )}
           {alerts.map((a) => (
@@ -517,7 +520,7 @@ function WarehousePortal() {
                   <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${a.critical ? 'bg-red-50 text-red-700 border-red-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
                     {a.critical ? 'Critical' : 'Low'}
                   </span>
-                  <ChevronDown size={16} className={`text-gray-400 transition-transform ${expandedAlert === a._id ? 'rotate-180' : ''}`} aria-hidden="true" />
+                  <ChevronDown size={16} className={`text-gray-500 transition-transform ${expandedAlert === a._id ? 'rotate-180' : ''}`} aria-hidden="true" />
                 </div>
               </button>
               {expandedAlert === a._id && (
@@ -549,7 +552,7 @@ function WarehousePortal() {
               </tr>
             </thead>
             <tbody>
-              {ledger.length === 0 && <tr><td colSpan={6} className="p-10 text-center text-sm text-gray-400">No stock movements yet.</td></tr>}
+              {ledger.length === 0 && <tr><td colSpan={6} className="p-10 text-center text-sm text-gray-500">No stock movements yet.</td></tr>}
               {ledger.map((t) => (
                 <tr key={t._id} className="border-b hover:bg-gray-50">
                   <td className="p-3 text-gray-500 whitespace-nowrap">{timeAgo(t.createdAt)}</td>
@@ -568,7 +571,7 @@ function WarehousePortal() {
                     {t.quantityDelta > 0 ? '+' : ''}{t.quantityDelta}
                   </td>
                   <td className="p-3 font-mono text-gray-600">{t.balanceAfter}</td>
-                  <td className="p-3 text-xs text-gray-400 truncate max-w-[200px]" title={t.note}>{t.note || '—'}</td>
+                  <td className="p-3 text-xs text-gray-500 truncate max-w-[200px]" title={t.note}>{t.note || '—'}</td>
                 </tr>
               ))}
             </tbody>

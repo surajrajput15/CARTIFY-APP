@@ -251,7 +251,7 @@ const LoginPage = () => {
         )}
 
         {error && <div role="alert" className="mb-6 p-3 bg-red-50 border border-red-100 text-red-600 rounded-lg text-sm font-medium animate-fade-in-up">{error}</div>}
-        {successMsg && <div role="alert" className="mb-6 p-3 bg-green-50 border border-green-100 text-green-600 rounded-lg text-sm font-medium animate-fade-in-up">{successMsg}</div>}
+        {successMsg && <div role="status" className="mb-6 p-3 bg-green-50 border border-green-100 text-green-600 rounded-lg text-sm font-medium animate-fade-in-up">{successMsg}</div>}
 
         {isForgotPassword && (
           <ForgotPasswordForm

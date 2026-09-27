@@ -1,16 +1,20 @@
 import { Loader2, ShieldCheck, Lock, Truck, Ticket, CheckCircle2 } from 'lucide-react';
 import { formatPrice } from '../../utils/format';
-import { getShippingCost } from '../../utils/constants';
+import { getShippingMessage } from '../../utils/constants';
 import CouponInput from './CouponInput';
+import Button from '../ui/Button';
+import Badge from '../ui/Badge';
 
-const OrderSummary = ({ cart, total, discount = 0, appliedCoupon, couponCode, setCouponCode, couponLoading, couponError, onApplyCoupon, onRemoveCoupon, onFindBestCoupon, bestCouponLoading, loading, canPay, onPay, cartItems }) => {
+const OrderSummary = ({ cart = [], total, discount = 0, appliedCoupon, couponCode, setCouponCode, couponLoading, couponError, onApplyCoupon, onRemoveCoupon, onFindBestCoupon, bestCouponLoading, loading, canPay, onPay, cartItems }) => {
   const normalizedDiscount = Math.min(Math.max(0, Number(discount) || 0), Math.max(0, Number(total) || 0));
   const discountedSubtotal = Math.max(0, total - normalizedDiscount);
-  // Backend charges shipping on the discounted total and forces ₹0 shipping on
-  // fully-discounted (free) orders — mirror that so the preview never shows ₹79
-  // while Razorpay charges ₹0.
-  const shippingCost = discountedSubtotal <= 0 ? 0 : getShippingCost(discountedSubtotal);
-  const finalTotal = Math.max(0, discountedSubtotal + shippingCost);
+  // DEC-1A: the backend never charges shipping (paymentRoutes calculates
+  // total = items − discount only), so the preview must show exactly that —
+  // no client-side ₹79. "Free shipping over ₹999" stays marketing copy.
+  const shippingMessage = discountedSubtotal <= 0
+    ? { text: 'Free', className: 'text-green-600 font-medium' }
+    : getShippingMessage(discountedSubtotal);
+  const finalTotal = discountedSubtotal;
 
   // Use cartItems if provided, otherwise fall back to cart
   const itemsForCoupon = cartItems || cart;
@@ -22,11 +26,12 @@ const OrderSummary = ({ cart, total, discount = 0, appliedCoupon, couponCode, se
     >
       <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-4">Order Summary</h2>
 
-      <div className="space-y-3 mb-6 max-h-60 overflow-y-auto pr-2 -mr-2" aria-label="Cart items">
+      {/* F-23: inner scroll only from sm up — on mobile the page scrolls (no scroll trap) */}
+      <div className="space-y-3 mb-6 sm:max-h-60 sm:overflow-y-auto pr-2 -mr-2" aria-label="Cart items">
         {cart.map((item, index) => (
           <div key={item._id || index} className="flex justify-between items-center text-sm gap-2">
             <span className="text-gray-600 truncate flex-1" title={item.title || 'Item'}>
-              {item.title || 'Item'} <span className="text-gray-400">×{item.quantity || 1}</span>
+              {item.title || 'Item'} <span className="text-gray-500">×{item.quantity || 1}</span>
             </span>
             <span className="font-semibold text-gray-800 whitespace-nowrap">
               {formatPrice((Number(item.price) || 0) * (Number(item.quantity) || 1))}
@@ -44,9 +49,7 @@ const OrderSummary = ({ cart, total, discount = 0, appliedCoupon, couponCode, se
           <span className="flex items-center gap-1">
             <Truck size={14} aria-hidden="true" /> Shipping
           </span>
-          <span className={shippingCost === 0 ? 'text-green-600 font-medium' : 'text-gray-700'}>
-            {shippingCost === 0 ? 'Free' : formatPrice(shippingCost)}
-          </span>
+          <span className={shippingMessage.className}>{shippingMessage.text}</span>
         </div>
       </div>
 
@@ -63,10 +66,10 @@ const OrderSummary = ({ cart, total, discount = 0, appliedCoupon, couponCode, se
               <CheckCircle2 size={16} className="text-green-600 shrink-0" aria-hidden="true" />
               <span className="text-sm font-bold text-green-800">Coupon Applied</span>
             </div>
-            <span className="shrink-0 inline-flex items-center gap-1 bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium">
+            <Badge variant="success" className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium">
               <Ticket size={10} aria-hidden="true" />
-              {appliedCoupon.type === 'percentage' ? `${appliedCoupon.value}% OFF` : `₹${appliedCoupon.value} OFF`}
-            </span>
+              {appliedCoupon.type === 'percentage' ? `${appliedCoupon.value}% OFF` : `${formatPrice(appliedCoupon.value, { showDecimals: false })} OFF`}
+            </Badge>
           </div>
           <div className="flex justify-between text-sm text-green-700">
             <span>Code: <span className="font-mono font-bold">{appliedCoupon.code}</span></span>
@@ -75,15 +78,22 @@ const OrderSummary = ({ cart, total, discount = 0, appliedCoupon, couponCode, se
         </div>
       )}
 
-      <div className="flex justify-between items-center mb-4 pt-2 border-t border-gray-100">
+      <div className="flex justify-between items-center mb-2 pt-2 border-t border-gray-100">
         <span className="text-base sm:text-lg font-bold text-gray-800">Total</span>
-        <span className="text-xl sm:text-2xl font-bold text-teal-600">{formatPrice(finalTotal)}</span>
+        {/* F-40: coupon apply/remove changes this figure — announce it politely. */}
+        <span className="text-xl sm:text-2xl font-bold text-teal-600" aria-live="polite" aria-atomic="true">{formatPrice(finalTotal)}</span>
       </div>
 
-      <button
+      {/* F-34: honest pricing — final amount confirmed by the server at payment time */}
+      <p className="text-xs text-center text-gray-500 mb-4">
+        Final price confirmed at checkout.
+      </p>
+
+      <Button variant="dark"
         onClick={onPay}
         disabled={loading || !canPay}
-        className="w-full bg-gray-900 text-white py-3.5 rounded-xl font-bold text-base sm:text-lg hover:bg-teal-600 transition-all shadow-md flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px]"
+        aria-busy={loading}
+        className="w-full py-3.5 rounded-xl font-bold text-base sm:text-lg transition-all shadow-md flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px]"
         aria-label={loading ? 'Processing payment' : `Pay ${formatPrice(finalTotal)} now`}
       >
         {loading ? <Loader2 className="animate-spin" size={22} aria-hidden="true" /> : (
@@ -92,7 +102,7 @@ const OrderSummary = ({ cart, total, discount = 0, appliedCoupon, couponCode, se
             Pay {formatPrice(finalTotal)} Now
           </>
         )}
-      </button>
+      </Button>
 
       <p className="text-xs text-center text-gray-500 mt-3 flex items-center justify-center gap-1.5">
         <ShieldCheck size={14} aria-hidden="true" /> 100% Secure Payments by Razorpay

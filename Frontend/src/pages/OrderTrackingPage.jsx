@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import toast from 'react-hot-toast';
 import { ArrowLeft, Navigation, MapPin, Package, Truck, Home, Clock, Loader2, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/authContext';
 import api from '../api/axios';
@@ -8,6 +7,7 @@ import { fetchMyOrders } from '../services/ordersApi';
 import { MapContainer } from '../components/map/MapContainer';
 import { useLiveTracking } from '../hooks/useLiveTracking';
 import { distanceKm, estimateMinutes, formatEta, timeLabel, mapsDeepLink } from '../utils/geo';
+import Card from '../components/ui/Card';
 
 const DELIVERY_STEPS = [
   { key: 'assigned', label: 'Order assigned', icon: Package },
@@ -53,8 +53,8 @@ function Timeline({ status, timestamps }) {
               <StepIcon size={15} />
             </span>
             <div className="pt-1">
-              <p className={`text-sm font-semibold ${done || active ? 'text-gray-800' : 'text-gray-400'}`}>{step.label}</p>
-              {ts && done && <p className="text-xs text-gray-400">{timeLabel(ts)}</p>}
+              <p className={`text-sm font-semibold ${done || active ? 'text-gray-800' : 'text-gray-500'}`}>{step.label}</p>
+              {ts && done && <p className="text-xs text-gray-500">{timeLabel(ts)}</p>}
             </div>
           </li>
         );
@@ -78,6 +78,7 @@ function OrderTrackingPage() {
   useEffect(() => {
     if (!id || !user) return;
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets loading while the order refetches
     setLoading(true);
     const load = async () => {
       try {
@@ -180,7 +181,7 @@ function OrderTrackingPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left: Timeline + order summary */}
         <div className="space-y-6 min-w-0 order-2 lg:order-1">
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
+          <Card className="rounded-2xl border p-5 sm:p-6">
             <h2 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
               <Truck size={18} className="text-teal-600" aria-hidden="true" /> Delivery progress
             </h2>
@@ -194,9 +195,9 @@ function OrderTrackingPage() {
                 delivered: order.deliveredAt,
               }}
             />
-          </div>
+          </Card>
 
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
+          <Card className="rounded-2xl border p-5 sm:p-6">
             <h2 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
               <MapPin size={18} className="text-teal-600" aria-hidden="true" /> Delivery address
             </h2>
@@ -225,24 +226,24 @@ function OrderTrackingPage() {
                     </li>
                   ))}
                   {order.orderItems.length > 5 && (
-                    <li className="text-xs text-gray-400">+{order.orderItems.length - 5} more item(s)</li>
+                    <li className="text-xs text-gray-500">+{order.orderItems.length - 5} more item(s)</li>
                   )}
                 </ul>
               </div>
             )}
-          </div>
+          </Card>
         </div>
 
         {/* Right: Live map */}
         <div className="min-w-0 order-1 lg:order-2">
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <Card className="rounded-2xl border overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
               <h3 className="font-bold text-gray-800 flex items-center gap-2">
                 <Clock size={16} className="text-teal-600" aria-hidden="true" /> Live status
               </h3>
               {etaInfo && trackable && (
                 <div className="text-right">
-                  <p className="text-xs text-gray-400">ETA</p>
+                  <p className="text-xs text-gray-500">ETA</p>
                   <p className="text-sm font-bold text-teal-700">{etaInfo.label}</p>
                 </div>
               )}
@@ -268,7 +269,7 @@ function OrderTrackingPage() {
                 )}
               </div>
             )}
-          </div>
+          </Card>
         </div>
       </div>
     </div>

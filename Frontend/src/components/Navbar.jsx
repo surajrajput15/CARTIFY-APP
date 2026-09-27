@@ -204,7 +204,7 @@ const Navbar = () => {
                       aria-haspopup="true"
                       aria-expanded={dropdownOpen}
                       aria-label="Account menu"
-                      className="flex items-center gap-1 p-2 rounded-lg text-teal-700 hover:text-teal-800 hover:bg-teal-50 transition-colors min-h-[44px] group"
+                      className="flex items-center gap-1 p-2 rounded-lg text-teal-700 hover:text-teal-800 hover:bg-teal-50 transition-colors min-h-[44px] min-w-0 group"
                     >
                       <User size={20} aria-hidden="true" />
                       <span className="hidden sm:inline truncate max-w-[80px] font-semibold">Hi, {firstName}</span>
@@ -266,7 +266,7 @@ const Navbar = () => {
                           aria-label="Admin control menu"
                         >
                           <div className="px-4 py-2 border-b border-gray-100">
-                            <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Full control</p>
+                            <p className="text-xs font-bold uppercase tracking-wider text-gray-500">Full control</p>
                           </div>
                           <NavLink to="/admin" role="menuitem" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition-colors" onClick={() => setAdminMenuOpen(false)}>
                             <Shield size={16} aria-hidden="true" /> Admin Dashboard
@@ -278,7 +278,7 @@ const Navbar = () => {
                             <Warehouse size={16} aria-hidden="true" /> Warehouse Portal
                           </NavLink>
                           <div className="border-t border-gray-100 mt-1 pt-1">
-                            <p className="px-4 py-1 text-xs font-bold uppercase tracking-wider text-gray-400">Manage</p>
+                            <p className="px-4 py-1 text-xs font-bold uppercase tracking-wider text-gray-500">Manage</p>
                           </div>
                           <NavLink to="/admin?tab=users" role="menuitem" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition-colors" onClick={() => setAdminMenuOpen(false)}>
                             <User size={16} aria-hidden="true" /> Users

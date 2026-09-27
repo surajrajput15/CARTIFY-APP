@@ -6,7 +6,9 @@ import react from 'eslint-plugin-react'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', 'coverage']),
+  // .tmp_smoke_profile is a throwaway Chrome profile from smoke runs; p0*/tmp_* .mjs
+  // are one-off debug probes (all gitignored).
+  globalIgnores(['dist', 'coverage', '.tmp_smoke_profile', 'p0*.mjs', 'tmp_*.mjs', '_tmp_smoke']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [
@@ -35,6 +37,15 @@ export default defineConfig([
       'react/jsx-key': 'warn',
       'react/no-unescaped-entities': 'off',
       'react/prop-types': 'off',
+      // The omit-idiom (`const { keep, ...rest } = x`) and `_`-prefixed throwaway
+      // params are intentional (DEC/F-05).
+      'no-unused-vars': ['error', {
+        args: 'after-used',
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_',
+        ignoreRestSiblings: true,
+      }],
     },
   },
   // Test files run under Vitest, which provides globals like `vi`, `describe`, `it`.

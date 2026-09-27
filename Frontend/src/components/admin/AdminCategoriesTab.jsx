@@ -4,6 +4,9 @@ import { Plus, Edit, Trash2, Loader2, X, Tag } from 'lucide-react';
 import { fetchCategories, createCategory, updateCategory, deleteCategory } from '../../services/categoriesApi';
 import { isNetworkError } from '../../utils/apiError';
 import ConfirmModal from '../ConfirmModal';
+import Button from '../ui/Button';
+import Card from '../ui/Card';
+import Input from '../ui/Input';
 
 const EMPTY_FORM = { name: '', description: '', image: '', sortOrder: 0, isActive: true };
 
@@ -28,6 +31,7 @@ function AdminCategoriesTab() {
     }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- load() only flips its own loading flag around an awaited fetch
   useEffect(() => { load(); }, [load]);
 
   const openCreate = () => {
@@ -97,7 +101,7 @@ function AdminCategoriesTab() {
 
   return (
     <div className="space-y-4 animate-fade-in-up">
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5">
+      <Card className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4 sm:p-5">
         <div className="flex items-center gap-3">
           <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-teal-50 text-teal-600">
             <Tag size={20} aria-hidden="true" />
@@ -107,13 +111,13 @@ function AdminCategoriesTab() {
             <p className="text-sm text-gray-500">{categories.length} total</p>
           </div>
         </div>
-        <button
+        <Button
           onClick={openCreate}
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold rounded-xl transition-colors"
+          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold rounded-xl transition-colors"
         >
           <Plus size={16} aria-hidden="true" /> Add category
-        </button>
-      </div>
+        </Button>
+      </Card>
 
       {loading ? (
         <div className="flex justify-center py-16"><Loader2 className="animate-spin text-teal-600" size={30} aria-hidden="true" /></div>
@@ -121,10 +125,10 @@ function AdminCategoriesTab() {
         <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-12 text-center">
           <Tag size={36} className="mx-auto text-gray-300 mb-3" aria-hidden="true" />
           <p className="font-semibold text-gray-600">No categories yet</p>
-          <p className="text-sm text-gray-400 mt-1">Create your first category to organise products.</p>
+          <p className="text-sm text-gray-500 mt-1">Create your first category to organise products.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <Card className="rounded-2xl border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead className="bg-gray-50 text-xs font-bold text-gray-500 uppercase tracking-wider">
@@ -144,13 +148,13 @@ function AdminCategoriesTab() {
                         {cat.image ? (
                           <img src={cat.image} alt="" className="w-10 h-10 rounded-lg object-cover" />
                         ) : (
-                          <span className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400">
+                          <span className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500">
                             <Tag size={16} aria-hidden="true" />
                           </span>
                         )}
                         <div>
                           <p className="font-bold text-gray-800">{cat.name}</p>
-                          {cat.description && <p className="text-xs text-gray-400 truncate max-w-[260px]">{cat.description}</p>}
+                          {cat.description && <p className="text-xs text-gray-500 truncate max-w-[260px]">{cat.description}</p>}
                         </div>
                       </div>
                     </td>
@@ -170,10 +174,10 @@ function AdminCategoriesTab() {
                     </td>
                     <td className="p-3">
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => openEdit(cat)} className="p-2 text-gray-400 hover:text-teal-600 rounded-lg hover:bg-teal-50" aria-label="Edit">
+                        <button onClick={() => openEdit(cat)} className="p-2 text-gray-500 hover:text-teal-600 rounded-lg hover:bg-teal-50" aria-label="Edit">
                           <Edit size={16} aria-hidden="true" />
                         </button>
-                        <button onClick={() => handleDelete(cat)} className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50" aria-label="Delete">
+                        <button onClick={() => handleDelete(cat)} className="p-2 text-gray-500 hover:text-red-600 rounded-lg hover:bg-red-50" aria-label="Delete">
                           <Trash2 size={16} aria-hidden="true" />
                         </button>
                       </div>
@@ -183,7 +187,7 @@ function AdminCategoriesTab() {
               </tbody>
             </table>
           </div>
-        </div>
+        </Card>
       )}
 
       {showForm && (
@@ -191,21 +195,21 @@ function AdminCategoriesTab() {
           <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-800">{editingId ? 'Edit category' : 'Add category'}</h3>
-              <button type="button" onClick={() => setShowForm(false)} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg" aria-label="Close">
+              <button type="button" onClick={() => setShowForm(false)} className="p-2 text-gray-500 hover:text-gray-600 rounded-lg" aria-label="Close">
                 <X size={18} aria-hidden="true" />
               </button>
             </div>
             <div className="space-y-4">
               <div>
                 <label htmlFor="cat-name" className="block text-sm font-medium text-gray-600 mb-1">Name *</label>
-                <input
+                <Input
                   id="cat-name"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   placeholder="e.g. Men&#39;s Clothing"
                   maxLength={100}
                   required
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm"
+                  className="w-full px-4 py-2.5 border-gray-200 rounded-lg focus:ring-2 text-sm"
                 />
               </div>
               <div>
@@ -221,24 +225,24 @@ function AdminCategoriesTab() {
               </div>
               <div>
                 <label htmlFor="cat-img" className="block text-sm font-medium text-gray-600 mb-1">Image URL</label>
-                <input
+                <Input
                   id="cat-img"
                   value={form.image}
                   onChange={(e) => setForm({ ...form, image: e.target.value })}
                   type="url"
                   maxLength={500}
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm"
+                  className="w-full px-4 py-2.5 border-gray-200 rounded-lg focus:ring-2 text-sm"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="cat-sort" className="block text-sm font-medium text-gray-600 mb-1">Sort order</label>
-                  <input
+                  <Input
                     id="cat-sort"
                     value={form.sortOrder}
                     onChange={(e) => setForm({ ...form, sortOrder: Number(e.target.value) || 0 })}
                     type="number"
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm"
+                    className="w-full px-4 py-2.5 border-gray-200 rounded-lg focus:ring-2 text-sm"
                   />
                 </div>
                 <div className="flex items-end pb-1">
@@ -258,9 +262,9 @@ function AdminCategoriesTab() {
               <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50">
                 Cancel
               </button>
-              <button type="submit" disabled={saving} className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold rounded-xl transition-colors disabled:opacity-50">
+              <Button type="submit" disabled={saving} className="px-5 py-2 text-sm font-bold rounded-xl transition-colors disabled:opacity-50">
                 {saving ? 'Saving…' : editingId ? 'Save changes' : 'Create'}
-              </button>
+              </Button>
             </div>
           </form>
         </div>

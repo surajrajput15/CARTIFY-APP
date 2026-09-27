@@ -2,6 +2,7 @@ import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { createCoupon, updateCoupon } from '../../services/couponsApi';
 import Modal from '../Modal';
+import Button from '../ui/Button';
 
 const EMPTY = { code: '', type: 'percentage', value: '', minOrderAmount: 0, maxDiscount: '', usageLimit: '', userLimit: 1, validFrom: '', validUntil: '', isActive: true, applicableCategories: '' };
 
@@ -82,7 +83,7 @@ const CouponFormModal = ({ editing, onClose, onSaved }) => {
 
   return (
     <Modal title={editing ? 'Edit Coupon' : 'Add Coupon'} onClose={onClose} className="max-w-lg p-6">
-      <form onSubmit={handle} className="space-y-4">
+      <form onSubmit={handle} aria-busy={saving} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <input value={form.code} onChange={e=>setForm({...form, code: e.target.value.toUpperCase()})} placeholder="Code e.g. SAVE20" className="p-3 border rounded-lg font-bold tracking-wider uppercase" required minLength={3} aria-label="Coupon code" />
           <select value={form.type} onChange={e=>setForm({...form, type: e.target.value})} className="p-3 border rounded-lg">
@@ -110,7 +111,7 @@ const CouponFormModal = ({ editing, onClose, onSaved }) => {
           <label className="text-xs">Valid Until*<input type="date" value={form.validUntil} onChange={e=>setForm({...form, validUntil: e.target.value})} className="w-full p-3 border rounded-lg mt-1" required /></label>
         </div>
         <div className="flex gap-3">
-          <button type="submit" disabled={saving} className="flex-1 bg-teal-600 text-white py-3 rounded-lg font-bold hover:bg-teal-700 disabled:opacity-50 min-h-[44px]">{saving?'Saving...': editing?'Update':'Create'}</button>
+          <Button type="submit" disabled={saving} className="flex-1 py-3 rounded-lg font-bold disabled:opacity-50 min-h-[44px]">{saving?'Saving...': editing?'Update':'Create'}</Button>
           <button type="button" onClick={onClose} className="flex-1 bg-gray-100 py-3 rounded-lg font-bold hover:bg-gray-200 min-h-[44px]">Cancel</button>
         </div>
       </form>

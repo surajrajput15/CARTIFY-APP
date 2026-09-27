@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Eye, EyeOff, Loader2, Check, Lock, ShieldCheck, Trash2, LogOut, Info } from 'lucide-react';
 import { validatePasswordPolicy } from '../../utils/format';
+import Button from '../ui/Button';
 
 const PASSWORD_FIELD_CLASS =
   'block w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-teal-500 focus:border-teal-500 font-medium bg-gray-50 min-h-[44px]';
@@ -25,7 +26,7 @@ const Field = ({ id, label, value, onChange, autoComplete, placeholder, autoFocu
         <button
           type="button"
           onClick={() => setShow(prev => !prev)}
-          className="absolute inset-y-0 right-1 flex items-center px-2 text-gray-400 hover:text-gray-600 rounded-lg min-w-[44px] min-h-[44px]"
+          className="absolute inset-y-0 right-1 flex items-center px-2 text-gray-500 hover:text-gray-600 rounded-lg min-w-[44px] min-h-[44px]"
           aria-label={show ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
         >
           {show ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
@@ -87,7 +88,7 @@ const SettingsTab = ({ user, onDeleteAccount, onLogout, onChangePassword, changi
           <div className="flex items-start sm:items-center justify-between gap-3">
             <div>
               <h3 className="font-bold text-gray-800 text-sm flex items-center gap-2">
-                <Lock size={14} className="text-gray-400" aria-hidden="true" /> Password
+                <Lock size={14} className="text-gray-500" aria-hidden="true" /> Password
               </h3>
               <p className="text-xs text-gray-500 mt-1">
                 {user?.hasPassword
@@ -96,14 +97,14 @@ const SettingsTab = ({ user, onDeleteAccount, onLogout, onChangePassword, changi
               </p>
             </div>
             {user?.hasPassword && (
-              <button
+              <Button
                 onClick={toggleChangePassword}
                 aria-expanded={showChangePassword}
                 aria-controls="change-password-form"
-                className="flex-shrink-0 text-white font-bold text-sm bg-teal-600 px-4 py-2 rounded-lg hover:bg-teal-700 transition-colors shadow-sm min-h-[44px]"
+                className="flex-shrink-0 font-bold text-sm px-4 py-2 rounded-lg transition-colors shadow-sm min-h-[44px]"
               >
                 {showChangePassword ? 'Hide' : 'Change Password'}
-              </button>
+              </Button>
             )}
           </div>
 
@@ -151,14 +152,14 @@ const SettingsTab = ({ user, onDeleteAccount, onLogout, onChangePassword, changi
                 >
                   Cancel
                 </button>
-                <button
+                <Button
                   type="submit"
                   disabled={changing}
-                  className="bg-teal-600 text-white px-5 py-2.5 rounded-lg font-bold hover:bg-teal-700 transition-colors shadow-sm flex items-center justify-center gap-2 min-h-[44px] disabled:opacity-50"
+                  className="px-5 py-2.5 rounded-lg font-bold transition-colors shadow-sm flex items-center justify-center gap-2 min-h-[44px] disabled:opacity-50"
                 >
                   {changing ? <Loader2 size={18} className="animate-spin" aria-hidden="true" /> : <Check size={18} aria-hidden="true" />}
                   {changing ? 'Updating…' : 'Update Password'}
-                </button>
+                </Button>
               </div>
             </form>
           )}
@@ -170,11 +171,11 @@ const SettingsTab = ({ user, onDeleteAccount, onLogout, onChangePassword, changi
         <p className="text-sm text-gray-500 mb-4">Your identity and membership details.</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wide">Email</h3>
+            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Email</h3>
             <p className="text-sm font-semibold text-gray-800 mt-1 break-all" title={user?.email}>{user?.email || 'Not set'}</p>
           </div>
           <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wide">Member Since</h3>
+            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wide">Member Since</h3>
             <p className="text-sm font-semibold text-gray-800 mt-1">
               {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'}
             </p>
@@ -204,7 +205,7 @@ const SettingsTab = ({ user, onDeleteAccount, onLogout, onChangePassword, changi
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
           <p className="text-sm text-gray-500 flex items-start gap-2">
-            <Info size={16} className="text-gray-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
+            <Info size={16} className="text-gray-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
             Sign out on this device. You can always log back in later.
           </p>
           <button

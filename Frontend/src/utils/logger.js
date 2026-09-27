@@ -15,3 +15,11 @@ export const logWarn = (...args) => {
     console.warn(...args);
   }
 };
+
+// Debug-level chatter (payment options, fetch results). Never ships to prod
+// so PII (emails, cart contents) can't leak into a production console.
+export const logDebug = (...args) => {
+  if (isDev) {
+    console.log(...args);
+  }
+};

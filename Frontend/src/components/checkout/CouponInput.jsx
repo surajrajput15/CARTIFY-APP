@@ -2,8 +2,26 @@ import { useEffect, useRef, useState } from 'react';
 import { Ticket, Loader2, CheckCircle2, ChevronDown, Tag } from 'lucide-react';
 import { formatPrice } from '../../utils/format';
 import AvailableCouponsModal from './AvailableCouponsModal';
+import Button from '../ui/Button';
+import Input from '../ui/Input';
+import Badge from '../ui/Badge';
 
-const CouponInput = ({ code, setCode, applied, loading, error, onApply, onRemove, onFindBest, bestLoading, cart, totalAmount }) => {
+const CouponInput = ({
+  code = '',
+  setCode,
+  applied,
+  loading = false,
+  error = '',
+  onApply,
+  onRemove,
+  onFindBest,
+  bestLoading = false,
+  // Defaults are load-bearing: CartPage rendered this without them, which fed
+  // `undefined` into the coupon pipeline and threw `Cannot read properties of
+  // undefined (reading 'map')` on every cart render.
+  cart = [],
+  totalAmount = 0,
+}) => {
   const [expanded, setExpanded] = useState(false);
   const [showAvailableModal, setShowAvailableModal] = useState(false);
   const inputRef = useRef(null);
@@ -15,16 +33,17 @@ const CouponInput = ({ code, setCode, applied, loading, error, onApply, onRemove
 
   const handleRemove = () => {
     setExpanded(false);
-    onRemove();
+    onRemove?.();
   };
 
-  const handleFindBest = () => {
-    if (!loading && !bestLoading) {
-      onFindBest();
-      // Open modal after best coupon search completes
-      setTimeout(() => {
-        setShowAvailableModal(true);
-      }, 500);
+  const handleFindBest = async () => {
+    if (loading || bestLoading) return;
+    // Wait for the search to settle before revealing the list. The old blind
+    // 500ms timer opened the modal mid-request regardless of the outcome.
+    try {
+      if (typeof onFindBest === 'function') await onFindBest();
+    } finally {
+      setShowAvailableModal(true);
     }
   };
 
@@ -51,10 +70,10 @@ const CouponInput = ({ code, setCode, applied, loading, error, onApply, onRemove
                   {Number(applied.discount) > 0 ? `You saved ${formatPrice(applied.discount)}` : 'Coupon applied successfully'}
                 </span>
                 {applied.type && applied.value && (
-                  <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium">
+                  <Badge variant="success" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium">
                     <Tag size={10} aria-hidden="true" />
-                    {applied.type === 'percentage' ? `${applied.value}% OFF` : `₹${applied.value} OFF`}
-                  </span>
+                    {applied.type === 'percentage' ? `${applied.value}% OFF` : `${formatPrice(applied.value, { showDecimals: false })} OFF`}
+                  </Badge>
                 )}
               </div>
             </div>
@@ -71,6 +90,7 @@ const CouponInput = ({ code, setCode, applied, loading, error, onApply, onRemove
       ) : showForm ? (
         <form
           onSubmit={(e) => { e.preventDefault(); onApply(); }}
+          aria-busy={loading}
         >
           <div className="flex items-center justify-between gap-2 mb-1.5">
             <label htmlFor="coupon-code-input" className="text-xs font-bold uppercase tracking-wide text-gray-700">
@@ -87,8 +107,8 @@ const CouponInput = ({ code, setCode, applied, loading, error, onApply, onRemove
             </button>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
-            <input
-              ref={inputRef}
+            <Input
+               ref={inputRef}
               id="coupon-code-input"
               type="text"
               value={code}
@@ -99,15 +119,15 @@ const CouponInput = ({ code, setCode, applied, loading, error, onApply, onRemove
               disabled={loading}
               aria-describedby={error ? 'coupon-error' : undefined}
               aria-invalid={Boolean(error)}
-              className="min-w-0 w-full flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm font-bold uppercase tracking-wider focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:outline-none bg-white min-h-[44px] disabled:opacity-60"
+              className="min-w-0 w-full flex-1 px-3 py-2 border-gray-200 rounded-lg text-sm font-bold uppercase tracking-wider focus:ring-2 focus:outline-none bg-white min-h-[44px] disabled:opacity-60"
             />
-            <button
-              type="submit"
+            <Button
+               type="submit"
               disabled={loading || !code.trim()}
-              className="w-full sm:w-auto px-5 py-2 bg-teal-600 text-white rounded-lg text-sm font-bold hover:bg-teal-700 disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px] shrink-0 inline-flex items-center justify-center gap-1 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
+              className="w-full sm:w-auto px-5 py-2 rounded-lg text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px] shrink-0 inline-flex items-center justify-center gap-1 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
             >
               {loading ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : 'Apply'}
-            </button>
+            </Button>
           </div>
           {error && <p id="coupon-error" role="alert" className="text-xs text-red-600 mt-1.5 font-medium break-words">{error}</p>}
         </form>

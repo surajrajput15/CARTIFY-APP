@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Plus, Trash2, Edit2, Power, TrendingUp, ShoppingBag, BadgePercent } from 'lucide-react';
+import { Plus, Trash2, Edit2, Power, TrendingUp, ShoppingBag, BadgePercent, CheckCircle2, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { fetchCoupons, fetchCouponAnalytics, deleteCoupon, toggleCoupon } from '../../services/couponsApi';
 import { formatPrice, formatDate } from '../../utils/format';
 import CouponFormModal from './CouponFormModal';
 import ConfirmModal from '../ConfirmModal';
 import Spinner from '../Spinner';
+import Button from '../ui/Button';
 
 const CLOSED_CONFIRM = { show: false };
 
@@ -57,9 +58,9 @@ const AdminCouponsTab = () => {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-bold">Coupons</h2>
-        <button onClick={openAdd} className="inline-flex items-center gap-2 bg-teal-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-teal-700 min-h-[44px]">
+        <Button onClick={openAdd} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-bold min-h-[44px]">
           <Plus size={18} /> Add Coupon
-        </button>
+        </Button>
       </div>
 
       {/* Usage analytics: real money spent on Paid orders only */}
@@ -131,11 +132,19 @@ const AdminCouponsTab = () => {
                   <td className="p-3">{formatPrice(c.minOrderAmount)}</td>
                   <td className="p-3">{c.usedCount}{c.usageLimit ? `/${c.usageLimit}` : ''} (per-user {c.userLimit})</td>
                   <td className="p-3">{formatDate(c.validUntil)}</td>
-                  <td className="p-3">{c.isActive ? '✅' : '⛔'}</td>
+                  <td className="p-3">
+                    {/* F-31: text + icon (no bare emoji) */}
+                    <span className={`inline-flex items-center gap-1.5 text-xs font-bold ${c.isActive ? 'text-green-700' : 'text-red-600'}`}>
+                      {c.isActive
+                        ? <CheckCircle2 size={14} aria-hidden="true" />
+                        : <XCircle size={14} aria-hidden="true" />}
+                      {c.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
                   <td className="p-3 flex justify-end gap-1">
-                    <button onClick={() => handleToggle(c._id)} className="p-2 hover:bg-gray-100 rounded min-w-[40px] min-h-[40px]" aria-label="Toggle"><Power size={16} /></button>
-                    <button onClick={() => openEdit(c)} className="p-2 hover:bg-gray-100 rounded min-w-[40px] min-h-[40px]" aria-label="Edit"><Edit2 size={16} /></button>
-                    <button onClick={() => handleDelete(c._id)} className="p-2 hover:bg-red-50 text-red-600 rounded min-w-[40px] min-h-[40px]" aria-label="Delete"><Trash2 size={16} /></button>
+                    <button onClick={() => handleToggle(c._id)} className="p-2 hover:bg-gray-100 rounded min-w-[44px] min-h-[44px]" aria-label="Toggle"><Power size={16} /></button>
+                    <button onClick={() => openEdit(c)} className="p-2 hover:bg-gray-100 rounded min-w-[44px] min-h-[44px]" aria-label="Edit"><Edit2 size={16} /></button>
+                    <button onClick={() => handleDelete(c._id)} className="p-2 hover:bg-red-50 text-red-600 rounded min-w-[44px] min-h-[44px]" aria-label="Delete"><Trash2 size={16} /></button>
                   </td>
                 </tr>
               ))}

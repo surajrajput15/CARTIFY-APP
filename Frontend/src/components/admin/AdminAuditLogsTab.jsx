@@ -4,6 +4,8 @@ import toast from 'react-hot-toast';
 import { fetchAuditLogs, fetchAuditMeta } from '../../services/auditApi';
 import { formatDate } from '../../utils/format';
 import Spinner from '../Spinner';
+import Button from '../ui/Button';
+import Badge from '../ui/Badge';
 
 const EMPTY_FILTERS = { user: '', action: '', resource: '', success: '', from: '', to: '' };
 
@@ -159,7 +161,7 @@ const AdminAuditLogsTab = () => {
           <input id="audit-to" type="date" value={filters.to} onChange={(e) => set('to', e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
         </div>
         <div className="col-span-2 md:col-span-3 lg:col-span-6 flex gap-2">
-          <button onClick={applyFilters} className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold rounded-xl min-h-[44px]">Apply</button>
+          <Button onClick={applyFilters} className="px-5 py-2 text-sm font-bold rounded-xl min-h-[44px]">Apply</Button>
           <button onClick={clearFilters} className="px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 rounded-xl min-h-[44px]">Clear</button>
         </div>
       </div>
@@ -187,7 +189,7 @@ const AdminAuditLogsTab = () => {
                       <td className="p-3">
                         <button
                           onClick={() => setExpanded((e) => (e === l._id ? null : l._id))}
-                          className="p-1.5 hover:bg-gray-100 rounded min-w-[36px] min-h-[36px] inline-flex items-center justify-center"
+                          className="p-1.5 hover:bg-gray-100 rounded min-w-[44px] min-h-[44px] inline-flex items-center justify-center"
                           aria-label={expanded === l._id ? 'Collapse details' : 'Expand details'}
                           aria-expanded={expanded === l._id}
                         >
@@ -202,12 +204,12 @@ const AdminAuditLogsTab = () => {
                       <td className="p-3"><code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded font-mono">{l.action}</code></td>
                       <td className="p-3 text-gray-600">
                         {l.resource}
-                        {l.resourceId && <span className="block text-xs text-gray-400 font-mono">{String(l.resourceId).slice(-8)}</span>}
+                        {l.resourceId && <span className="block text-xs text-gray-500 font-mono">{String(l.resourceId).slice(-8)}</span>}
                       </td>
                       <td className="p-3">
                         {l.success
-                          ? <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-green-50 text-green-700 border border-green-200">OK</span>
-                          : <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-red-50 text-red-700 border border-red-200" title={l.errorMessage || ''}>Failed</span>}
+                          ? <Badge variant="successSoft" className="px-2 py-0.5 rounded-full text-xs font-bold border border-green-200">OK</Badge>
+                          : <Badge variant="dangerSoft" className="px-2 py-0.5 rounded-full text-xs font-bold border border-red-200" title={l.errorMessage || ''}>Failed</Badge>}
                       </td>
                     </tr>
                     {expanded === l._id && (
@@ -225,7 +227,7 @@ const AdminAuditLogsTab = () => {
                             </div>
                           </div>
                           {(l.ip || l.errorMessage) && (
-                            <p className="text-xs text-gray-400 mt-2">
+                            <p className="text-xs text-gray-500 mt-2">
                               {l.ip && <span className="mr-3">IP: {l.ip}</span>}
                               {l.errorMessage && <span className="text-red-500">Error: {l.errorMessage}</span>}
                             </p>

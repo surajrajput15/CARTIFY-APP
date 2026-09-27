@@ -1,25 +1,29 @@
 import { useState, useCallback } from 'react';
 import { WifiOff, RefreshCw, X } from 'lucide-react';
 import { useBackendStatus } from '../context/BackendStatusContext';
-import api from '../api/axios';
+import { getBackendAdvice, getBackendHeadline } from '../utils/backendStatusMessage';
 
-const BackendStatusBanner = () => {
-  const { isOffline, retry } = useBackendStatus();
-  const [dismissed, setDismissed] = useState(false);
+const apiTarget = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+const BackendStatusBanner = ({ prodBuild }) => {
+  const { isOffline, isRecovering, outageId, retry } = useBackendStatus();
+  // F-27: production must not see the API URL or dev-server instructions.
+  // `prodBuild` exists so tests can exercise the production branch.
+  const isProd = prodBuild ?? import.meta.env.PROD;
+  // Dismissal is scoped to a single outage: keyed by outageId so a *new*
+  // incident shows the banner again, while the dismissed one stays hidden.
+  const [dismissedId, setDismissedId] = useState(null);
   const [checking, setChecking] = useState(false);
 
-  const handleRetry = useCallback(async () => {
+  const dismissed = dismissedId !== null && dismissedId === outageId;
+
+  // Retry hands control to the provider's /ready probe instead of firing its own
+  // request. The old version called api.get('/health'), which resolved against
+  // VITE_API_URL's path prefix and 404'd whenever that value included /api/v1.
+  const handleRetry = useCallback(() => {
     setChecking(true);
-    try {
-      // Hit a lightweight endpoint to check connectivity
-      await api.get('/health', { timeout: 5000 });
-      setDismissed(true);
-    } catch {
-      // still down — bump retry counter so children can refetch
-      retry();
-    } finally {
-      setChecking(false);
-    }
+    retry();
+    setTimeout(() => setChecking(false), 1500);
   }, [retry]);
 
   if (!isOffline || dismissed) return null;
@@ -33,10 +37,18 @@ const BackendStatusBanner = () => {
       <div className="max-w-7xl mx-auto flex items-start sm:items-center gap-3">
         <WifiOff className="text-amber-600 flex-shrink-0 mt-0.5 sm:mt-0" size={20} aria-hidden="true" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-amber-900">Backend unavailable</p>
+          <p className="text-sm font-bold text-amber-900">
+            {getBackendHeadline(isRecovering)}
+          </p>
           <p className="text-xs text-amber-800 mt-0.5 break-words">
-            We can't reach the API at <span className="font-mono break-all">{import.meta.env.VITE_API_URL || 'http://localhost:5000'}</span>.
-            Start the backend server (<span className="font-mono">cd Backend &amp;&amp; npm run dev</span>) and try again.
+            {isProd ? (
+              <>We can&apos;t reach Cartify right now.{' '}</>
+            ) : (
+              <>
+                We can&apos;t reach the API at <span className="font-mono break-all">{apiTarget}</span>.{' '}
+              </>
+            )}
+            {getBackendAdvice(isProd)}
           </p>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
@@ -47,10 +59,10 @@ const BackendStatusBanner = () => {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 text-white text-xs font-bold rounded-md hover:bg-amber-700 transition-colors disabled:opacity-50 min-h-[44px]"
           >
             <RefreshCw size={14} className={checking ? 'animate-spin' : ''} aria-hidden="true" />
-            {checking ? 'Checking…' : 'Retry'}
+            {checking ? 'Checking…' : 'Retry now'}
           </button>
           <button
-            onClick={() => setDismissed(true)}
+            onClick={() => setDismissedId(outageId)}
             aria-label="Dismiss notification"
             className="p-1.5 text-amber-700 hover:bg-amber-100 rounded-md transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
           >

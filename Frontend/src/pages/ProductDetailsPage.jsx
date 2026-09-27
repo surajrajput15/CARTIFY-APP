@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../context/cartContext';
 import { ShoppingCart, ArrowLeft, RefreshCw, Minus, Plus, Lock, Heart } from 'lucide-react';
 import { getStockStatus } from '../utils/stockStatus';
-import { resolveImageUrl } from '../utils/imageUrl';
+import { resolveImageUrl, PLACEHOLDER_IMG } from '../utils/imageUrl';
 import { formatPrice, formatNumber } from '../utils/format';
 import { getShippingMessage } from '../utils/constants';
 import StockBadge from '../components/StockBadge';
@@ -18,8 +18,8 @@ import { useWishlist } from '../context/WishlistContext';
 import { hasVariants, getVariantOptions, findVariant, variantPrice, isOptionAvailable, buildVariantKey, variantLabel } from '../utils/variants';
 import { useAuth } from '../context/authContext';
 import { recordRecentView } from '../utils/recentlyViewed';
-
-const PLACEHOLDER_IMG = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJzeXN0ZW0tdWkiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5Y2EzYWYiPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg==';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
 
 const ProductDetailsPage = () => {
   const { id } = useParams();
@@ -67,9 +67,7 @@ const ProductDetailsPage = () => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reset on product id change
     setJustAdded(false);
     setQuantity(1);
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset on product id change
     setSelectedSize(null);
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset on product id change
     setSelectedColor(null);
     fetchProduct();
   }, [fetchProduct]);
@@ -113,18 +111,18 @@ const ProductDetailsPage = () => {
           <ArrowLeft size={20} className="mr-2" />
           Back to Products
         </button>
-        <div className="min-h-[50vh] flex flex-col items-center justify-center bg-white rounded-2xl shadow-sm border border-gray-100 p-8 sm:p-12">
+        <Card className="min-h-[50vh] flex flex-col items-center justify-center rounded-2xl border p-8 sm:p-12">
           <ErrorIllustration className="w-24 h-24 sm:w-32 sm:h-32 mb-6" />
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Couldn't load product</h2>
           <p className="text-gray-500 mb-8 text-center max-w-md">{error}</p>
-          <button
-            onClick={fetchProduct}
-            className="flex items-center gap-2 bg-teal-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-teal-700 transition-colors shadow-md min-h-[44px]"
+          <Button
+             onClick={fetchProduct}
+            className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-colors shadow-md min-h-[44px]"
           >
             <RefreshCw size={20} />
             Try Again
-          </button>
-        </div>
+          </Button>
+        </Card>
       </main>
     );
   }
@@ -132,7 +130,7 @@ const ProductDetailsPage = () => {
   if (loading) {
     return (
       <main className="max-w-7xl mx-auto p-4 md:p-6 mt-4">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col md:flex-row animate-pulse">
+        <Card className="rounded-2xl border overflow-hidden flex flex-col md:flex-row animate-pulse">
           <div className="md:w-1/2 p-8 bg-gray-50 flex justify-center items-center">
             <div className="h-[300px] sm:h-[400px] w-full bg-gray-200 rounded-xl"></div>
           </div>
@@ -148,7 +146,7 @@ const ProductDetailsPage = () => {
             <div className="h-12 w-40 bg-gray-200 rounded mt-4"></div>
             <div className="h-14 w-full bg-gray-200 rounded"></div>
           </div>
-        </div>
+        </Card>
       </main>
     );
   }
@@ -211,15 +209,16 @@ const ProductDetailsPage = () => {
         Back to Products
       </button>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col md:flex-row">
-        <div className="md:w-1/2 p-6 sm:p-8 bg-gray-50 flex justify-center items-center min-h-[300px]">
+      <Card className="rounded-2xl border overflow-hidden flex flex-col md:flex-row">
+        {/* F-22: deterministic square frame prevents layout shift while the image loads */}
+        <div className="md:w-1/2 p-6 sm:p-8 bg-gray-50 flex justify-center items-center aspect-square">
           <img
             src={resolveImageUrl(product.image)}
             alt={product.title || 'Product image'}
             loading="lazy"
             decoding="async"
             onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMG; }}
-            className="max-h-[300px] sm:max-h-[400px] max-w-full object-contain hover:scale-105 transition-transform duration-300"
+            className="h-full w-full object-contain motion-safe:hover:scale-105 transition-transform duration-300"
           />
         </div>
 
@@ -242,7 +241,7 @@ const ProductDetailsPage = () => {
             <span className="text-sm text-gray-500">
               {Number(product.rating?.count) || 0
                 ? `Based on ${formatNumber(product.rating.count)} reviews`
-                : 'No reviews yet'}
+                : 'Not yet rated'}
             </span>
           </div>
 
@@ -321,7 +320,7 @@ const ProductDetailsPage = () => {
               {selectedVariant && (
                 <p className="text-xs text-gray-500">
                   Selected: <span className="font-semibold text-gray-700">{variantLabel(selectedVariant.size, selectedVariant.color)}</span>
-                  {selectedVariant.sku ? <span className="text-gray-400"> · SKU {selectedVariant.sku}</span> : null}
+                  {selectedVariant.sku ? <span className="text-gray-500"> · SKU {selectedVariant.sku}</span> : null}
                 </p>
               )}
             </div>
@@ -369,7 +368,7 @@ const ProductDetailsPage = () => {
               aria-pressed={wishlisted}
               aria-label={wishlisted ? `Remove ${product.title} from wishlist` : `Save ${product.title} to wishlist`}
               className={`p-3.5 rounded-xl border-2 font-bold transition-colors min-w-[52px] min-h-[52px] inline-flex items-center justify-center ${
-                wishlisted ? 'border-red-200 bg-red-50 text-red-500' : 'border-gray-200 text-gray-400 hover:border-red-200 hover:text-red-500'
+                wishlisted ? 'border-red-200 bg-red-50 text-red-500' : 'border-gray-200 text-gray-500 hover:border-red-200 hover:text-red-500'
               }`}
             >
               <Heart size={22} aria-hidden="true" className={wishlisted ? "fill-current" : ""} />
@@ -405,7 +404,7 @@ const ProductDetailsPage = () => {
             <Lock size={12} aria-hidden="true" /> Secure checkout · {getShippingMessage(activePrice).text} shipping
           </p>
         </div>
-      </div>
+      </Card>
 
       {relatedProducts?.length > 0 && (
         <section className="mt-12 sm:mt-14" aria-labelledby="related-heading">
@@ -427,7 +426,7 @@ const ProductDetailsPage = () => {
             <span className="w-1 h-7 bg-teal-500 rounded-full" aria-hidden="true" />
             Related Products
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          <div role="status" aria-label="Loading related products" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             {[1, 2, 3, 4].map((n) => <SkeletonCard key={n} />)}
           </div>
         </section>

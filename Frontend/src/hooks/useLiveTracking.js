@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import useSocket from './useSocket';
 import api from '../api/axios';
 
@@ -68,7 +68,7 @@ export function useLiveTracking(orderId, { pollIntervalMs = 15000, enabled = tru
           setPosition(data.location);
           setError(null);
         }
-      } catch (err) {
+      } catch {
         // network/offline — silent; keep last known state
         setTimeout(() => setError(null), pollIntervalMs);
       }

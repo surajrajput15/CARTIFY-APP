@@ -10,12 +10,14 @@ import { SkeletonCard } from './Skeleton';
 import { useWishlist } from '../context/WishlistContext';
 import { useAuth } from '../context/authContext';
 import { getRecentViewed } from '../utils/recentlyViewed';
+import { formatPrice } from '../utils/format';
 import { fetchProducts, fetchProductById } from '../services/productsApi';
 import { fetchActiveCampaigns } from '../services/campaignsApi';
 import { isNetworkError } from '../utils/apiError';
 import { logError } from '../utils/logger';
 import { SUPPORT_EMAIL, SHIPPING_CONFIG } from '../utils/constants';
 import { fetchMyOrders } from '../services/ordersApi';
+import Card from './ui/Card';
 
 const SectionHeader = ({ icon: Icon, title, subtitle, action, id }) => (
   <div className="mb-4 flex items-start justify-between gap-2">
@@ -47,11 +49,15 @@ const ProductRow = ({ products, loading, compact = false }) => {
 };
 
 const SkeletonListStub = ({ compact = false }) => (
-  <div className={
-    compact
-      ? 'grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4'
-      : 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6'
-  }>
+  <div
+    role="status"
+    aria-label="Loading products"
+    className={
+      compact
+        ? 'grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4'
+        : 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6'
+    }
+  >
     {Array.from({ length: compact ? 4 : 4 }).map((_, i) => (
       <SkeletonCard key={i} />
     ))}
@@ -77,11 +83,11 @@ const TrustStrip = () => {
     <section className="mt-12" aria-label="Why shop with us">
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
         {items.map(({ icon: Icon, title, desc }) => (
-          <div key={title} className="bg-white rounded-2xl border border-gray-100 p-4 text-center shadow-sm">
+          <Card key={title} className="rounded-2xl border p-4 text-center">
             <Icon size={22} className="text-teal-600 mx-auto mb-2" aria-hidden="true" />
             <p className="font-semibold text-gray-800 text-sm">{title}</p>
             <p className="text-xs text-gray-500 mt-0.5 truncate" title={desc}>{desc}</p>
-          </div>
+          </Card>
         ))}
       </div>
     </section>
@@ -117,7 +123,7 @@ const CampaignBanner = () => {
         <span className="absolute -right-6 -top-8 w-36 h-36 rounded-full bg-white/10" aria-hidden="true" />
         <Sparkles size={20} className="shrink-0" aria-hidden="true" />
         <p className="font-bold text-base sm:text-lg leading-snug">
-          {campaign.bannerText || `Special Offer ${campaign.discountType === 'percentage' ? `${campaign.discountValue}%` : `₹${campaign.discountValue}`} off`}
+          {campaign.bannerText || `Special Offer ${campaign.discountType === 'percentage' ? `${campaign.discountValue}%` : formatPrice(campaign.discountValue, { showDecimals: false })} off`}
           {' '}
           {campaign.endDate ? (
             <span className="font-medium text-white/85 text-sm sm:text-base">
@@ -236,7 +242,7 @@ const FeaturedPicks = ({ taken, version, claim }) => {
           <h2 className="text-lg sm:text-xl font-bold text-gray-800 flex items-center gap-2">
             <Sparkles size={20} className="text-teal-600" aria-hidden="true" /> Featured Picks
           </h2>
-          <p className="text-sm text-gray-500 mt-0.5">Top rated by real customer reviews.</p>
+          <p className="text-sm text-gray-500 mt-0.5">Top rated by customer reviews.</p>
         </div>
         <Link to="/?category=all" className="text-sm font-semibold text-teal-600 hover:text-teal-700 whitespace-nowrap">
           View all →
@@ -338,7 +344,7 @@ const Recommendations = ({ taken, version, claim }) => {
         id="rec-heading"
         icon={Heart}
         title={titled ? 'Recommended For You' : 'Popular Picks'}
-        subtitle={titled ? 'Based on your wishlist and browsing history.' : 'Most reviewed by real customers.'}
+        subtitle={titled ? 'Based on your wishlist and browsing history.' : 'Most reviewed by customers.'}
       />
       {error ? (
         <EmptyRow message="Couldn't load recommendations. Please retry." />
@@ -436,6 +442,7 @@ const BuyAgain = () => {
   const [products, setProducts] = useState(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- guest state resolves synchronously to an empty list
     if (!user?.id) { setProducts([]); return; }
     let cancelled = false;
     fetchMyOrders(user.id)
@@ -613,18 +620,21 @@ const HomeSections = ({ takenIds = [] }) => {
     if (changed) setVersion((v) => v + 1);
   };
 
+  // eslint-disable-next-line react-hooks/refs -- shared mutable claims registry; re-renders are driven by `version`
+  const taken = claimsRef.current;
+
   return (
     <>
       <CampaignBanner />
       {/* Order: Recommended → Featured → Recently → Wishlist → Buy Again →
           Collections → Promo → Trust. Sections share one `claims` map so each
           product appears at most once across the main grid + curated zone. */}
-      <Recommendations taken={claimsRef.current} version={version} claim={claim} />
-      <FeaturedPicks taken={claimsRef.current} version={version} claim={claim} />
+      <Recommendations taken={taken} version={version} claim={claim} />
+      <FeaturedPicks taken={taken} version={version} claim={claim} />
       <RecentlyViewed />
       <FromWishlist />
       <BuyAgain />
-      <CategoryCollections taken={claimsRef.current} version={version} claim={claim} />
+      <CategoryCollections taken={taken} version={version} claim={claim} />
       <SecondaryPromo />
       <TrustStrip />
     </>

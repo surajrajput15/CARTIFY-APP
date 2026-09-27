@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { defaultIcon } from './mapIcons';
 
 /**
  * Leaflet Map wrapper with proper cleanup and error handling.
@@ -50,6 +51,7 @@ export function Map({
       }).addTo(map);
 
       mapInstanceRef.current = map;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- ready flag flips synchronously with the freshly created map instance
       setReady(true);
 
       if (onMapReady) onMapReady(map);
@@ -92,29 +94,6 @@ export function Map({
       {ready ? <MapProvider mapInstanceRef={mapInstanceRef}>{children}</MapProvider> : null}
     </div>
   );;
-}
-
-/**
- * Fixes Leaflet's default marker icon path issue under bundlers (Vite/Rolldown,
- * webpack, etc.) where the marker images are not resolved automatically.
- */
-export function defaultIcon() {
-  if (L.Default.prototype.options.icon === undefined || L.Default.prototype.options.icon === null) {
-    L.Default.mergeOptions({
-      iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-      iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-    });
-  }
-  return new L.Icon.Default();
-}
-
-/**
- * Custom divIcon helper — renders an HTML string as the marker.
- * Use this to show emoji / custom colored pins without image assets.
- */
-export function divIcon(html, { className = '', iconSize = [40, 40], iconAnchor = [20, 20], popupAnchor = [0, -20] } = {}) {
-  return L.divIcon({ className: `leaflet-div-icon-no-border ${className}`, html, iconSize, iconAnchor, popupAnchor });
 }
 
 /**
@@ -217,7 +196,7 @@ export function FitBounds({ positions, padding = [50, 50, 50, 50] }) {
     const map = mapRef && mapRef.current;
     if (!map || !positions || positions.length === 0) return;
     map.fitBounds(positions, { padding });
-  }, [mapRef, positions, padding]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mapRef, positions, padding]);
 
   return null;
 }

@@ -7,7 +7,7 @@ import { useAddresses } from '../hooks/useAddresses';
 import { useRazorpayPayment } from '../hooks/useRazorpayPayment';
 import AddressSelector from '../components/checkout/AddressSelector';
 import OrderSummary from '../components/checkout/OrderSummary';
-import { useCoupon } from '../hooks/useCoupon';
+import { useSharedCoupon } from '../context/couponContext';
 
 const CheckoutPage = () => {
   const { user } = useAuth();
@@ -23,15 +23,13 @@ const CheckoutPage = () => {
     [cart]
   );
 
-  const { code, setCode, applied, loading: couponLoading, error: couponError, applyCoupon, applyBestCoupon, bestLoading, clearCoupon } = useCoupon(cart, calculatedTotal);
+  // F-33: shared coupon state — same instance the Cart screen used
+  const { code, setCode, applied, loading: couponLoading, error: couponError, applyCoupon, applyBestCoupon, bestLoading, clearCoupon } = useSharedCoupon();
   const discount = applied?.discount || 0;
 
   useEffect(() => {
-    if (!user) {
-      sessionStorage.setItem('redirectAfterLogin', '/checkout');
-      navigate('/login');
-      return;
-    }
+    // Auth is handled by the route's RoleGuard (F-15) — it redirects guests
+    // to /login and returns them here after login.
     // Empty cart = nothing to pay for. Bounce to cart instead of showing a
     // dead checkout page with a stale ₹0 subtotal.
     if (cart.length === 0) {
@@ -46,7 +44,7 @@ const CheckoutPage = () => {
       }
     })();
     return () => { cancelled = true; };
-  }, [user, cart.length, navigate, fetchAddresses]);
+  }, [cart.length, navigate, fetchAddresses]);
 
   const { loading, handlePayment } = useRazorpayPayment({ user, cart, clearCart, navigate, selectedAddress, couponCode: applied?.code || null, clearCoupon });
 

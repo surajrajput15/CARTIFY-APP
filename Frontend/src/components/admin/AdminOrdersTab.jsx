@@ -7,6 +7,7 @@ import { formatPrice, formatDate } from '../../utils/format';
 import { EmptyOrdersIllustration } from '../illustrations/EmptyStateIllustrations';
 import ConfirmModal from '../ConfirmModal';
 import { isNetworkError } from '../../utils/apiError';
+import { nextStatuses } from '../../utils/orderTransitions';
 
 const paymentBadge = (status) => {
   switch (status) {
@@ -15,18 +16,7 @@ const paymentBadge = (status) => {
     default: return 'bg-gray-100 text-gray-600';
   }
 };
-
-// Legal forward-only status flow. The select only offers the current status
-// plus these next states, so an order can't jump backwards (e.g. Delivered →
-// Pending, Cancelled → Shipped) via the UI.
-const LEGAL_TRANSITIONS = {
-  Pending: ['Processing', 'Shipped', 'Cancelled'],
-  Processing: ['Shipped', 'Cancelled'],
-  Shipped: ['Delivered'],
-  Delivered: [],
-  Cancelled: [],
-};
-const nextStatuses = (status) => [status, ...(LEGAL_TRANSITIONS[status] || [])];
+import Card from '../ui/Card';
 
 const AdminOrdersTab = () => {
   const [orders, setOrders] = useState([]);
@@ -115,7 +105,7 @@ const AdminOrdersTab = () => {
                 type="button"
                 onClick={() => { setLoading(true); setStatusFilter(s); setPage(1); }}
                 aria-pressed={statusFilter === s}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold capitalize transition-colors min-h-[36px] ${
+                className={`px-3 py-1.5 rounded-full text-xs font-bold capitalize transition-colors min-h-[44px] ${
                   statusFilter === s ? 'bg-teal-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
@@ -131,7 +121,7 @@ const AdminOrdersTab = () => {
           </button>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <Card className="rounded-2xl border overflow-hidden">
           <div className="overflow-x-auto" role="region" aria-label="Orders table (scroll horizontally)" tabIndex={0}>
             <table className="w-full text-sm min-w-[900px]">
               <thead className="bg-gray-50 border-b border-gray-100">
@@ -149,7 +139,7 @@ const AdminOrdersTab = () => {
               <tbody className="divide-y divide-gray-50">
                 {loading ? (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-gray-400">Loading orders…</td>
+                    <td colSpan={8} className="p-8 text-center text-gray-500">Loading orders…</td>
                   </tr>
                 ) : orders.length === 0 ? (
                   <tr>
@@ -177,7 +167,7 @@ const AdminOrdersTab = () => {
                         </td>
                         <td className="p-4 text-gray-600">
                           <span className="font-medium">{totalUnits}</span> {totalUnits === 1 ? 'unit' : 'units'}
-                          <span className="text-gray-400 text-xs ml-1">({productTypes} {productTypes === 1 ? 'product' : 'products'})</span>
+                          <span className="text-gray-500 text-xs ml-1">({productTypes} {productTypes === 1 ? 'product' : 'products'})</span>
                         </td>
                         <td className="p-4 font-bold text-gray-900">{formatPrice(o.totalPrice ?? 0)}</td>
                         <td className="p-4">
@@ -191,7 +181,7 @@ const AdminOrdersTab = () => {
                             disabled={busyId === o._id || nextStatuses(o.status).length === 1}
                             onChange={(e) => handleStatusChange(o._id, e.target.value)}
                             aria-label={`Change status for order ${String(o._id).slice(-6).toUpperCase()}`}
-                            className="px-2 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 focus:ring-teal-500 focus:border-teal-500 disabled:opacity-50 min-h-[36px]"
+                            className="px-2 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 focus:ring-teal-500 focus:border-teal-500 disabled:opacity-50 min-h-[44px]"
                           >
                             {nextStatuses(o.status).map((s) => (
                               <option key={s} value={s}>{s}</option>
@@ -215,7 +205,7 @@ const AdminOrdersTab = () => {
                             <span className="text-xs font-bold text-amber-600">Refunded</span>
                           )}
                           {o.paymentStatus === 'Pending' && (
-                            <span className="text-xs text-gray-400">—</span>
+                            <span className="text-xs text-gray-500">—</span>
                           )}
                         </td>
                       </tr>
@@ -225,7 +215,7 @@ const AdminOrdersTab = () => {
               </tbody>
             </table>
           </div>
-        </div>
+        </Card>
 
         {pages > 1 && (
           <nav className="flex justify-center items-center gap-2" aria-label="Orders pagination">

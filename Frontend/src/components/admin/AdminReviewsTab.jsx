@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Loader2, CheckCircle2, XCircle, Eye, Star } from 'lucide-react';
+import { Search, Loader2, CheckCircle2, XCircle, Star } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { fetchAdminReviews, patchReviewStatus } from '../../services/reviewApi';
 import { isNetworkError } from '../../utils/apiError';
@@ -49,6 +49,7 @@ export default function AdminReviewsTab() {
         }
     }, [page, statusFilter, search]);
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- load() only flips its own loading flag around an awaited fetch
     useEffect(() => { load(); }, [load]);
 
     const handleModerate = async (reviewId, action) => {
@@ -83,7 +84,7 @@ export default function AdminReviewsTab() {
                         {statusOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                         <input type="text" placeholder="Search user, title, comment..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm bg-white" />
                     </div>
                 </div>
@@ -121,15 +122,15 @@ export default function AdminReviewsTab() {
                                     <td className="px-4 py-3 text-right">
                                         {r.status === 'pending' && (
                                             <>
-                                                <button type="button" onClick={() => handleModerate(r._id, 'approve')} disabled={actionLoading === r._id} className="px-3 py-1.5 bg-green-600 text-white text-sm font-bold rounded-lg hover:bg-green-700 transition-colors min-h-[36px] disabled:opacity-50"><CheckCircle2 size={14} className="mr-1" /> Approve</button>
-                                                <button type="button" onClick={() => handleModerate(r._id, 'hide')} disabled={actionLoading === r._id} className="px-3 py-1.5 bg-red-600 text-white text-sm font-bold rounded-lg hover:bg-red-700 transition-colors min-h-[36px] disabled:opacity-50 ml-2"><XCircle size={14} className="mr-1" /> Hide</button>
+                                                <button type="button" onClick={() => handleModerate(r._id, 'approve')} disabled={actionLoading === r._id} className="px-3 py-1.5 bg-green-600 text-white text-sm font-bold rounded-lg hover:bg-green-700 transition-colors min-h-[44px] disabled:opacity-50"><CheckCircle2 size={14} className="mr-1" /> Approve</button>
+                                                <button type="button" onClick={() => handleModerate(r._id, 'hide')} disabled={actionLoading === r._id} className="px-3 py-1.5 bg-red-600 text-white text-sm font-bold rounded-lg hover:bg-red-700 transition-colors min-h-[44px] disabled:opacity-50 ml-2"><XCircle size={14} className="mr-1" /> Hide</button>
                                             </>
                                         )}
                                         {r.status === 'approved' && (
-                                            <button type="button" onClick={() => handleModerate(r._id, 'hide')} disabled={actionLoading === r._id} className="px-3 py-1.5 bg-red-600 text-white text-sm font-bold rounded-lg hover:bg-red-700 transition-colors min-h-[36px] disabled:opacity-50"><XCircle size={14} className="mr-1" /> Hide</button>
+                                            <button type="button" onClick={() => handleModerate(r._id, 'hide')} disabled={actionLoading === r._id} className="px-3 py-1.5 bg-red-600 text-white text-sm font-bold rounded-lg hover:bg-red-700 transition-colors min-h-[44px] disabled:opacity-50"><XCircle size={14} className="mr-1" /> Hide</button>
                                         )}
                                         {r.status === 'hidden' && (
-                                            <button type="button" onClick={() => handleModerate(r._id, 'approve')} disabled={actionLoading === r._id} className="px-3 py-1.5 bg-green-600 text-white text-sm font-bold rounded-lg hover:bg-green-700 transition-colors min-h-[36px] disabled:opacity-50"><CheckCircle2 size={14} className="mr-1" /> Approve</button>
+                                            <button type="button" onClick={() => handleModerate(r._id, 'approve')} disabled={actionLoading === r._id} className="px-3 py-1.5 bg-green-600 text-white text-sm font-bold rounded-lg hover:bg-green-700 transition-colors min-h-[44px] disabled:opacity-50"><CheckCircle2 size={14} className="mr-1" /> Approve</button>
                                         )}
                                     </td>
                                 </tr>

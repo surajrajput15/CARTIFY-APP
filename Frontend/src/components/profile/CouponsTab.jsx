@@ -4,6 +4,7 @@ import { Ticket, Copy, Check, Loader2, AlertCircle, ShoppingCart } from 'lucide-
 import { useCart } from '../../context/cartContext';
 import { fetchAvailableCoupons } from '../../services/couponsApi';
 import { formatPrice } from '../../utils/format';
+import Button from '../ui/Button';
 
 const CouponsTab = () => {
   const { cart } = useCart();
@@ -86,13 +87,13 @@ const CouponsTab = () => {
           <ShoppingCart size={32} className="mx-auto text-gray-300 mb-3" aria-hidden="true" />
           <p className="text-gray-600 font-medium">Your cart is empty</p>
           <p className="text-sm text-gray-500 mt-1">Add items to see which coupons apply to your order.</p>
-          <button
+          <Button
             type="button"
             onClick={() => navigate('/')}
-            className="mt-4 inline-flex items-center gap-2 bg-teal-600 text-white font-bold py-2.5 px-6 rounded-xl hover:bg-teal-700 transition-colors min-h-[44px]"
+            className="mt-4 inline-flex items-center gap-2 font-bold py-2.5 px-6 rounded-xl transition-colors min-h-[44px]"
           >
             Browse products
-          </button>
+          </Button>
         </div>
       ) : coupons.length === 0 ? (
         <p className="text-gray-500 text-sm mt-4">No coupons eligible for this cart right now.</p>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2, RefreshCw, Calendar, TrendingUp, ShoppingCart, Users, Package, Truck, AlertTriangle, DollarSign, BarChart2, PieChart } from 'lucide-react';
+import { Loader2, RefreshCw, ShoppingCart, Users, Package, Truck, AlertTriangle, DollarSign } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { loadControlSnapshot, fetchCtrlStats, fetchCtrlCharts } from '../../services/controlApi';
+import { loadControlSnapshot } from '../../services/controlApi';
 import { isNetworkError } from '../../utils/apiError';
 import { formatPrice } from '../../utils/format';
 
@@ -20,7 +20,7 @@ function MetricCard({ metric, value }) {
     return (
         <div className="bg-white rounded-2xl border border-gray-100 p-5">
             <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold uppercase tracking-wide text-gray-400">{metric.label}</span>
+                <span className="text-[11px] font-bold uppercase tracking-wide text-gray-500">{metric.label}</span>
                 <metric.icon size={20} className={metric.color.replace('bg-', 'text-')} />
             </div>
             <p className="text-3xl font-extrabold text-gray-900">{metric.format(value)}</p>
@@ -54,6 +54,7 @@ export default function AdminAnalyticsTab() {
         }
     }, [range]);
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- load() only flips its own loading flag around an awaited fetch
     useEffect(() => { load(); }, [load]);
 
     const stats = snap?.stats || {};
@@ -61,7 +62,7 @@ export default function AdminAnalyticsTab() {
 
     const renderRevenueChart = () => {
         const data = charts.revenueSeries || [];
-        if (!data.length) return <div className="flex items-center justify-center h-full text-gray-400">No revenue data for this period</div>;
+        if (!data.length) return <div className="flex items-center justify-center h-full text-gray-500">No revenue data for this period</div>;
         const maxRev = Math.max(...data.map(d => d.revenue));
         return (
             <svg viewBox="0 0 100 100" className="w-full h-full" preserveAspectRatio="none">
@@ -93,7 +94,7 @@ export default function AdminAnalyticsTab() {
 
     const renderStatusChart = () => {
         const data = charts.statusSeries || [];
-        if (!data.length) return <div className="flex items-center justify-center h-full text-gray-400">No order status data</div>;
+        if (!data.length) return <div className="flex items-center justify-center h-full text-gray-500">No order status data</div>;
         const days = [...new Set(data.map(d => d._id.day))].sort();
         const statuses = [...new Set(data.map(d => d._id.status))];
         const colors = { Pending: '#f59e0b', Confirmed: '#3b82f6', Processing: '#8b5cf6', Packed: '#06b6d4', Shipped: '#14b8a6', 'Out for Delivery': '#f97316', Delivered: '#22c55e', Cancelled: '#ef4444', Failed: '#dc2626' };
@@ -149,13 +150,13 @@ export default function AdminAnalyticsTab() {
                         <ul className="space-y-2">
                             {charts.bestSellers.slice(0, 8).map((p, i) => (
                                 <li key={p._id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                                    <span className="flex items-center gap-2"><span className="text-sm font-bold text-gray-400 w-6">{i + 1}</span><span className="font-medium truncate">{p.title}</span></span>
+                                    <span className="flex items-center gap-2"><span className="text-sm font-bold text-gray-500 w-6">{i + 1}</span><span className="font-medium truncate">{p.title}</span></span>
                                     <span className="text-sm text-gray-500">{p.units} units • {formatPrice(p.revenue)}</span>
                                 </li>
                             ))}
                         </ul>
                     ) : (
-                        <p className="text-gray-400 text-center py-8">No data</p>
+                        <p className="text-gray-500 text-center py-8">No data</p>
                     )}
                 </ChartCard>
                 <ChartCard title="Category Performance">
@@ -163,13 +164,13 @@ export default function AdminAnalyticsTab() {
                         <ul className="space-y-2">
                             {charts.categoryPerformance.slice(0, 8).map((c, i) => (
                                 <li key={c._id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                                    <span className="flex items-center gap-2"><span className="text-sm font-bold text-gray-400 w-6">{i + 1}</span><span className="font-medium capitalize">{c._id || 'Uncategorized'}</span></span>
+                                    <span className="flex items-center gap-2"><span className="text-sm font-bold text-gray-500 w-6">{i + 1}</span><span className="font-medium capitalize">{c._id || 'Uncategorized'}</span></span>
                                     <span className="text-sm text-gray-500">{c.units} units • {formatPrice(c.revenue)}</span>
                                 </li>
                             ))}
                         </ul>
                     ) : (
-                        <p className="text-gray-400 text-center py-8">No data</p>
+                        <p className="text-gray-500 text-center py-8">No data</p>
                     )}
                 </ChartCard>
                 <ChartCard title="Top Customers">
@@ -177,13 +178,13 @@ export default function AdminAnalyticsTab() {
                         <ul className="space-y-2">
                             {charts.topCustomers.slice(0, 8).map((c, i) => (
                                 <li key={c._id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                                    <span className="flex items-center gap-2"><span className="text-sm font-bold text-gray-400 w-6">{i + 1}</span><span className="font-medium">{c.name || 'Unknown'}</span></span>
+                                    <span className="flex items-center gap-2"><span className="text-sm font-bold text-gray-500 w-6">{i + 1}</span><span className="font-medium">{c.name || 'Unknown'}</span></span>
                                     <span className="text-sm text-gray-500">{c.orderCount} orders • {formatPrice(c.revenue)}</span>
                                 </li>
                             ))}
                         </ul>
                     ) : (
-                        <p className="text-gray-400 text-center py-8">No data</p>
+                        <p className="text-gray-500 text-center py-8">No data</p>
                     )}
                 </ChartCard>
                 <ChartCard title="Deliveries Completed">
@@ -215,7 +216,7 @@ export default function AdminAnalyticsTab() {
                             />
                         </svg>
                     ) : (
-                        <p className="text-gray-400 text-center py-8">No delivery data</p>
+                        <p className="text-gray-500 text-center py-8">No delivery data</p>
                     )}
                 </ChartCard>
             </div>

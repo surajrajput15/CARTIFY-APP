@@ -1,7 +1,7 @@
-// Build-time version constant. We hardcode the version here so the bundler
-// can resolve it at compile time. Update this when bumping the version.
-// (Vite exposes import.meta.env.VITE_APP_VERSION, but we keep a fallback.)
+// F-54: the badge must reflect package.json — not a second hardcoded copy.
+// VITE_APP_VERSION still wins when a release pipeline sets it.
+import pkg from '../package.json';
+
 const envVersion = typeof import.meta !== 'undefined' && import.meta.env?.VITE_APP_VERSION;
 
-export const PACKAGE_VERSION = envVersion || '2.0.0';
-export const BUILD_TIME = new Date().toISOString();
+export const PACKAGE_VERSION = envVersion || pkg.version;

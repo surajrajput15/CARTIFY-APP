@@ -15,7 +15,8 @@ const SearchBox = ({ onSearch, mobile = false }) => {
   const [focused, setFocused] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [loading, setLoading] = useState(false);
-  const [recents, setRecents] = useState([]);
+  // Lazy init instead of a mount effect: reads the persisted recents once, at first render.
+  const [recents, setRecents] = useState(() => getRecentSearches());
   const boxRef = useRef(null);
   const inputRef = useRef(null);
   const debounceRef = useRef(null);
@@ -59,13 +60,11 @@ const SearchBox = ({ onSearch, mobile = false }) => {
     [keyword, navigate, onSearch]
   );
 
-  useEffect(() => {
-    setRecents(getRecentSearches());
-  }, []);
-
+  // Resets the suggestion UI whenever the search keyword changes.
   useEffect(() => {
     const term = keyword.trim();
     if (!term) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- derived suggestion state resets with the keyword
       setLoading(false);
       if (!focused) { setOpen(false); return; }
       setSuggestions(buildGroups([], term));
@@ -148,7 +147,6 @@ const SearchBox = ({ onSearch, mobile = false }) => {
   }, {});
 
   const groupTitles = { product: 'Products', recent: 'Recent searches', category: 'Categories' };
-  const groupOrder = ['product', 'recent', 'category'];
 
   const listId = mobile ? 'sb-list-mobile' : 'sb-list-desktop';
   const inputId = mobile ? 'sb-input-mobile' : 'sb-input-desktop';
@@ -212,7 +210,7 @@ const SearchBox = ({ onSearch, mobile = false }) => {
         <Search size={20} aria-hidden="true" />
       </button>
       {loading && (
-        <span className="absolute right-12 top-1/2 -translate-y-1/2 text-[10px] text-gray-400" aria-hidden="true">
+        <span className="absolute right-12 top-1/2 -translate-y-1/2 text-[10px] text-gray-500" aria-hidden="true">
           Loading…
         </span>
       )}
@@ -232,7 +230,7 @@ const SearchBox = ({ onSearch, mobile = false }) => {
             return (
               <li key={`${s.type}-${s.id}`} role="option" id={`${listId}-opt-${idx}`} aria-selected={idx === activeIndex}>
                 <div
-                  className={`flex items-center justify-between px-4 pt-3 pb-0 text-[11px] font-bold uppercase tracking-wide text-gray-400 ${
+                  className={`flex items-center justify-between px-4 pt-3 pb-0 text-[11px] font-bold uppercase tracking-wide text-gray-500 ${
                     grouped[s.type]?.[0] === s ? '' : 'hidden'
                   }`}
                   aria-hidden="true"
@@ -247,7 +245,7 @@ const SearchBox = ({ onSearch, mobile = false }) => {
                     idx === activeIndex ? 'bg-teal-50 text-teal-700' : 'text-gray-700 hover:bg-gray-50'
                   }`}
                 >
-                  {Icon && <Icon size={15} className="text-gray-400 shrink-0" aria-hidden="true" />}
+                  {Icon && <Icon size={15} className="text-gray-500 shrink-0" aria-hidden="true" />}
                   <span className="truncate">{s.title}</span>
                 </button>
               </li>

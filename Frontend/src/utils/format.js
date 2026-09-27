@@ -92,20 +92,6 @@ export const truncate = (str, maxLength = 50) => {
   if (str.length <= maxLength) return str;
   return str.slice(0, maxLength - 1) + '…';
 };
-
-/**
- * Calculate discount percentage between two prices.
- * @param {number} originalPrice - Original price
- * @param {number} discountedPrice - Discounted price
- * @returns {number} Discount percentage (rounded down)
- */
-export const calculateDiscount = (originalPrice, discountedPrice) => {
-  const orig = Number(originalPrice);
-  const disc = Number(discountedPrice);
-  if (isNaN(orig) || isNaN(disc) || orig <= 0 || disc >= orig) return 0;
-  return Math.floor(((orig - disc) / orig) * 100);
-};
-
 /**
  * Client-side mirror of the backend password policy (authRoutes.validatePassword):
  * 8+ chars, at least one uppercase letter, one lowercase letter and one digit.

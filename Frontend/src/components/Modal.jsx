@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 const FOCUSABLE =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-const Modal = ({ title, labelledBy, onClose, blockClose = false, children, className = '' }) => {
+const Modal = ({ title, labelledBy, describedBy, onClose, blockClose = false, children, className = '' }) => {
   const dialogRef = useRef(null);
   const previousFocusRef = useRef(null);
 
@@ -61,6 +61,9 @@ const Modal = ({ title, labelledBy, onClose, blockClose = false, children, class
     };
   }, []);
 
+  // F-37: the backdrop is role="presentation" (its own semantics only) and
+  // must NOT carry aria-hidden — that flag hid the entire dialog subtree from
+  // assistive tech while focus was trapped inside it.
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 overflow-y-auto"
@@ -68,7 +71,6 @@ const Modal = ({ title, labelledBy, onClose, blockClose = false, children, class
         if (!blockCloseRef.current) onCloseRef.current();
       }}
       role="presentation"
-      aria-hidden="true"
     >
       <div
         ref={dialogRef}
@@ -76,6 +78,7 @@ const Modal = ({ title, labelledBy, onClose, blockClose = false, children, class
         aria-modal="true"
         aria-label={labelledBy ? undefined : title}
         aria-labelledby={labelledBy}
+        aria-describedby={describedBy}
         className={`bg-white rounded-2xl shadow-2xl w-full my-auto ${className}`}
         onClick={(e) => e.stopPropagation()}
       >

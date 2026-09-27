@@ -106,7 +106,7 @@ const NotificationsTab = () => {
                       <span className="truncate">{n.title}</span>
                     </p>
                     <p className="text-sm text-gray-600 mt-1">{n.message}</p>
-                    <p className="text-xs text-gray-400 mt-1.5">
+                    <p className="text-xs text-gray-500 mt-1.5">
                       {n.type ? `${n.type} · ` : ''}{n.createdAt ? formatDate(n.createdAt) : ''}
                     </p>
                   </div>

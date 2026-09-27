@@ -1,5 +1,6 @@
 import { User, Package, MapPin, Settings, LogOut, Ticket, Bell } from 'lucide-react';
 import { getFirstName, getInitial } from '../../utils/format';
+import Card from '../ui/Card';
 
 const TABS = [
   { key: 'profile', label: 'Profile Information', icon: User },
@@ -14,7 +15,7 @@ const ProfileSidebar = ({ user, activeTab, onTabChange, onLogout }) => (
   <div className="w-full md:w-1/4">
     {/* Desktop: stacked sidebar card. Mobile: compact identity row + horizontally
         scrollable tab pills (scrollbar hidden, swipe-friendly, no squished stack). */}
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:sticky md:top-24">
+    <Card className="rounded-2xl border p-4 md:sticky md:top-24">
       {/* Identity — compact horizontal row on mobile, spacious block on desktop */}
       <div className="flex items-center space-x-4 mb-4 md:mb-6 p-2">
         <div
@@ -89,7 +90,7 @@ const ProfileSidebar = ({ user, activeTab, onTabChange, onLogout }) => (
           <span>Logout</span>
         </button>
       </nav>
-    </div>
+    </Card>
   </div>
 );
 

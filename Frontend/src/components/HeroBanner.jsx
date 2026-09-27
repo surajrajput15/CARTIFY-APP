@@ -12,9 +12,7 @@ import {
   Sparkles,
   Star,
 } from 'lucide-react';
-import { fetchProducts } from '../services/productsApi';
 import { formatNumber } from '../utils/format';
-import { isNetworkError } from '../utils/apiError';
 import { HeroIllustration } from './illustrations/EmptyStateIllustrations';
 
 /**
@@ -27,7 +25,7 @@ const SLIDES = [
   {
     id: 'tech',
     badge: 'New Arrivals',
-    badgeClass: 'text-orange-200 border-orange-300/30 bg-orange-500/10',
+    badgeClass: 'text-orange-100 border-orange-300/30 bg-orange-500/10',
     pingClass: 'bg-orange-400',
     dotClass: 'bg-orange-500',
     gradient: 'from-teal-800 via-teal-600 to-teal-500',
@@ -36,7 +34,7 @@ const SLIDES = [
       { text: 'Your', accent: false },
       { text: 'Tech', accent: true, accentClass: 'text-teal-200' },
       { text: '&', accent: false },
-      { text: 'Lifestyle', accent: true, accentClass: 'text-orange-200' },
+      { text: 'Lifestyle', accent: true, accentClass: 'text-orange-100' },
     ],
     floaters: [
       { icon: Headphones, className: 'left-[6%] top-[12%]', anim: 'hero-float-slow' },
@@ -145,7 +143,7 @@ const SlidePanel = ({ slide, animate, productCountText, onShopNow }) => (
         </h1>
 
         <p
-          className={`text-teal-100 text-sm sm:text-base md:text-lg max-w-xl font-medium leading-relaxed ${animate ? 'hero-rise' : ''}`}
+          className={`text-white text-sm sm:text-base md:text-lg max-w-xl font-medium leading-relaxed ${animate ? 'hero-rise' : ''}`}
           style={{ animationDelay: '0.55s' }}
         >
           {slide.id === 'tech' ? (
@@ -182,12 +180,12 @@ const SlidePanel = ({ slide, animate, productCountText, onShopNow }) => (
   </div>
 );
 
-const HeroBanner = () => {
+/* F-45: the product count is passed down from HomePage's single fetch —
+   the hero no longer fires its own `limit: 1` request. */
+const HeroBanner = ({ productCount = null }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [autoPlay, setAutoPlay] = useState(true);
   const [paused, setPaused] = useState(false);
-  const [productCount, setProductCount] = useState(null);
-  const [apiOk, setApiOk] = useState(true);
   const [inView, setInView] = useState(false);
   const [tick, setTick] = useState(0);
   const containerRef = useRef(null);
@@ -197,28 +195,6 @@ const HeroBanner = () => {
       typeof window !== 'undefined' &&
       window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
   );
-
-  /* Product count — only ever shown when it came from the real API. Offline /
-     loading keeps neutral copy instead of fabricating a number. */
-  useEffect(() => {
-    let cancelled = false;
-    fetchProducts({ limit: 1 })
-      .then((res) => {
-        if (cancelled) return;
-        const data = res.data;
-        const count = Array.isArray(data) ? data.length : (data?.total ?? 0);
-        setProductCount(count);
-        setApiOk(true);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        if (isNetworkError(err)) {
-          setProductCount(null);
-          setApiOk(false);
-        }
-      });
-    return () => { cancelled = true; };
-  }, []);
 
   /* Entrance animations only run once the hero actually scrolls into view. */
   useEffect(() => {
@@ -268,8 +244,11 @@ const HeroBanner = () => {
     document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  /* Only ever shown when it came from the real API (a number was passed
+     down). Offline / loading / filtered views keep neutral copy instead of
+     fabricating a number. */
   const productCountText =
-    apiOk && productCount !== null
+    productCount !== null && productCount !== undefined
       ? `${formatNumber(productCount)}+ products`
       : 'top-quality products';
 

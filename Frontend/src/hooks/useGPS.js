@@ -34,6 +34,7 @@ export function useGPS(options = {}) {
   // Check permission status on mount
   useEffect(() => {
     if (!navigator.geolocation) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- permission state is derived from the browser capability check
       setPermission('unsupported');
       return;
     }
@@ -70,7 +71,8 @@ export function useGPS(options = {}) {
 
   const handleError = useCallback((err) => {
     setLoading(false);
-    let message = 'Geolocation error';
+    // Every switch branch (incl. default) assigns a message below.
+    let message;
     switch (err.code) {
       case err.PERMISSION_DENIED:
         message = 'Location permission denied. Please enable in browser settings.';

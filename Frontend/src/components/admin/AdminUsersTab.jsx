@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, ChevronDown, ChevronUp, Loader2, AlertCircle, ShieldCheck, UserX, UserCheck, UserMinus, Eye, EyeOff, Bell, Mail, MapPin, Heart, Package, Calendar } from 'lucide-react';
+import { Search, Loader2, ShieldCheck, UserX, UserCheck, UserMinus, Eye, EyeOff, Bell, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { fetchUsers, fetchUserById, fetchUserLoginHistory, patchUserStatus } from '../../services/usersApi';
 import { isNetworkError } from '../../utils/apiError';
@@ -17,7 +17,7 @@ function StatusBadge({ status }) {
 }
 
 function ActionButton({ children, onClick, variant = 'primary', disabled, className = '' }) {
-    const base = 'inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-bold rounded-lg transition-colors min-h-[36px]';
+    const base = 'inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-bold rounded-lg transition-colors min-h-[44px]';
     const variants = {
         primary: 'bg-teal-600 text-white hover:bg-teal-700',
         danger: 'bg-red-600 text-white hover:bg-red-700',
@@ -58,6 +58,7 @@ export default function AdminUsersTab() {
         }
     }, [page, statusFilter, search]);
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- load() only flips its own loading flag around an awaited fetch
     useEffect(() => { load(); }, [load]);
 
     const handleDetail = async (user) => {
@@ -125,7 +126,7 @@ export default function AdminUsersTab() {
                         {statusOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                         <input type="text" placeholder="Search name, email, phone..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm bg-white" />
                     </div>
                 </div>

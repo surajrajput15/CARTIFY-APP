@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { formatPrice, formatDate } from '../../utils/format';
+import Card from '../ui/Card';
 
 const ORDER_STATUS_STYLES = {
   Pending: { label: 'Pending', className: 'bg-gray-100 text-gray-600' },
@@ -10,6 +11,10 @@ const ORDER_STATUS_STYLES = {
   Delivered: { label: 'Delivered', className: 'bg-teal-50 text-teal-700' },
   Cancelled: { label: 'Cancelled', className: 'bg-red-50 text-red-700' },
 };
+
+// F-16: happy-path lifecycle shown in the detail timeline — same forward-only
+// order as Backend/routes/orderRoutes.js ALLOWED_TRANSITIONS.
+const STATUS_STEPS = ['Pending', 'Processing', 'Shipped', 'Delivered'];
 
 const OrdersTab = ({ orders, loading }) => {
   const [expandedId, setExpandedId] = useState(null);
@@ -22,7 +27,7 @@ const OrdersTab = ({ orders, loading }) => {
     ORDER_STATUS_STYLES[status] || { label: status || 'Unknown', className: 'bg-gray-100 text-gray-600' };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 animate-fade-in-up">
+    <Card className="rounded-2xl border p-6 sm:p-8 animate-fade-in-up">
       <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-6 border-b border-gray-100 pb-4">Recent Orders</h2>
       {loading ? (
         <div className="space-y-4 animate-pulse">
@@ -89,10 +94,45 @@ const OrdersTab = ({ orders, loading }) => {
                 {expanded && (
                   <div className="mt-3 pt-3 border-t border-gray-200 space-y-3">
                     <div>
+                      <p className="text-sm font-bold text-gray-800 mb-2">Status timeline</p>
+                      {order.status === 'Cancelled' ? (
+                        <p className="text-sm font-bold text-red-600">This order was cancelled.</p>
+                      ) : (
+                        <ol className="flex flex-wrap gap-x-4 gap-y-2" aria-label="Order status timeline">
+                          {STATUS_STEPS.map((step, i) => {
+                            const currentIndex = STATUS_STEPS.indexOf(order.status);
+                            const done = currentIndex >= 0 && i < currentIndex;
+                            const current = i === currentIndex;
+                            return (
+                              <li
+                                key={step}
+                                aria-current={current ? 'step' : undefined}
+                                className="flex items-center gap-1.5 text-xs font-bold"
+                              >
+                                <span aria-hidden="true" className={`w-2.5 h-2.5 rounded-full ${done || current ? 'bg-teal-600' : 'bg-gray-300'}`} />
+                                <span className={done ? 'text-teal-700' : current ? 'text-gray-900' : 'text-gray-500'}>
+                                  {step}{done ? ' ✓' : current ? ' (now)' : ''}
+                                </span>
+                              </li>
+                            );
+                          })}
+                        </ol>
+                      )}
+                    </div>
+                    <div>
                       <p className="text-sm font-bold text-gray-800 mb-1">Items ({(order.orderItems || []).length})</p>
                       {(order.orderItems || []).map((item) => (
                         <p key={item.productId} className="text-sm text-gray-600">
-                          {item.title} × {item.quantity} — {formatPrice(item.price * item.quantity)}
+                          {item.productId ? (
+                            <Link
+                              to={`/product/${item.productId}`}
+                              className="font-bold text-teal-600 hover:text-teal-700 hover:underline"
+                            >
+                              {item.title}
+                            </Link>
+                          ) : (
+                            item.title
+                          )} × {item.quantity} — {formatPrice(item.price * item.quantity)}
                         </p>
                       ))}
                     </div>
@@ -111,7 +151,7 @@ const OrdersTab = ({ orders, loading }) => {
           })}
         </div>
       )}
-    </div>
+    </Card>
   );
 };
 

@@ -1,9 +1,11 @@
+import { useId } from 'react';
 import { AlertTriangle, X, Loader2 } from 'lucide-react';
 import Modal from './Modal';
 
 const ConfirmModal = ({ title, message, confirmLabel, cancelLabel, loading, onConfirm, onCancel }) => {
+  const messageId = useId();
   return (
-    <Modal title={title} onClose={onCancel} blockClose={loading} className="max-w-sm p-6">
+    <Modal title={title} describedBy={messageId} onClose={onCancel} blockClose={loading} className="max-w-sm p-6">
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="bg-red-50 p-2 rounded-full flex-shrink-0">
@@ -16,17 +18,18 @@ const ConfirmModal = ({ title, message, confirmLabel, cancelLabel, loading, onCo
           onClick={onCancel}
           disabled={loading}
           aria-label="Close dialog"
-          className="text-gray-400 hover:text-gray-600 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center -mr-2 -mt-1 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="text-gray-500 hover:text-gray-600 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center -mr-2 -mt-1 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <X size={20} aria-hidden="true" />
         </button>
       </div>
-      <p className="text-gray-600 text-sm mb-6">{message}</p>
+      <p id={messageId} className="text-gray-600 text-sm mb-6">{message}</p>
       <div className="flex flex-col-reverse sm:flex-row gap-3">
         <button
           type="button"
           onClick={onConfirm}
           disabled={loading}
+          aria-busy={loading}
           className="flex-1 bg-red-500 text-white py-2.5 rounded-lg font-bold hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[44px]"
         >
           {loading ? <Loader2 size={18} className="animate-spin" aria-hidden="true" /> : null}

@@ -1,8 +1,14 @@
 import { createContext, useState, useContext, useRef, useCallback, useMemo, useEffect } from 'react';
 import { fetchCart, mergeCart, syncCart, clearServerCart } from '../services/cartApi';
+import { clearStoredCoupon } from '../hooks/useCoupon';
 import { useAuth } from './authContext';
 
+// F-43: split contexts — state (changes on every cart mutation) and actions
+// (stable identities) live apart so memo(ProductCard) is no longer defeated by
+// a fresh context value on each add/remove/quantity change. useCart() stays a
+// facade over both for every other consumer.
 const CartContext = createContext();
+const CartActionsContext = createContext();
 
 // Products from the API always expose `_id`; normalize a stray `id` so legacy
 // localStorage carts keep working across versions.
@@ -38,6 +44,9 @@ export const CartProvider = ({ children }) => {
   // was already logged in at mount (page reload) vs. a mid-session login.
   const syncedUserRef = useRef(null);
   const loggedInAtMountRef = useRef(Boolean(user?.id));
+  // Previous user id — distinguishes a real logout (signed-in → null) from a
+  // guest session that was always null (F-03 / DEC-2A).
+  const prevUserIdRef = useRef(user?.id ?? null);
 
   const persistLocal = useCallback((cartData) => {
     localStorage.setItem('cart', JSON.stringify(cartData));
@@ -64,8 +73,24 @@ export const CartProvider = ({ children }) => {
   //  - Page reload with an existing session → server cart is authoritative, replace local.
   //  - Mid-session login (guest cart) → merge guest items into the server cart.
   useEffect(() => {
-    const userId = user?.id;
+    const userId = user?.id ?? null;
+    const prevUserId = prevUserIdRef.current;
+    prevUserIdRef.current = userId;
+
     if (!userId) {
+      // Logout (signed-in → null): discard the local cart + storage so the
+      // next login can never merge the previous user's items (DEC-2A).
+      // A pure guest session (null → null) keeps its cart.
+      if (prevUserId) {
+        setCart([]);
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+        if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+        localStorage.removeItem('cart');
+        // F-04: the persisted coupon belongs to the outgoing user too — clear
+        // it here even if no screen with `useCoupon` mounted (piggyback on the
+        // same auth transition). Mounted instances empty-cart-clear their state.
+        clearStoredCoupon();
+      }
       syncedUserRef.current = null;
       loggedInAtMountRef.current = false;
       return;
@@ -166,16 +191,30 @@ export const CartProvider = ({ children }) => {
     });
   }, [debouncedSave, debouncedServerSync]);
 
-  const value = useMemo(
-    () => ({ cart, addToCart, removeFromCart, updateQuantity, clearCart }),
-    [cart, addToCart, removeFromCart, updateQuantity, clearCart]
+  const stateValue = useMemo(() => ({ cart }), [cart]);
+  const actionsValue = useMemo(
+    () => ({ addToCart, removeFromCart, updateQuantity, clearCart }),
+    [addToCart, removeFromCart, updateQuantity, clearCart]
   );
 
   return (
-    <CartContext.Provider value={value}>
-      {children}
-    </CartContext.Provider>
+    <CartActionsContext.Provider value={actionsValue}>
+      <CartContext.Provider value={stateValue}>
+        {children}
+      </CartContext.Provider>
+    </CartActionsContext.Provider>
   );
 };
 
-export const useCart = () => useContext(CartContext);
+/** Cart state only — subscribing to this re-renders on cart mutations. */
+export const useCartState = () => useContext(CartContext);
+
+/** Stable action callbacks — subscribing to this never re-renders on cart changes. */
+export const useCartActions = () => useContext(CartActionsContext);
+
+/** Facade over both contexts (backwards-compatible with the pre-split API). */
+export const useCart = () => {
+  const state = useContext(CartContext);
+  const actions = useContext(CartActionsContext);
+  return { ...(state || {}), ...(actions || {}) };
+};

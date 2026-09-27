@@ -5,6 +5,8 @@ import { fetchStaff, createStaff, updateStaff, demoteStaff } from '../../service
 import { fetchWarehouses } from '../../services/warehousesApi';
 import { isNetworkError } from '../../utils/apiError';
 import { formatDate } from '../../utils/format';
+import Button from '../ui/Button';
+import Card from '../ui/Card';
 
 const EMPTY_FORM = { name: '', email: '', password: '', role: 'delivery', phone: '', warehouseId: '' };
 
@@ -15,7 +17,6 @@ function AdminStaffTab() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
-  const [confirmId, setConfirmId] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -38,7 +39,9 @@ function AdminStaffTab() {
     }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- load() only flips its own loading flag around an awaited fetch
   useEffect(() => { load(); }, [load]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- kick off an awaited fetch; setState resolves after await
   useEffect(() => { loadWarehouses(); }, [loadWarehouses]);
 
   const validate = () => {
@@ -116,7 +119,7 @@ function AdminStaffTab() {
           {warehouses.map((w) => <option key={w._id} value={w._id}>{w.name} ({w.code})</option>)}
         </select>
         {activeId && (
-          <button onClick={() => handleAssignWarehouse(person, null)} className="text-[11px] font-bold text-gray-400 hover:text-red-500 px-2 py-1 rounded" aria-label={`Unassign ${person.name}`}>
+          <button onClick={() => handleAssignWarehouse(person, null)} className="text-[11px] font-bold text-gray-500 hover:text-red-500 px-2 py-1 rounded" aria-label={`Unassign ${person.name}`}>
             Unassign
           </button>
         )}
@@ -139,10 +142,10 @@ function AdminStaffTab() {
           <h2 className="text-xl font-bold text-gray-900">Staff Accounts</h2>
           <p className="text-sm text-gray-500 mt-0.5">Delivery partners and warehouse staff are created here — public registration is customer-only.</p>
         </div>
-        <button onClick={() => setShowForm((s) => !s)} className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold rounded-xl inline-flex items-center gap-2 min-h-[44px]">
+        <Button onClick={() => setShowForm((s) => !s)} className="px-4 py-2 text-sm font-bold rounded-xl inline-flex items-center gap-2 min-h-[44px]">
           {showForm ? <X size={16} aria-hidden="true" /> : <Plus size={16} aria-hidden="true" />}
           {showForm ? 'Close' : 'Add Staff'}
-        </button>
+        </Button>
       </div>
 
       {showForm && (
@@ -180,9 +183,9 @@ function AdminStaffTab() {
             </div>
           )}
           <div className="sm:col-span-2 flex items-center gap-2">
-            <button type="submit" disabled={saving} className="px-5 py-2 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl inline-flex items-center gap-2 min-h-[44px]">
+            <Button type="submit" disabled={saving} className="px-5 py-2 disabled:opacity-50 text-sm font-bold rounded-xl inline-flex items-center gap-2 min-h-[44px]">
               {saving && <Loader2 size={15} className="animate-spin" aria-hidden="true" />} Create Account
-            </button>
+            </Button>
             <button type="button" onClick={() => { setShowForm(false); setForm(EMPTY_FORM); }} className="px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 rounded-xl min-h-[44px]">Cancel</button>
           </div>
         </form>
@@ -190,20 +193,20 @@ function AdminStaffTab() {
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {staff.length === 0 && (
-          <div className="sm:col-span-2 xl:col-span-3 bg-white rounded-2xl border border-dashed border-gray-200 p-10 text-center text-sm text-gray-400">
+          <div className="sm:col-span-2 xl:col-span-3 bg-white rounded-2xl border border-dashed border-gray-200 p-10 text-center text-sm text-gray-500">
             No staff yet — add your first delivery partner or warehouse keeper above.
           </div>
         )}
         {staff.map((person) => (
-          <div key={person._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3">
+          <Card key={person._id} className="rounded-2xl border p-4 flex flex-col gap-3">
             <div className="flex items-start gap-3">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${person.role === 'warehouse' ? 'bg-teal-50 text-teal-600' : 'bg-blue-50 text-blue-600'}`} aria-hidden="true">
                 {person.role === 'warehouse' ? <Warehouse size={20} /> : <Truck size={20} />}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="font-bold text-gray-900 truncate">{person.name}</p>
-                <p className="text-xs text-gray-400 flex items-center gap-1"><Mail size={11} aria-hidden="true" /> {person.email}</p>
-                {person.phone && <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5"><Phone size={11} aria-hidden="true" /> {person.phone}</p>}
+                <p className="text-xs text-gray-500 flex items-center gap-1"><Mail size={11} aria-hidden="true" /> {person.email}</p>
+                {person.phone && <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5"><Phone size={11} aria-hidden="true" /> {person.phone}</p>}
               </div>
               <span className={`shrink-0 px-2 py-0.5 rounded-full text-[11px] font-bold capitalize border ${person.role === 'warehouse' ? 'bg-teal-50 text-teal-700 border-teal-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
                 {person.role}
@@ -230,13 +233,13 @@ function AdminStaffTab() {
             )}
 
             <div className="flex items-center justify-between border-t border-gray-50 pt-2">
-              <span className="text-[11px] text-gray-400">Since {formatDate(person.createdAt)}</span>
+              <span className="text-[11px] text-gray-500">Since {formatDate(person.createdAt)}</span>
               <button onClick={() => handleDemote(person)} disabled={saving === person._id}
-                className="text-[11px] font-bold text-gray-400 hover:text-red-600 px-2 py-1 rounded inline-flex items-center gap-1 disabled:opacity-50">
+                className="text-[11px] font-bold text-gray-500 hover:text-red-600 px-2 py-1 rounded inline-flex items-center gap-1 disabled:opacity-50">
                 {saving === person._id ? <Loader2 size={11} className="animate-spin" aria-hidden="true" /> : <Trash2 size={11} aria-hidden="true" />} Remove
               </button>
             </div>
-          </div>
+          </Card>
         ))}
       </div>
     </div>

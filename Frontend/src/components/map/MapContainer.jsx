@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Map, Marker, Polyline, divIcon } from './Map';
+import { Map, Marker, Polyline } from './Map';
+import { divIcon } from './mapIcons';
 import useGPS from '../../hooks/useGPS';
 import useSocket from '../../hooks/useSocket';
 
@@ -46,7 +47,6 @@ export function MapContainer({
   style,
   ...rest
 }) {
-  const [mapError, setMapError] = useState(null);
   const mapRef = useRef(null);
 
   // GPS hook — active only in courier mode
@@ -131,15 +131,6 @@ export function MapContainer({
 
   return (
     <div className={`relative ${className}`} style={{ ...style, height: '100%', width: '100%', minHeight: '300px' }} {...rest}>
-      {mapError && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-50 rounded-xl border border-red-200 p-4 z-50">
-          <div className="text-center text-red-600">
-            <p className="font-medium">Map Error</p>
-            <p className="text-sm text-gray-500 mt-1">{mapError}</p>
-          </div>
-        </div>
-      )}
-
       <Map
         center={mapCenter}
         zoom={zoom}
@@ -213,7 +204,7 @@ export function MapContainer({
           )}
           {gpsError && <p className="text-xs text-red-600 mt-1">{gpsError.message}</p>}
           {trackingMode === 'courier' && !gpsPosition && !gpsError && (
-            <p className="text-xs text-gray-400 mt-1">Waiting for GPS fix…</p>
+            <p className="text-xs text-gray-500 mt-1">Waiting for GPS fix…</p>
           )}
         </div>
       </div>

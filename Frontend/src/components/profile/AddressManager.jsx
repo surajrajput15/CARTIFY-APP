@@ -2,6 +2,10 @@ import { useState } from 'react';
 import { Plus, Trash2, Edit, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
 import LocationPicker from './LocationPicker';
+import { handleApiError } from '../../utils/apiError';
+import Button from '../ui/Button';
+import Card from '../ui/Card';
+import Input from '../ui/Input';
 
 const EMPTY_ADDRESS = { fullName: '', phone: '', street: '', city: '', state: '', pinCode: '', latitude: null, longitude: null };
 
@@ -83,21 +87,29 @@ const handleSave = async (e) => {
       } else {
         resetForm();
       }
-    } catch {
-      toast.error("Failed to save address");
+    } catch (err) {
+      // F-36: surface the real backend reason (validation, duplicate, cap)
+      toast.error(handleApiError(err, 'Failed to save address'));
     } finally {
       setAddressSaving(false);
     }
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 animate-fade-in-up">
+    <Card className="rounded-2xl border p-6 sm:p-8 animate-fade-in-up">
       <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Manage Addresses</h2>
         {!showAddressForm && (
-          <button onClick={() => setShowAddressForm(true)} className="flex items-center gap-1 text-sm font-bold text-teal-600 hover:text-teal-700">
-            <Plus size={16} aria-hidden="true" /> Add New
-          </button>
+          addresses.length >= 10 ? (
+            /* F-36: backend caps saved addresses at 10 — don't invite a failed POST */
+            <span className="text-xs font-semibold text-gray-500 bg-gray-50 border border-gray-200 rounded-full px-3 py-1.5">
+              Address limit reached (10)
+            </span>
+          ) : (
+            <button onClick={() => setShowAddressForm(true)} className="flex items-center gap-1 text-sm font-bold text-teal-600 hover:text-teal-700 min-h-[44px]">
+              <Plus size={16} aria-hidden="true" /> Add New
+            </button>
+          )
         )}
       </div>
 
@@ -107,12 +119,12 @@ const handleSave = async (e) => {
             {editingAddressId ? 'Update address' : 'Add a new address'}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input type="text" placeholder="Full Name" aria-label="Full Name" required
+            <Input type="text" placeholder="Full Name" aria-label="Full Name" required
               value={editingAddressId ? editingAddress.fullName : newAddress.fullName}
               onChange={(e) => editingAddressId
                 ? setEditingAddress({...editingAddress, fullName: e.target.value})
                 : setNewAddress({...newAddress, fullName: e.target.value})}
-              className="p-3 rounded-lg border focus:ring-teal-500 focus:border-teal-500" />
+              className="p-3 rounded-lg" />
             <div>
               <input type="tel" placeholder="Phone Number" aria-label="Phone Number" inputMode="numeric" maxLength={10} required
                 value={editingAddressId ? editingAddress.phone : newAddress.phone}
@@ -127,24 +139,24 @@ const handleSave = async (e) => {
                 className={`p-3 rounded-lg border w-full focus:ring-teal-500 focus:border-teal-500 ${phoneError ? 'border-red-400' : ''}`} />
               {phoneError && <p id="phone-error" role="alert" className="text-red-500 text-xs mt-1">{phoneError}</p>}
             </div>
-            <input type="text" placeholder="Street / Flat / Area" aria-label="Street, Flat or Area" required
+            <Input type="text" placeholder="Street / Flat / Area" aria-label="Street, Flat or Area" required
               value={editingAddressId ? editingAddress.street : newAddress.street}
               onChange={(e) => editingAddressId
                 ? setEditingAddress({...editingAddress, street: e.target.value})
                 : setNewAddress({...newAddress, street: e.target.value})}
-              className="p-3 rounded-lg border focus:ring-teal-500 focus:border-teal-500 md:col-span-2" />
-            <input type="text" placeholder="City" aria-label="City" required
+              className="p-3 rounded-lg md:col-span-2" />
+            <Input type="text" placeholder="City" aria-label="City" required
               value={editingAddressId ? editingAddress.city : newAddress.city}
               onChange={(e) => editingAddressId
                 ? setEditingAddress({...editingAddress, city: e.target.value})
                 : setNewAddress({...newAddress, city: e.target.value})}
-              className="p-3 rounded-lg border focus:ring-teal-500 focus:border-teal-500" />
-            <input type="text" placeholder="State" aria-label="State" required
+              className="p-3 rounded-lg" />
+            <Input type="text" placeholder="State" aria-label="State" required
               value={editingAddressId ? editingAddress.state : newAddress.state}
               onChange={(e) => editingAddressId
                 ? setEditingAddress({...editingAddress, state: e.target.value})
                 : setNewAddress({...newAddress, state: e.target.value})}
-              className="p-3 rounded-lg border focus:ring-teal-500 focus:border-teal-500" />
+              className="p-3 rounded-lg" />
             <div>
               <input type="text" placeholder="PIN Code" aria-label="PIN Code" inputMode="numeric" maxLength={6} required
                 value={editingAddressId ? editingAddress.pinCode : newAddress.pinCode}
@@ -183,9 +195,9 @@ const handleSave = async (e) => {
           </div>
 
           <div className="mt-4 flex gap-3">
-            <button type="submit" disabled={addressSaving} className="bg-teal-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-teal-700 disabled:opacity-50">
+            <Button type="submit" disabled={addressSaving} className="px-6 py-2 rounded-lg font-bold disabled:opacity-50">
               {addressSaving ? 'Saving...' : (editingAddressId ? 'Update Address' : 'Save Address')}
-            </button>
+            </Button>
             <button type="button" onClick={editingAddressId ? handleCloseEdit : resetForm} className="px-6 py-2 rounded-lg font-bold text-gray-600 bg-gray-200 hover:bg-gray-300">
               {editingAddressId ? 'Cancel' : 'Cancel'}
             </button>
@@ -215,16 +227,16 @@ const handleSave = async (e) => {
                 <MapPin size={12} aria-hidden="true" /> Pinned on map
               </p>
             )}
-            <button onClick={() => onDeleteAddress(address._id)} className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors p-2 bg-gray-50 rounded-full min-w-[44px] min-h-[44px] inline-flex items-center justify-center" aria-label={`Delete address for ${address.fullName}`}>
+            <button onClick={() => onDeleteAddress(address._id)} className="absolute top-4 right-4 text-gray-500 hover:text-red-500 transition-colors p-2 bg-gray-50 rounded-full min-w-[44px] min-h-[44px] inline-flex items-center justify-center" aria-label={`Delete address for ${address.fullName}`}>
               <Trash2 size={18} aria-hidden="true" />
             </button>
-            <button onClick={() => handleOpenEdit(address._id, address)} className="absolute top-4 right-14 text-gray-400 hover:text-teal-500 transition-colors p-2 bg-gray-50 rounded-full min-w-[44px] min-h-[44px] inline-flex items-center justify-center" aria-label={`Edit address for ${address.fullName}`}>
+            <button onClick={() => handleOpenEdit(address._id, address)} className="absolute top-4 right-14 text-gray-500 hover:text-teal-500 transition-colors p-2 bg-gray-50 rounded-full min-w-[44px] min-h-[44px] inline-flex items-center justify-center" aria-label={`Edit address for ${address.fullName}`}>
               <Edit size={18} aria-hidden="true" />
             </button>
           </div>
         ))}
       </div>
-    </div>
+    </Card>
   );
 };
 

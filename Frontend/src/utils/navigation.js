@@ -15,3 +15,12 @@ export const navigateToLogin = () => {
     window.location.href = '/login';
   }
 };
+
+// F-14: record where the user was so LoginPage can return them there after
+// re-auth (LoginPage reads and clears sessionStorage 'redirectAfterLogin').
+// Paths already on /login are skipped — there is nowhere to return to.
+export const saveLoginRedirect = (path) => {
+  if (path && !path.startsWith('/login')) {
+    sessionStorage.setItem('redirectAfterLogin', path);
+  }
+};

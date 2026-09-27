@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { LocateFixed, MapPin, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Map, Marker, divIcon } from '../map/Map';
+import { Map, Marker } from '../map/Map';
+import { divIcon } from '../map/mapIcons';
 import { reverseGeocode } from '../../utils/geo';
+import Button from '../ui/Button';
 
 const DEFAULT_CENTER = [20.5937, 78.9629];
 
@@ -54,6 +56,7 @@ export default function LocationPicker({ latitude, longitude, onPick, onAddressR
     const lat = Number(latitude);
     const lng = Number(longitude);
     if (isCoord(lat, lng)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- re-pins when the edited address changes
       setPin([lat, lng]);
       map.setView([lat, lng], Math.max(map.getZoom(), 15));
     }
@@ -108,15 +111,15 @@ export default function LocationPicker({ latitude, longitude, onPick, onAddressR
           {locating ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <LocateFixed size={16} aria-hidden="true" />}
           Use my location
         </button>
-        <button
+        <Button
           type="button"
           onClick={confirmPin}
           disabled={geocoding || !pin}
-          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-bold text-white bg-teal-600 rounded-lg hover:bg-teal-700 disabled:opacity-50 min-h-[44px]"
+          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-bold rounded-lg disabled:opacity-50 min-h-[44px]"
         >
           {geocoding ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <MapPin size={16} aria-hidden="true" />}
           Confirm pin &amp; fill address
-        </button>
+        </Button>
         {pin && (
           <span className="text-xs text-gray-500">
             {pin[0].toFixed(5)}, {pin[1].toFixed(5)}

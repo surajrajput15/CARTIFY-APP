@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { API_URL } from '../config';
-import { navigateToLogin } from '../utils/navigation';
+import { navigateToLogin, saveLoginRedirect } from '../utils/navigation';
 import { isNetworkError } from '../utils/apiError';
 
 let isRefreshing = false;
@@ -97,7 +97,75 @@ const api = axios.create({
   timeout: 15000, // 15s default — prevents hung requests on dead backend
 });
 
+// ---------------------------------------------------------------------------
+// F-46: minimal GET cache + in-flight dedupe.
+//  - identical concurrent GETs share one network request;
+//  - a fresh GET is served from a 30s cache (route/tab revisits don't refetch);
+//  - any mutation (POST/PUT/PATCH/DELETE) clears the cache;
+//  - csrf-token and `dataCache: false` requests bypass the cache entirely.
+// ---------------------------------------------------------------------------
+const GET_CACHE_TTL_MS = 30_000;
+const getCache = new Map(); // key -> { data, expires }
+const inflightGets = new Map(); // key -> Promise<response>
+
+const isGet = (config) => (config.method || 'get').toLowerCase() === 'get';
+
+const getCacheKey = (config) => {
+  if (!config.url || config.dataCache === false) return null;
+  // The CSRF token rotates — a cached one turns every retry into a 403 loop.
+  if (config.url.includes('csrf-token')) return null;
+  let qs = '';
+  try {
+    if (config.params) {
+      qs = new URLSearchParams(
+        Object.entries(config.params)
+          .filter(([, v]) => v !== undefined && v !== null)
+          .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      ).toString();
+    }
+  } catch {
+    return null;
+  }
+  return `${config.baseURL || ''}|${config.url}|${qs}`;
+};
+
+const makeDeferred = () => {
+  let resolve;
+  let reject;
+  const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
+  return { promise, resolve, reject };
+};
+
 api.interceptors.request.use((config) => {
+  // F-46: serve GETs from cache or join an in-flight identical request.
+  if (isGet(config)) {
+    const key = getCacheKey(config);
+    if (key) {
+      const hit = getCache.get(key);
+      if (hit && hit.expires > Date.now()) {
+        const err = new Error('GET served from cache');
+        err.__cacheHit = hit.data;
+        err.config = config;
+        return Promise.reject(err);
+      }
+      if (inflightGets.has(key)) {
+        const err = new Error('GET joined in-flight request');
+        err.__inflight = inflightGets.get(key);
+        err.config = config;
+        return Promise.reject(err);
+      }
+      config.__cacheKey = key;
+      config.__deferred = makeDeferred();
+      // Sink rejections nobody joined (the owner rethrows through the response
+      // interceptor) — an unobserved rejected promise crashes Node/tests.
+      config.__deferred.promise.catch(() => {});
+      inflightGets.set(key, config.__deferred.promise);
+    }
+  } else {
+    // Any mutation invalidates everything we cached (cheap + always safe).
+    getCache.clear();
+  }
+
   // Add CSRF token for state-changing requests
   const csrfToken = getCsrfToken();
   if (csrfToken && ['post', 'put', 'patch', 'delete'].includes(config.method)) {
@@ -114,10 +182,38 @@ api.interceptors.response.use(
       logOnline();
     }
     notifyStatus(false);
+    // F-46: publish to the GET cache + resolve everyone who joined this request.
+    const key = response.config?.__cacheKey;
+    if (key) {
+      getCache.set(key, { data: response.data, expires: Date.now() + GET_CACHE_TTL_MS });
+      response.config.__deferred?.resolve(response);
+      inflightGets.delete(key);
+    }
     return response;
   },
   async (error) => {
+    // F-46: short-circuits raised by the request interceptor.
+    if (error && typeof error === 'object' && '__cacheHit' in error) {
+      return {
+        data: error.__cacheHit,
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: error.config || {},
+        request: null,
+      };
+    }
+    if (error && typeof error === 'object' && error.__inflight) {
+      return error.__inflight;
+    }
+
     const originalRequest = error.config;
+    // F-46: settle the in-flight bookkeeping before any retry logic (a retry
+    // re-enters the request interceptor and must not join its own deferred).
+    if (originalRequest?.__cacheKey) {
+      originalRequest.__deferred?.reject(error);
+      inflightGets.delete(originalRequest.__cacheKey);
+    }
 
     // Network errors (backend down, CORS, DNS) — only log on STATE TRANSITIONS
     // (online → offline), not per-request. The yellow banner handles per-request UX.
@@ -184,6 +280,9 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
+        // F-14: session expired mid-use — remember where the user was so the
+        // login page can send them straight back.
+        saveLoginRedirect(window.location.pathname + window.location.search);
         navigateToLogin();
         return Promise.reject(refreshError);
       } finally {

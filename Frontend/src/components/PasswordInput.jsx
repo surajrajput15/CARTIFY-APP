@@ -6,7 +6,7 @@ const PasswordInput = ({ value, onChange, placeholder, className = '', ...rest }
 
   return (
     <div className="relative">
-      <Lock className="absolute inset-y-0 left-3 top-4 h-5 w-5 text-gray-400" aria-hidden="true" />
+      <Lock className="absolute inset-y-0 left-3 top-4 h-5 w-5 text-gray-500" aria-hidden="true" />
       <input
         type={showPassword ? 'text' : 'password'}
         value={value}
@@ -18,7 +18,7 @@ const PasswordInput = ({ value, onChange, placeholder, className = '', ...rest }
       <button
         type="button"
         onClick={() => setShowPassword(prev => !prev)}
-        className="absolute inset-y-0 right-1 flex items-center px-2 text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-teal-500 rounded-lg transition-colors min-w-[44px] min-h-[44px]"
+        className="absolute inset-y-0 right-1 flex items-center px-2 text-gray-500 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-teal-500 rounded-lg transition-colors min-w-[44px] min-h-[44px]"
         aria-label={showPassword ? 'Hide password' : 'Show password'}
       >
         {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}

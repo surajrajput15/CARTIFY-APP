@@ -132,6 +132,7 @@ const LocationBar = () => {
             )}
             {resolving ? 'Finding your location…' : 'Use my current location'}
           </button>
+          {/* eslint-disable-next-line react-hooks/refs -- "GPS was attempted" flag is set by the click handler and read for error display */}
           {(geocodeError || (gpsError && waitingGpsRef.current)) && (
             <p role="alert" className="mt-2 text-xs text-red-600">
               {geocodeError || gpsError?.message || 'Location unavailable.'}
@@ -139,9 +140,9 @@ const LocationBar = () => {
           )}
 
           <div className="mt-4">
-            <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Saved addresses</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Saved addresses</p>
             {addressesLoading ? (
-              <p className="text-sm text-gray-400 animate-pulse" aria-label="Loading addresses">Loading…</p>
+              <p className="text-sm text-gray-500 animate-pulse" aria-label="Loading addresses">Loading…</p>
             ) : addresses.length > 0 ? (
               <ul className="space-y-1.5 max-h-44 overflow-y-auto">
                 {addresses.map((addr) => (
@@ -160,7 +161,7 @@ const LocationBar = () => {
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-gray-400">No saved addresses yet.</p>
+              <p className="text-sm text-gray-500">No saved addresses yet.</p>
             )}
           </div>
 

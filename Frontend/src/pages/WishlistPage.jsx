@@ -5,11 +5,9 @@ import ProductCard from '../components/ProductCard';
 import { SkeletonCard } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
 import { useWishlist } from '../context/WishlistContext';
-import { useAuth } from '../context/authContext';
 
 const WishlistPage = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { wishlist, wishlistLoading, refreshWishlist } = useWishlist();
 
   useEffect(() => {
@@ -20,7 +18,7 @@ const WishlistPage = () => {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-8">My Wishlist</h1>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+        <div role="status" aria-label="Loading wishlist" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
           {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
             <SkeletonCard key={n} />
           ))}

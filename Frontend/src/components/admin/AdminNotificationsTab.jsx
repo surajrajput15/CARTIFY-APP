@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Loader2, Send, Bell, UserPlus, X, Edit2, Trash2, CheckCircle2 } from 'lucide-react';
+import { Loader2, Send, Bell, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { fetchAdminNotifications, createNotification } from '../../services/notificationApi';
 import { isNetworkError } from '../../utils/apiError';
 import { formatDate } from '../../utils/format';
+import Button from '../ui/Button';
 
 const TYPE_LABELS = { system: 'System', order: 'Order', promotion: 'Promotion', stock: 'Stock', security: 'Security' };
 const TYPE_COLORS = { system: 'text-blue-600 bg-blue-50', order: 'text-teal-600 bg-teal-50', promotion: 'text-purple-600 bg-purple-50', stock: 'text-amber-600 bg-amber-50', security: 'text-red-600 bg-red-50' };
@@ -41,6 +42,7 @@ export default function AdminNotificationsTab() {
         }
     }, [page, typeFilter, unreadOnly]);
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- load() only flips its own loading flag around an awaited fetch
     useEffect(() => { load(); }, [load]);
 
     const handleSend = async () => {
@@ -83,7 +85,7 @@ export default function AdminNotificationsTab() {
                     <p className="text-sm text-gray-500">View all notifications and send broadcasts or targeted messages.</p>
                 </div>
                 <div className="flex flex-wrap gap-3">
-                    <button type="button" onClick={() => setShowCompose(true)} className="px-4 py-2.5 bg-teal-600 text-white flex items-center gap-2 rounded-lg font-bold text-sm hover:bg-teal-700 transition-colors min-h-[44px]"><Send size={16} /> New Broadcast</button>
+                    <Button type="button" onClick={() => setShowCompose(true)} className="px-4 py-2.5 flex items-center gap-2 rounded-lg font-bold text-sm transition-colors min-h-[44px]"><Send size={16} /> New Broadcast</Button>
                     <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setPage(1); }} className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
                         {typeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
@@ -128,9 +130,9 @@ export default function AdminNotificationsTab() {
                         </div>
                         <div className="flex justify-end gap-3 mt-6">
                             <button onClick={() => setShowCompose(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm">Cancel</button>
-                            <button onClick={handleSend} disabled={sending} className="px-4 py-2 bg-teal-600 text-white rounded-lg font-bold text-sm hover:bg-teal-700 transition-colors disabled:opacity-50">
+                            <Button onClick={handleSend} disabled={sending} className="px-4 py-2 rounded-lg font-bold text-sm transition-colors disabled:opacity-50">
                                 {sending ? 'Sending...' : 'Send'}
-                            </button>
+                            </Button>
                         </div>
                     </div>
                 </div>
@@ -155,7 +157,7 @@ export default function AdminNotificationsTab() {
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {notifications.map(n => (
-                                <tr key={n._id} className={n.read ? '' : 'bg-blue-25'} className="hover:bg-gray-50">
+                                <tr key={n._id} className={`hover:bg-gray-50 ${n.read ? '' : 'bg-blue-50'}`}>
                                     <td className="px-4 py-3"><TypeBadge type={n.type} /></td>
                                     <td className="px-4 py-3 font-medium text-gray-900">{n.title}</td>
                                     <td className="px-4 py-3 text-gray-500 hidden md:table-cell truncate max-w-xs">{n.message}</td>

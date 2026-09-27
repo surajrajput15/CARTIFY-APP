@@ -1,6 +1,7 @@
 import { useAuth } from '@/context/authContext';
 import { Navigate, useLocation } from 'react-router-dom';
 import AccessDenied from '@/pages/AccessDenied';
+import { saveLoginRedirect } from '@/utils/navigation';
 
 /**
  * RoleGuard — protects a route based on the user's backend-verified role.
@@ -10,13 +11,16 @@ import AccessDenied from '@/pages/AccessDenied';
  *     ['admin']            → only admins
  *     ['delivery']         → only delivery partners
  *     ['customer','admin'] → customers AND admins
+ *     (omitted)            → any signed-in user (authenticated-only guard)
  *
  * Behaviour:
  *   1. While authLoading is true (JWT still being verified) → renders nothing
  *      (prevents flash of protected content or premature redirects).
- *   2. If user is null (not authenticated) → redirects to /login.
- *   3. If user.role is not in allowedRoles → renders AccessDenied page
- *      (shows current role, never exposes other users' data).
+ *   2. If user is null (not authenticated) → records the current path in
+ *      sessionStorage 'redirectAfterLogin' (LoginPage honours it) and
+ *      redirects to /login.
+ *   3. If allowedRoles is set and user.role is not in it → renders
+ *      AccessDenied page (shows current role, never exposes other users' data).
  *
  * IMPORTANT — trust boundary:
  *   user.role and user.isAdmin come exclusively from the JWT-decoded server
@@ -31,13 +35,15 @@ function RoleGuard({ allowedRoles, children }) {
 
   if (authLoading) return null;
 
-  // Not signed in at all
+  // Not signed in at all — F-14/F-15: remember where the user was so login
+  // can return them there (LoginPage reads sessionStorage, not router state).
   if (!user) {
+    saveLoginRedirect(location.pathname + location.search);
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Authenticated but wrong role
-  if (!allowedRoles.includes(user.role)) {
+  // Authenticated but wrong role (only enforced when roles are specified)
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
     return <AccessDenied />;
   }
 

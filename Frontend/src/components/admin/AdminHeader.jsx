@@ -22,7 +22,7 @@ const AdminHeader = ({ onBack, onSeed, onClearAll, showDevActions = false }) => 
                         onClick={onSeed}
                         className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 transition-colors min-h-[44px]"
                     >
-                        <Database size={16} aria-hidden="true" /> Seed Products
+                        <Database size={16} aria-hidden="true" /> Seed Demo Data
                     </button>
                 )}
                 {!isProd && showDevActions && onClearAll && (
@@ -35,7 +35,7 @@ const AdminHeader = ({ onBack, onSeed, onClearAll, showDevActions = false }) => 
                 )}
                 {isProd && (
                     <span className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-500 bg-gray-50 rounded-lg">
-                        <Lock size={14} className="text-gray-400" />
+                        <Lock size={14} className="text-gray-500" />
                         Dev actions hidden in production
                     </span>
                 )}

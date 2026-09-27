@@ -16,6 +16,8 @@ import {
 } from '../services/deliveryApi';
 import { MapContainer } from '../components/map/MapContainer';
 import useSocket from '../hooks/useSocket';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
 
 const STATUS_STEPS = ['assigned', 'accepted', 'picked_up', 'out_for_delivery', 'delivered'];
 
@@ -63,7 +65,7 @@ function OrderCard({ order, onAction, loadingOrderId }) {
   const action = NEXT_ACTIONS[order.deliveryStatus];
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <Card className="rounded-2xl border overflow-hidden">
       <div className="p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
@@ -86,13 +88,13 @@ function OrderCard({ order, onAction, loadingOrderId }) {
 
           <div className="flex items-center gap-2">
             {action && (
-              <button
+              <Button
                 onClick={() => onAction(order, action)}
                 disabled={loadingOrderId === order._id}
-                className="px-3 py-1.5 sm:px-4 sm:py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 sm:px-4 sm:py-2 text-sm font-bold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loadingOrderId === order._id ? 'Updating...' : action.label}
-              </button>
+              </Button>
             )}
             {order.deliveryStatus !== 'delivered' && order.deliveryStatus !== 'failed' && (
               <button
@@ -106,7 +108,7 @@ function OrderCard({ order, onAction, loadingOrderId }) {
             )}
             <button
               onClick={() => setExpanded((e) => !e)}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+              className="p-2 text-gray-500 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
               aria-expanded={expanded}
               aria-label={expanded ? 'Collapse details' : 'Expand details'}
             >
@@ -130,7 +132,7 @@ function OrderCard({ order, onAction, loadingOrderId }) {
                     }`}
                     aria-hidden="true"
                   />
-                  <span className={`text-[10px] mt-1 whitespace-nowrap ${reached ? 'text-teal-700 font-semibold' : 'text-gray-400'}`}>
+                  <span className={`text-[10px] mt-1 whitespace-nowrap ${reached ? 'text-teal-700 font-semibold' : 'text-gray-500'}`}>
                     {label}
                   </span>
                 </div>
@@ -177,7 +179,7 @@ function OrderCard({ order, onAction, loadingOrderId }) {
                 {(order.orderItems || []).map((item, i) => (
                   <li key={i} className="flex items-center justify-between gap-3 text-sm">
                     <span className="text-gray-700 truncate">
-                      {item.title} <span className="text-gray-400">× {item.quantity}</span>
+                      {item.title} <span className="text-gray-500">× {item.quantity}</span>
                     </span>
                     <span className="font-semibold text-gray-800 shrink-0">{formatMoney(item.price * item.quantity)}</span>
                   </li>
@@ -185,7 +187,7 @@ function OrderCard({ order, onAction, loadingOrderId }) {
               </ul>
             </div>
           </div>
-          <div className="mt-4 flex flex-wrap gap-3 text-xs text-gray-400">
+          <div className="mt-4 flex flex-wrap gap-3 text-xs text-gray-500">
             <span className="flex items-center gap-1"><Clock size={12} aria-hidden="true" /> Placed {timeAgo(order.createdAt)}</span>
             {order.acceptedAt && <span>Accepted {timeAgo(order.acceptedAt)}</span>}
             {order.pickedUpAt && <span>Picked up {timeAgo(order.pickedUpAt)}</span>}
@@ -194,7 +196,7 @@ function OrderCard({ order, onAction, loadingOrderId }) {
           </div>
         </div>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -204,17 +206,17 @@ function DeliveryMap({ order }) {
 
   if (!destination) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-center">
+      <Card className="rounded-2xl border p-6 text-center">
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700 inline-flex items-center gap-2">
           <AlertTriangle size={16} aria-hidden="true" />
           Live map needs destination coordinates — update the address with a pin for GPS navigation.
         </div>
-      </div>
+      </Card>
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <Card className="rounded-2xl border overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
         <h3 className="font-bold text-gray-800 flex items-center gap-2">
           <MapPin size={18} className="text-teal-600" aria-hidden="true" /> Live Route
@@ -236,7 +238,7 @@ function DeliveryMap({ order }) {
           orderId={order._id}
         />
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -359,7 +361,7 @@ function DeliveryPage() {
       {/* Dashboard stats */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
+          <Card className="rounded-2xl border p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center shrink-0" aria-hidden="true">
               <Package size={20} />
             </div>
@@ -367,8 +369,8 @@ function DeliveryPage() {
               <p className="text-2xl font-bold text-gray-900 leading-none">{stats.active}</p>
               <p className="text-xs text-gray-500 mt-1">Active deliveries</p>
             </div>
-          </div>
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
+          </Card>
+          <Card className="rounded-2xl border p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center shrink-0" aria-hidden="true">
               <Package size={20} />
             </div>
@@ -376,8 +378,8 @@ function DeliveryPage() {
               <p className="text-2xl font-bold text-gray-900 leading-none">{stats.todayCompleted}</p>
               <p className="text-xs text-gray-500 mt-1">Delivered today</p>
             </div>
-          </div>
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
+          </Card>
+          <Card className="rounded-2xl border p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0" aria-hidden="true">
               <XCircle size={20} />
             </div>
@@ -385,8 +387,8 @@ function DeliveryPage() {
               <p className="text-2xl font-bold text-gray-900 leading-none">{stats.todayFailed}</p>
               <p className="text-xs text-gray-500 mt-1">Failed today</p>
             </div>
-          </div>
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
+          </Card>
+          <Card className="rounded-2xl border p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0" aria-hidden="true">
               <Package size={20} />
             </div>
@@ -394,7 +396,7 @@ function DeliveryPage() {
               <p className="text-2xl font-bold text-gray-900 leading-none">{stats.weekCompleted}</p>
               <p className="text-xs text-gray-500 mt-1">Delivered (7 days)</p>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
@@ -425,7 +427,7 @@ function DeliveryPage() {
               <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-10 text-center">
                 <Package size={40} className="mx-auto text-gray-300 mb-3" aria-hidden="true" />
                 <p className="font-semibold text-gray-600">No {tab} deliveries</p>
-                <p className="text-sm text-gray-400 mt-1">New assignments will appear here automatically.</p>
+                <p className="text-sm text-gray-500 mt-1">New assignments will appear here automatically.</p>
               </div>
             )}
 
@@ -463,15 +465,15 @@ function DeliveryPage() {
             {selected ? (
               <>
                 <DeliveryMap order={selected} />
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5">
+                <Card className="rounded-2xl border p-4 sm:p-5">
                   <OrderCard order={selected} onAction={handleAction} loadingOrderId={loadingOrderId} />
-                </div>
+                </Card>
               </>
             ) : (
               <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-10 text-center h-full min-h-72 flex flex-col items-center justify-center">
                 <MapPin size={40} className="text-gray-300 mb-3" aria-hidden="true" />
                 <p className="font-semibold text-gray-600">Select an order to view its live route</p>
-                <p className="text-sm text-gray-400 mt-1">Choose a delivery from the list to load the map.</p>
+                <p className="text-sm text-gray-500 mt-1">Choose a delivery from the list to load the map.</p>
               </div>
             )}
           </div>

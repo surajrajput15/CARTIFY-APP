@@ -1,5 +1,6 @@
 import { MapPin, CheckCircle, Plus, AlertCircle } from 'lucide-react';
 import { EmptyProductsIllustration } from '../illustrations/EmptyStateIllustrations';
+import Button from '../ui/Button';
 
 const AddressSelector = ({ addresses, loading, error, selectedAddress, onSelect, onGoToProfile, onRetry }) => (
   <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6" aria-labelledby="address-selector-heading">
@@ -25,24 +26,24 @@ const AddressSelector = ({ addresses, loading, error, selectedAddress, onSelect,
         <p className="text-gray-700 font-bold mb-1 text-sm sm:text-base">Couldn't load your addresses</p>
         <p className="text-gray-500 text-sm mb-4">Check your connection and try again.</p>
         {onRetry && (
-          <button
+          <Button
             onClick={onRetry}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white rounded-lg font-bold hover:bg-teal-700 transition-colors min-h-[44px]"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold transition-colors min-h-[44px]"
           >
             Retry
-          </button>
+          </Button>
         )}
       </div>
     ) : addresses.length === 0 ? (
       <div className="text-center py-6 sm:py-8 bg-gray-50 rounded-xl border border-gray-200 px-4">
         <EmptyProductsIllustration className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-3 opacity-80" />
         <p className="text-gray-600 mb-4 text-sm sm:text-base">You don't have any saved addresses yet.</p>
-        <button
+        <Button
           onClick={onGoToProfile}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white rounded-lg font-bold hover:bg-teal-700 transition-colors min-h-[44px]"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold transition-colors min-h-[44px]"
         >
           <Plus size={18} aria-hidden="true" /> Add Address in Profile
-        </button>
+        </Button>
       </div>
     ) : (
       <div className="space-y-3" role="radiogroup" aria-labelledby="address-selector-heading">

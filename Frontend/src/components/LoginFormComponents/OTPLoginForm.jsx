@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Mail, ArrowRight, ArrowLeft, ShieldCheck, Loader2 } from 'lucide-react';
+import Button from '../ui/Button';
+import Input from '../ui/Input';
 
 const OTPLoginForm = ({
   step, setStep,
@@ -75,22 +77,22 @@ const OTPLoginForm = ({
   return (
     <div>
       {step === 1 ? (
-        <form onSubmit={handleSendOtp} className="space-y-6 animate-fade-in-up">
+        <form onSubmit={handleSendOtp} aria-busy={loading} className="space-y-6 animate-fade-in-up">
           <h2 className="text-3xl font-extrabold text-gray-900 mb-2">Instant Login</h2>
           <p className="text-gray-500 mb-6">Enter your email to receive a 6-digit secure code.</p>
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">Email Address</label>
+            <label htmlFor="otp-email" className="block text-sm font-bold text-gray-700 mb-2">Email Address</label>
             <div className="relative">
-              <Mail className="absolute inset-y-0 left-3 top-4 h-5 w-5 text-gray-400" />
-              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="block w-full pl-10 pr-3 py-4 border border-gray-200 rounded-xl focus:ring-teal-500 focus:border-teal-500 font-medium bg-gray-50" placeholder="e.g. name@example.com" />
+              <Mail className="absolute inset-y-0 left-3 top-4 h-5 w-5 text-gray-500" />
+              <Input id="otp-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" className="block w-full pl-10 pr-3 py-4 border-gray-200 rounded-xl font-medium bg-gray-50" placeholder="e.g. name@example.com" />
             </div>
           </div>
-          <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 bg-teal-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-teal-700 transition-all shadow-md">
+          <Button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 py-4 rounded-xl font-bold text-lg transition-all shadow-md">
             {loading ? <Loader2 className="animate-spin" size={24} /> : 'Get OTP'} {!loading && <ArrowRight size={20} />}
-          </button>
+          </Button>
         </form>
       ) : (
-        <form ref={formRef} onSubmit={handleVerifyOtp} className="space-y-8 animate-fade-in-up">
+        <form ref={formRef} onSubmit={handleVerifyOtp} aria-busy={loading} className="space-y-8 animate-fade-in-up">
           <button type="button" onClick={() => setStep(1)} className="flex items-center text-sm font-bold text-teal-600 hover:text-teal-700 mb-4">
             <ArrowLeft size={16} className="mr-1" /> Change Email
           </button>
@@ -100,12 +102,12 @@ const OTPLoginForm = ({
           </div>
           <div className="flex justify-between gap-2" onPaste={handleOtpPaste}>
             {otp.map((digit, index) => (
-              <input key={index} ref={(el) => (inputRefs.current[index] = el)} type="text" inputMode="numeric" maxLength={1} aria-label={`Digit ${index + 1} of 6`} value={digit} onChange={(e) => handleOtpChange(index, e.target.value)} onKeyDown={(e) => handleKeyDown(index, e)} className="w-9 h-12 min-w-0 flex-1 sm:flex-none sm:w-14 sm:h-16 text-center text-xl sm:text-2xl font-extrabold text-gray-900 border-2 border-gray-200 rounded-xl focus:border-teal-500 focus:ring-0 bg-gray-50" />
+              <input key={index} ref={(el) => (inputRefs.current[index] = el)} type="text" inputMode="numeric" maxLength={1} autoComplete="one-time-code" aria-label={`Digit ${index + 1} of 6`} value={digit} onChange={(e) => handleOtpChange(index, e.target.value)} onKeyDown={(e) => handleKeyDown(index, e)} className="w-9 h-12 min-w-0 flex-1 sm:flex-none sm:w-14 sm:h-16 text-center text-xl sm:text-2xl font-extrabold text-gray-900 border-2 border-gray-200 rounded-xl focus:border-teal-500 focus:ring-0 bg-gray-50" />
             ))}
           </div>
-          <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white py-4 rounded-xl font-bold text-lg hover:bg-teal-600 transition-all shadow-md">
+          <Button type="submit" variant="dark" disabled={loading} className="w-full flex items-center justify-center gap-2 py-4 rounded-xl font-bold text-lg transition-all shadow-md">
             {loading ? <Loader2 className="animate-spin" size={24} /> : 'Verify & Login'} {!loading && <ShieldCheck size={20} />}
-          </button>
+          </Button>
         </form>
       )}
     </div>

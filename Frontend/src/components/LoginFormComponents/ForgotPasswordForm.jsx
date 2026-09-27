@@ -1,6 +1,8 @@
 import { useRef } from 'react';
 import { Mail, ArrowLeft, Loader2 } from 'lucide-react';
 import PasswordInput from '../PasswordInput';
+import Button from '../ui/Button';
+import Input from '../ui/Input';
 
 const ForgotPasswordForm = ({
   setIsForgotPassword,
@@ -67,38 +69,38 @@ const ForgotPasswordForm = ({
       </button>
 
       {forgotStep === 1 ? (
-        <form onSubmit={handleSendResetOtp} className="space-y-6">
+        <form onSubmit={handleSendResetOtp} aria-busy={loading} className="space-y-6">
           <h2 className="text-3xl font-extrabold text-gray-900 mb-2">Reset Password</h2>
           <p className="text-gray-500 mb-6">Enter your email and we'll send you an OTP to reset your password.</p>
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">Email Address</label>
+            <label htmlFor="forgot-email" className="block text-sm font-bold text-gray-700 mb-2">Email Address</label>
             <div className="relative">
-              <Mail className="absolute inset-y-0 left-3 top-4 h-5 w-5 text-gray-400" />
-              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="block w-full pl-10 pr-3 py-4 border border-gray-200 rounded-xl focus:ring-teal-500 focus:border-teal-500 font-medium bg-gray-50" placeholder="name@example.com" />
+              <Mail className="absolute inset-y-0 left-3 top-4 h-5 w-5 text-gray-500" />
+              <Input id="forgot-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" className="block w-full pl-10 pr-3 py-4 border-gray-200 rounded-xl font-medium bg-gray-50" placeholder="name@example.com" />
             </div>
           </div>
-          <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 bg-teal-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-teal-700 transition-all shadow-md">
+          <Button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 py-4 rounded-xl font-bold text-lg transition-all shadow-md">
             {loading ? <Loader2 className="animate-spin" size={24} /> : 'Send Reset OTP'}
-          </button>
+          </Button>
         </form>
       ) : (
-        <form onSubmit={handleResetPassword} className="space-y-6">
+        <form onSubmit={handleResetPassword} aria-busy={loading} className="space-y-6">
           <div>
             <h2 className="text-xl font-extrabold text-gray-900 mb-2">Verify & Reset</h2>
             <p className="text-gray-500 text-sm mb-4">OTP sent to <span className="font-bold text-gray-800">{email}</span></p>
           </div>
           <div className="flex justify-between gap-2" onPaste={handleOtpPaste}>
             {otp.map((digit, index) => (
-              <input key={index} ref={(el) => (inputRefs.current[index] = el)} type="text" inputMode="numeric" maxLength={1} aria-label={`Digit ${index + 1} of 6`} value={digit} onChange={(e) => handleOtpChange(index, e.target.value)} onKeyDown={(e) => handleKeyDown(index, e)} className="w-9 h-12 min-w-0 flex-1 sm:flex-none sm:w-14 sm:h-16 text-center text-xl sm:text-2xl font-extrabold text-gray-900 border-2 border-gray-200 rounded-xl focus:border-teal-500 focus:ring-0 bg-gray-50" />
+              <input key={index} ref={(el) => (inputRefs.current[index] = el)} type="text" inputMode="numeric" maxLength={1} autoComplete="one-time-code" aria-label={`Digit ${index + 1} of 6`} value={digit} onChange={(e) => handleOtpChange(index, e.target.value)} onKeyDown={(e) => handleKeyDown(index, e)} className="w-9 h-12 min-w-0 flex-1 sm:flex-none sm:w-14 sm:h-16 text-center text-xl sm:text-2xl font-extrabold text-gray-900 border-2 border-gray-200 rounded-xl focus:border-teal-500 focus:ring-0 bg-gray-50" />
             ))}
           </div>
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2 mt-4">New Password</label>
-            <PasswordInput value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Min. 8 characters, 1 upper, 1 lower, 1 number" required minLength="8" />
+            <label htmlFor="forgot-new-password" className="block text-sm font-bold text-gray-700 mb-2 mt-4">New Password</label>
+            <PasswordInput id="forgot-new-password" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Min. 8 characters, 1 upper, 1 lower, 1 number" required minLength="8" />
           </div>
-          <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white py-4 rounded-xl font-bold text-lg hover:bg-teal-600 transition-all shadow-md mt-2">
+          <Button type="submit" variant="dark" disabled={loading} className="w-full flex items-center justify-center gap-2 py-4 rounded-xl font-bold text-lg transition-all shadow-md mt-2">
             {loading ? <Loader2 className="animate-spin" size={24} /> : 'Save New Password'}
-          </button>
+          </Button>
         </form>
       )}
     </div>

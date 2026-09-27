@@ -45,7 +45,7 @@ const PasswordStrengthMeter = ({ password, id }) => {
         {checklistItems.map((item) => {
           const passed = checks[item.key];
           return (
-            <li key={item.key} className={`flex items-center gap-2 text-xs font-medium ${passed ? 'text-green-600' : 'text-gray-400'}`}>
+            <li key={item.key} className={`flex items-center gap-2 text-xs font-medium ${passed ? 'text-green-600' : 'text-gray-500'}`}>
               <span className={`text-sm font-bold ${passed ? 'text-green-500' : 'text-gray-300'}`}>
                 {passed ? '\u2713' : '\u2717'}
               </span>

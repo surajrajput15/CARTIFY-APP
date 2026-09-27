@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { MapPin, Navigation, RefreshCw, Truck, Package, Users, Loader2 } from 'lucide-react';
-import { Map, Marker, Polyline, FitBounds, divIcon } from '../map/Map';
+import { Map, Marker, Polyline, FitBounds } from '../map/Map';
+import { divIcon } from '../map/mapIcons';
 import { fetchAdminDeliveryOrders } from '../../services/deliveryApi';
 import useSocket from '../../hooks/useSocket';
 import { mapsDeepLink } from '../../utils/geo';
+import Card from '../ui/Card';
 
 const ACTIVE_STATUSES = ['assigned', 'accepted', 'picked_up', 'out_for_delivery'];
 
@@ -44,6 +45,7 @@ function AdminDeliveryMap() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loadOrders() only flips its own loading flag around an awaited fetch
     loadOrders();
   }, [loadOrders]);
 
@@ -112,7 +114,7 @@ function AdminDeliveryMap() {
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in-up">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5">
+      <Card className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4 sm:p-5">
         <div className="flex items-center gap-3">
           <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-teal-50 text-teal-600">
             <Truck size={20} aria-hidden="true" />
@@ -132,23 +134,22 @@ function AdminDeliveryMap() {
         >
           <RefreshCw size={14} aria-hidden="true" /> Refresh
         </button>
-      </div>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Orders list */}
-        <div className="lg:col-span-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 max-h-[560px] overflow-y-auto">
+        <Card className="lg:col-span-1 rounded-2xl border p-4 max-h-[560px] overflow-y-auto">
           <h3 className="font-bold text-gray-800 text-sm mb-3 flex items-center gap-2">
             <Package size={15} className="text-teal-600" aria-hidden="true" /> Active deliveries
           </h3>
           {loading && activeOrders.length === 0 ? (
             <div className="flex justify-center py-8"><Loader2 className="animate-spin text-teal-600" size={22} aria-hidden="true" /></div>
           ) : activeOrders.length === 0 ? (
-            <p className="text-gray-400 text-sm py-8 text-center">No active deliveries right now.</p>
+            <p className="text-gray-500 text-sm py-8 text-center">No active deliveries right now.</p>
           ) : (
             <div className="space-y-2">
               {activeOrders.map((o) => {
                 const meta = STATUS_COLOR[o.deliveryStatus] || STATUS_COLOR.assigned;
-                const a = o.shippingAddress || {};
                 return (
                   <button
                     key={o._id}
@@ -167,7 +168,7 @@ function AdminDeliveryMap() {
                       {o.livePos ? (
                         <><Truck size={11} className="text-teal-600" aria-hidden="true" /> {o.deliveryPartnerId?.name || 'Courier'} live</>
                       ) : (
-                        <><Users size={11} className="text-gray-400" aria-hidden="true" /> {o.deliveryPartnerId?.name || 'No GPS yet'}</>
+                        <><Users size={11} className="text-gray-500" aria-hidden="true" /> {o.deliveryPartnerId?.name || 'No GPS yet'}</>
                       )}
                     </p>
                   </button>
@@ -175,10 +176,10 @@ function AdminDeliveryMap() {
               })}
             </div>
           )}
-        </div>
+        </Card>
 
         {/* Map */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <Card className="lg:col-span-2 rounded-2xl border overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <h3 className="font-bold text-gray-800 text-sm flex items-center gap-2">
               <MapPin size={15} className="text-teal-600" aria-hidden="true" />
@@ -219,7 +220,7 @@ function AdminDeliveryMap() {
               {connected && <p className="mt-1 text-green-600 font-semibold">● LIVE</p>}
             </div>
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );

@@ -234,8 +234,8 @@ const AdminPage = () => {
   const handleSeed = () => {
     setConfirmModal({
       show: true,
-      title: 'Seed Products',
-      message: 'Add 20 sample products to the database?',
+      title: 'Seed Demo Products',
+      message: 'Add 20 DEMO sample products? Their ratings and review counts are placeholder demo data, not real customer activity.',
       loading: false,
       onConfirm: async () => {
         setConfirmModal(prev => ({ ...prev, loading: true }));
@@ -330,6 +330,17 @@ const AdminPage = () => {
               setForm(EMPTY_PRODUCT_FORM);
             }}
           />
+
+          {/* F-18: the catalogue fetch is capped at 100 rows — make the cap
+              visible instead of silently hiding older products. */}
+          {products.length >= 100 && (
+            <p
+              className="mb-4 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800"
+              role="status"
+            >
+              Showing the first 100 products — use the search box or category filter to narrow the catalogue.
+            </p>
+          )}
 
           {showForm && (
             <ProductFormModal

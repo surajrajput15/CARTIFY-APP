@@ -1,21 +1,21 @@
-import { ShoppingCart, Heart } from 'lucide-react';
+import { ShoppingCart, Heart, Check } from 'lucide-react';
 import StarRating from './StarRating';
-import { useCart } from '../context/cartContext';
+import { useCartActions } from '../context/cartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { getStockStatus } from '../utils/stockStatus';
 import { hasVariants, effectiveStock } from '../utils/variants';
-import { resolveImageUrl, generateSrcSet } from '../utils/imageUrl';
+import { resolveImageUrl, generateSrcSet, PLACEHOLDER_IMG } from '../utils/imageUrl';
 import { formatPrice, truncate } from '../utils/format';
 import { useActiveCampaigns } from '../hooks/useActiveCampaigns';
-import { memo, useCallback } from 'react';
-
-const PLACEHOLDER_IMG = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2YzZjRmNiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ic3lzdGVtLXVpIiBmb250LXNpemU9IjE0IiBmaWxsPSIjOWNhM2FmIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4=';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import toast from 'react-hot-toast';
+import Card from './ui/Card';
 
 const ProductCard = memo(({ product }) => {
-  const { addToCart } = useCart();
+  const { addToCart } = useCartActions(); // F-43: actions-only — memo stays intact on cart changes
   const navigate = useNavigate();
-  const { wishlist, isWishlisted, addToWishlist, removeFromWishlist } = useWishlist();
+  const { isWishlisted, addToWishlist, removeFromWishlist } = useWishlist();
   const { bestForProduct } = useActiveCampaigns();
   const productId = String(product?._id || product?.id || '');
   const wishlisted = isWishlisted(productId);
@@ -23,6 +23,12 @@ const ProductCard = memo(({ product }) => {
   const stock = getStockStatus(productHasVariants ? effectiveStock(product) : product.countInStock);
   const campaign = bestForProduct(product);
   const displayPrice = campaign ? Number(product.price) - campaign.discount : Number(product.price);
+
+  // F-06: "Added" confirmation — the button flips to a check + the aria-live
+  // status span announces it; state auto-clears so the card returns to normal.
+  const [justAdded, setJustAdded] = useState(false);
+  const addedTimerRef = useRef(null);
+  useEffect(() => () => clearTimeout(addedTimerRef.current), []);
 
   const handleWishlistToggle = useCallback((e) => {
     e.preventDefault();
@@ -40,6 +46,10 @@ const ProductCard = memo(({ product }) => {
       return;
     }
     addToCart(product);
+    toast.success('Added to cart');
+    setJustAdded(true);
+    clearTimeout(addedTimerRef.current);
+    addedTimerRef.current = setTimeout(() => setJustAdded(false), 1500);
   }, [addToCart, product, productHasVariants, navigate]);
 
   const imageUrl = resolveImageUrl(product.image);
@@ -47,7 +57,7 @@ const ProductCard = memo(({ product }) => {
   const altText = product.title ? `${truncate(product.title, 60)} — ${product.category || 'product'}` : 'Product image';
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden border border-gray-100 flex flex-col h-full">
+    <Card className="rounded-2xl hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden border flex flex-col h-full">
       <Link
         to={`/product/${product._id}`}
         className="h-44 sm:h-56 overflow-hidden bg-gray-50 block cursor-pointer relative flex items-center justify-center border-b border-gray-100 group"
@@ -80,7 +90,7 @@ const ProductCard = memo(({ product }) => {
           className={`absolute top-3 right-3 z-20 p-2.5 rounded-full shadow-md transition-all active:scale-90 min-w-[44px] min-h-[44px] inline-flex items-center justify-center ${
             wishlisted
               ? 'bg-red-50 text-red-500 border border-red-100'
-              : 'bg-white text-gray-400 border border-gray-100 hover:text-red-500 hover:border-red-200'
+              : 'bg-white text-gray-500 border border-gray-100 hover:text-red-500 hover:border-red-200'
           }`}
         >
           <Heart size={18} aria-hidden="true" className={wishlisted ? 'fill-current' : ''} />
@@ -93,7 +103,7 @@ const ProductCard = memo(({ product }) => {
           loading="lazy"
           decoding="async"
           onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMG; }}
-          className="max-h-full max-w-full object-contain p-4 group-hover:scale-105 transition-transform duration-500 ease-out"
+          className="max-h-full max-w-full object-contain p-4 motion-safe:group-hover:scale-105 transition-transform duration-500 ease-out"
         />
       </Link>
 
@@ -110,17 +120,17 @@ const ProductCard = memo(({ product }) => {
             {Number(product.rating?.rate) || 0}
           </span>
           <span className="text-gray-300 text-xs" aria-hidden="true">|</span>
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-gray-500">
             {Number(product.rating?.count) || 0
               ? `(${Number(product.rating?.count)} reviews)`
-              : 'No reviews yet'}
+              : 'Not yet rated'}
           </span>
         </div>
 
         <div className="mt-auto flex items-center justify-between gap-2 pt-2">
           <div className="min-w-0">
             {campaign && (
-              <span className="block text-xs text-gray-400 line-through truncate" aria-hidden="true">{formatPrice(product.price)}</span>
+              <span className="block text-xs text-gray-500 line-through truncate" aria-hidden="true">{formatPrice(product.price)}</span>
             )}
             <span className="text-lg sm:text-xl font-black text-gray-900 whitespace-nowrap">
               {formatPrice(displayPrice)}
@@ -129,19 +139,24 @@ const ProductCard = memo(({ product }) => {
           <button
             onClick={handleAddToCart}
             disabled={stock?.disabled}
-            aria-label={stock?.disabled ? `${product.title} is out of stock` : productHasVariants ? `Choose options for ${product.title}` : `Add ${product.title} to cart`}
+            aria-label={stock?.disabled ? `${product.title} is out of stock` : productHasVariants ? `Choose options for ${product.title}` : justAdded ? `${product.title} added to cart` : `Add ${product.title} to cart`}
             title={productHasVariants && !stock?.disabled ? 'Choose size / colour' : undefined}
             className={`p-2.5 rounded-xl transition-all shadow-md hover:shadow-lg shadow-teal-100 hover:shadow-teal-200 active:scale-95 min-w-[44px] min-h-[44px] flex items-center justify-center ${
               stock?.disabled
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-60'
-                : 'bg-teal-600 text-white hover:bg-teal-700'
+                : justAdded
+                  ? 'bg-green-600 text-white'
+                  : 'bg-teal-600 text-white hover:bg-teal-700'
             }`}
           >
-            <ShoppingCart size={18} aria-hidden="true" />
+            {justAdded ? <Check size={18} aria-hidden="true" /> : <ShoppingCart size={18} aria-hidden="true" />}
           </button>
+          <span className="sr-only" role="status" aria-live="polite">
+            {justAdded ? `${product.title} added to cart` : ''}
+          </span>
         </div>
       </div>
-    </div>
+    </Card>
   );
 });
 

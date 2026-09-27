@@ -5,12 +5,16 @@ import { RAZORPAY_KEY } from '../config';
 import { RAZORPAY_DISPLAY } from '../utils/constants';
 import { formatPrice } from '../utils/format';
 import { handleApiError } from '../utils/apiError';
-import { logError } from '../utils/logger';
+import { logError, logDebug } from '../utils/logger';
 
 const RAZORPAY_SCRIPT_URL = 'https://checkout.razorpay.com/v1/checkout.js';
 
 export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAddress, couponCode, clearCoupon }) => {
   const [loading, setLoading] = useState(false);
+  // F-09: synchronous re-entrancy guard. `loading` state updates are async, so
+  // a fast double-click could reach createPaymentOrder twice before the button
+  // disables. Set/cleared in lockstep with setLoading around the async work.
+  const loadingRef = useRef(false);
   const razorpayLoadedRef = useRef(false);
   // Ensures EXACTLY ONE success confirmation even if the Razorpay success
   // callback fires more than once (e.g. replayed / duplicated handler events).
@@ -22,7 +26,7 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
   // modal never outlives the checkout page.
   const paymentObjectRef = useRef(null);
 
-  console.log('[Razorpay] useRazorpayPayment initiated', { user: user?.email, cartLength: cart.length, hasSelectedAddress: !!selectedAddress, hasRazorpayKey: !!RAZORPAY_KEY });
+  logDebug('[Razorpay] useRazorpayPayment initiated', { user: user?.email, cartLength: cart.length, hasSelectedAddress: !!selectedAddress, hasRazorpayKey: !!RAZORPAY_KEY });
 
   const loadRazorpayScript = useCallback(() => {
     return new Promise((resolve) => {
@@ -77,7 +81,8 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
   }, []);
 
   const handlePayment = useCallback(async () => {
-    console.log('[Razorpay] handlePayment called', { selectedAddress: !!selectedAddress, cartLength: cart.length });
+    logDebug('[Razorpay] handlePayment called', { selectedAddress: !!selectedAddress, cartLength: cart.length });
+    if (loadingRef.current) return;
     if (!selectedAddress) {
       toast.error('Please select a delivery address!');
       return;
@@ -96,13 +101,15 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
       return;
     }
 
-    console.log('[Razorpay] RAZORPAY_KEY present, loading SDK...');
+    logDebug('[Razorpay] RAZORPAY_KEY present, loading SDK...');
+    loadingRef.current = true;
     setLoading(true);
 
     const res = await loadRazorpayScript();
-    console.log('[Razorpay] loadRazorpayScript result:', res);
+    logDebug('[Razorpay] loadRazorpayScript result:', res);
     if (!res) {
       toast.error('Razorpay SDK failed to load. Please check your internet connection.');
+      loadingRef.current = false;
       setLoading(false);
       return;
     }
@@ -118,7 +125,7 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
         couponCode || undefined
       );
 
-      console.log('[Razorpay] createPaymentOrder response:', data);
+      logDebug('[Razorpay] createPaymentOrder response:', data);
       
       // Free-order shortcut (100% discount): backend already created a Paid order.
       if (data.freeOrder) {
@@ -204,17 +211,18 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
         }
       };
 
-      console.log('[Razorpay] Creating Razorpay modal with options:', { key: RAZORPAY_KEY, hasAmount: !!order.amount, hasOrderId: !!order.id });
+      logDebug('[Razorpay] Creating Razorpay modal with options:', { key: RAZORPAY_KEY, hasAmount: !!order.amount, hasOrderId: !!order.id });
       
       const paymentObject = new window.Razorpay(options);
       paymentObjectRef.current = paymentObject;
-      console.log('[Razorpay] Razorpay modal created, about to open...');
+      logDebug('[Razorpay] Razorpay modal created, about to open...');
       paymentObject.open();
 
     } catch (error) {
       logError("Payment setup failed", error);
       toast.error(handleApiError(error, "Something went wrong with the payment gateway."));
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
   }, [user, cart, clearCart, navigate, selectedAddress, couponCode, clearCoupon, loadRazorpayScript]);

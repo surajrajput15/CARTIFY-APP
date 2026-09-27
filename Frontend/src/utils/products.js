@@ -15,10 +15,11 @@ export const filterProducts = (products, { searchTerm = '', filterCategory = '' 
   let result = products;
   const term = searchTerm.trim().toLowerCase();
   if (term) {
+    // F-48: coerce — a product missing title/category must not blank the page.
     result = result.filter(p =>
-      p.title.toLowerCase().includes(term) ||
-      p.category.toLowerCase().includes(term) ||
-      (p.brand && p.brand.toLowerCase().includes(term))
+      String(p.title ?? '').toLowerCase().includes(term) ||
+      String(p.category ?? '').toLowerCase().includes(term) ||
+      (p.brand && String(p.brand).toLowerCase().includes(term))
     );
   }
   if (filterCategory) {
