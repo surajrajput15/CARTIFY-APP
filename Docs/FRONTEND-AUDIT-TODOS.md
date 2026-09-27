@@ -609,11 +609,12 @@ cd Frontend && npm run lint && npm run test
   refund dialog, empty state), `HomePage.test.jsx` (F-12/F-13 URL state, 7 tests). Total suite:
   **30 files / 164 tests, all green**; plus the F-42 axe gate (3 tests).
 
-- [~] **F-57 · Commit/review the uncommitted address work separately** — housekeeping · it
+- [x] **F-57 · Commit/review the uncommitted address work separately** — housekeeping · it
   currently contains F-01 and is mixed with unrelated `Backend/package.json` edits and 4 untracked
   backend image scripts. *Fix:* land it as its own reviewable commit (mostly `Frontend/src`).
-  **In progress:** full commit-split proposal delivered with the final audit summary — no commits
-  made (owner approval required first; HEAD is still `7d2154e`, all audit work uncommitted).
+  **Done (Wave E):** pushed 2026-09-27 as 4 logical commits on `main` — `0273e6b` (Backend
+  F-17/F-18), `5183ba7` (CI F-50/F-51), `74383c4` (Docs F-58), `b799dd9` (Frontend F-01…F-56,
+  129 files). All gates green pre-push: FE lint 0 / tsc 0 / 164 tests, BE 179 tests.
 
 - [x] **F-58 · Update project docs** — housekeeping · done: `Docs/BUGS.md` now lists the confirmed
   P0/P1 defects (it previously claimed "No confirmed bugs yet") and `Docs/ROADMAP.md` gained
