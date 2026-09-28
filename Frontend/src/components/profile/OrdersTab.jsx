@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { AlertCircle } from 'lucide-react';
 import { formatPrice, formatDate } from '../../utils/format';
 import Card from '../ui/Card';
 
@@ -16,7 +17,7 @@ const ORDER_STATUS_STYLES = {
 // order as Backend/routes/orderRoutes.js ALLOWED_TRANSITIONS.
 const STATUS_STEPS = ['Pending', 'Processing', 'Shipped', 'Delivered'];
 
-const OrdersTab = ({ orders, loading }) => {
+const OrdersTab = ({ orders, loading, error, onRetry }) => {
   const [expandedId, setExpandedId] = useState(null);
   const getPaymentLabel = (status) => {
     if (status === 'Paid') return { label: 'Paid', className: 'bg-green-50 text-green-700' };
@@ -37,6 +38,21 @@ const OrdersTab = ({ orders, loading }) => {
               <div className="h-4 w-24 bg-gray-200 rounded"></div>
             </div>
           ))}
+        </div>
+      ) : error ? (
+        <div role="alert" className="text-center py-8 px-4">
+          <AlertCircle size={32} className="text-red-400 mx-auto mb-3" aria-hidden="true" />
+          <p className="text-gray-700 font-bold mb-1">Orders could not load</p>
+          <p className="text-gray-500 text-sm mb-4">We couldn't reach the server. Your orders are safe — try again.</p>
+          {onRetry && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="min-h-[44px] px-6 py-2 rounded-lg bg-teal-600 text-white font-bold hover:bg-teal-700 transition-colors"
+            >
+              Try Again
+            </button>
+          )}
         </div>
       ) : orders.length === 0 ? (
         <p className="text-gray-500">Your order history will appear here once you make a purchase.</p>

@@ -12,6 +12,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { toast } from 'react-hot-toast';
 import { registerServiceWorker, listenForInstallPrompt } from './utils/pwa';
 import { validateEnv } from './utils/envValidation';
+import { handleApiError } from './utils/apiError';
 import { fetchCsrfToken } from './api/axios';
 
 validateEnv();
@@ -29,7 +30,9 @@ window.addEventListener('unhandledrejection', (event) => {
     return;
   }
   console.error('Unhandled promise rejection:', event.reason);
-  toast.error('Something went wrong. Please try again.');
+  // Specific cause when we can classify it (server error, session expired…),
+  // honest fallback otherwise — never the raw technical error.
+  toast.error(handleApiError(event.reason, 'Something unexpected happened. Please try again.'));
 });
 
 window.addEventListener('error', (event) => {

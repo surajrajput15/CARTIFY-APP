@@ -21,7 +21,7 @@ const PasswordInput = ({ value, onChange, placeholder, className = '', ...rest }
         className="absolute inset-y-0 right-1 flex items-center px-2 text-gray-500 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-teal-500 rounded-lg transition-colors min-w-[44px] min-h-[44px]"
         aria-label={showPassword ? 'Hide password' : 'Show password'}
       >
-        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+        {showPassword ? <EyeOff size={20} aria-hidden="true" /> : <Eye size={20} aria-hidden="true" />}
       </button>
     </div>
   );

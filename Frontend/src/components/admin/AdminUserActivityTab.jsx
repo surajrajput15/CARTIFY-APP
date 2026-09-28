@@ -188,7 +188,7 @@ const AdminUserActivityTab = () => {
                           aria-label={expanded === e._id ? 'Collapse details' : 'Expand details'}
                           aria-expanded={expanded === e._id}
                         >
-                          {expanded === e._id ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                          {expanded === e._id ? <ChevronDown size={16} aria-hidden="true" /> : <ChevronRight size={16} aria-hidden="true" />}
                         </button>
                       </td>
                       <td className="p-3 text-gray-600 whitespace-nowrap">{formatDate(e.timestamp)}</td>

@@ -274,7 +274,7 @@ const ProductFormModal = ({ form, setForm, saving, isEditing, onImageUpload, onS
             disabled={saving}
             className="flex-1 py-3 rounded-xl font-bold disabled:opacity-50 flex items-center justify-center gap-2 min-h-[44px]"
           >
-            {saving ? <Loader2 className="animate-spin" size={20} /> : null}
+            {saving ? <Loader2 className="animate-spin" size={20} aria-hidden="true" /> : null}
             {isEditing ? 'Update Product' : 'Save Product'}
           </Button>
           <button

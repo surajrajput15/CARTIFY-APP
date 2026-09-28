@@ -5,7 +5,7 @@ import CouponInput from './CouponInput';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
 
-const OrderSummary = ({ cart = [], total, discount = 0, appliedCoupon, couponCode, setCouponCode, couponLoading, couponError, onApplyCoupon, onRemoveCoupon, onFindBestCoupon, bestCouponLoading, loading, canPay, onPay, cartItems }) => {
+const OrderSummary = ({ cart = [], total, discount = 0, appliedCoupon, couponCode, setCouponCode, couponLoading, couponError, onApplyCoupon, onRemoveCoupon, onFindBestCoupon, bestCouponLoading, loading, paymentError, canPay, onPay, cartItems }) => {
   const normalizedDiscount = Math.min(Math.max(0, Number(discount) || 0), Math.max(0, Number(total) || 0));
   const discountedSubtotal = Math.max(0, total - normalizedDiscount);
   // DEC-1A: the backend never charges shipping (paymentRoutes calculates
@@ -88,6 +88,14 @@ const OrderSummary = ({ cart = [], total, discount = 0, appliedCoupon, couponCod
       <p className="text-xs text-center text-gray-500 mb-4">
         Final price confirmed at checkout.
       </p>
+
+      {paymentError && (
+        <div role="alert" className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+          <p className="font-bold mb-1">Payment could not be completed</p>
+          <p>{paymentError}</p>
+          <p className="text-xs mt-2 text-red-600">Press the Pay button below to try again.</p>
+        </div>
+      )}
 
       <Button variant="dark"
         onClick={onPay}

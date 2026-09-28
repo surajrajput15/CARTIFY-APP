@@ -24,10 +24,10 @@ const Footer = () => {
           <div>
             <h3 className="text-white font-bold mb-4 text-sm uppercase tracking-wider">Shop</h3>
             <ul className="space-y-2 text-sm">
-              <li><Link to="/" className="hover:text-teal-400 transition-colors">All Products</Link></li>
-              <li><Link to="/cart" className="hover:text-teal-400 transition-colors">My Cart</Link></li>
-              <li><Link to="/profile" className="hover:text-teal-400 transition-colors">My Account</Link></li>
-              <li><Link to="/login" className="hover:text-teal-400 transition-colors">Sign In / Register</Link></li>
+              <li><Link to="/" className="hover:text-teal-400 transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500">All Products</Link></li>
+              <li><Link to="/cart" className="hover:text-teal-400 transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500">My Cart</Link></li>
+              <li><Link to="/profile" className="hover:text-teal-400 transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500">My Account</Link></li>
+              <li><Link to="/login" className="hover:text-teal-400 transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500">Sign In / Register</Link></li>
             </ul>
           </div>
 
@@ -37,7 +37,7 @@ const Footer = () => {
               <li>
                 <a
                   href={`mailto:${SUPPORT_EMAIL}`}
-                  className="hover:text-teal-400 transition-colors inline-flex items-center gap-1.5"
+                  className="hover:text-teal-400 transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 inline-flex items-center gap-1.5"
                 >
                   <Mail size={14} aria-hidden="true" /> {SUPPORT_EMAIL}
                 </a>
@@ -47,9 +47,10 @@ const Footer = () => {
                   href="https://github.com/surajrajput15/CARTIFY-APP/issues"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-teal-400 transition-colors"
+                  className="hover:text-teal-400 transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
                 >
                   Report an Issue
+                  <span className="sr-only"> (opens in new tab)</span>
                 </a>
               </li>
               <li>
@@ -57,9 +58,10 @@ const Footer = () => {
                   href="https://github.com/surajrajput15/CARTIFY-APP"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-teal-400 transition-colors inline-flex items-center gap-1.5"
+                  className="hover:text-teal-400 transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 inline-flex items-center gap-1.5"
                 >
                   <Code2 size={14} aria-hidden="true" /> Source Code
+                  <span className="sr-only"> (opens in new tab)</span>
                 </a>
               </li>
               <li>
@@ -67,9 +69,10 @@ const Footer = () => {
                   href="https://razorpay.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-teal-400 transition-colors"
+                  className="hover:text-teal-400 transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
                 >
                   Payment Info
+                  <span className="sr-only"> (opens in new tab)</span>
                 </a>
               </li>
             </ul>
@@ -84,9 +87,10 @@ const Footer = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="GitHub profile"
-                  className="flex items-center gap-2 hover:text-teal-400 transition-colors"
+                  className="flex items-center gap-2 hover:text-teal-400 transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
                 >
                   <Code2 size={16} aria-hidden="true" /> GitHub
+                  <span className="sr-only"> (opens in new tab)</span>
                 </a>
               </li>
 
@@ -94,7 +98,7 @@ const Footer = () => {
           </div>
         </div>
 
-        <div className="border-t border-gray-800 mt-10 pt-6 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-gray-500">
+            <div className="border-t border-gray-800 mt-10 pt-6 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-gray-400">
           <p>&copy; {year} Cartify. All rights reserved.</p>
           <p className="flex items-center gap-2">
             <span>Made with care for a better shopping experience.</span>

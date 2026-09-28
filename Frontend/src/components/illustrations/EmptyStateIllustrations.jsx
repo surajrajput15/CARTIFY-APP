@@ -115,16 +115,17 @@ export const NotFoundIllustration = ({ className = 'w-48 h-48' }) => (
     aria-hidden="true"
   >
     <circle cx="100" cy="100" r="95" fill="#F3F4F6" />
+    {/* Decorative "?" — the h1 "404" below is the single visible/text source. */}
     <text
       x="100"
-      y="118"
+      y="124"
       textAnchor="middle"
-      fontSize="72"
+      fontSize="84"
       fontWeight="900"
       fill="#0d9488"
       fontFamily="system-ui, -apple-system, sans-serif"
     >
-      404
+      ?
     </text>
     <circle cx="60" cy="60" r="6" fill="#f59e0b" />
     <circle cx="140" cy="60" r="6" fill="#0d9488" />

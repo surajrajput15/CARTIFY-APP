@@ -8,11 +8,14 @@ import { useRazorpayPayment } from '../hooks/useRazorpayPayment';
 import AddressSelector from '../components/checkout/AddressSelector';
 import OrderSummary from '../components/checkout/OrderSummary';
 import { useSharedCoupon } from '../context/couponContext';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const CheckoutPage = () => {
   const { user } = useAuth();
   const { cart, clearCart } = useCart();
   const navigate = useNavigate();
+
+  usePageTitle('Checkout');
 
   const { addresses, addressesLoading, addressesError, fetchAddresses } = useAddresses(user?.id, true);
 
@@ -46,10 +49,10 @@ const CheckoutPage = () => {
     return () => { cancelled = true; };
   }, [cart.length, navigate, fetchAddresses]);
 
-  const { loading, handlePayment } = useRazorpayPayment({ user, cart, clearCart, navigate, selectedAddress, couponCode: applied?.code || null, clearCoupon });
+  const { loading, handlePayment, paymentError } = useRazorpayPayment({ user, cart, clearCart, navigate, selectedAddress, couponCode: applied?.code || null, clearCoupon });
 
   return (
-    <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
       <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-6 sm:mb-8 flex items-center gap-2">
         <ShieldCheck className="text-teal-600" size={28} aria-hidden="true" /> Secure Checkout
       </h1>
@@ -86,6 +89,7 @@ const CheckoutPage = () => {
           onFindBestCoupon={applyBestCoupon}
           bestCouponLoading={bestLoading}
           loading={loading}
+          paymentError={paymentError}
           canPay={Boolean(selectedAddress) && cart.length > 0}
           onPay={handlePayment}
           cartItems={cart}
@@ -95,7 +99,7 @@ const CheckoutPage = () => {
       {/* Clearance so the fixed mobile bottom nav never covers the Pay button
           at the end of the flow. Scoped to mobile; desktop keeps its layout. */}
       <div className="h-[calc(84px+env(safe-area-inset-bottom))] md:hidden" aria-hidden="true" />
-    </main>
+    </div>
   );
 };
 

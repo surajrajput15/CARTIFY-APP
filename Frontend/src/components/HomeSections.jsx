@@ -18,6 +18,7 @@ import { logError } from '../utils/logger';
 import { SUPPORT_EMAIL, SHIPPING_CONFIG } from '../utils/constants';
 import { fetchMyOrders } from '../services/ordersApi';
 import Card from './ui/Card';
+import Button from './ui/Button';
 
 const SectionHeader = ({ icon: Icon, title, subtitle, action, id }) => (
   <div className="mb-4 flex items-start justify-between gap-2">
@@ -64,8 +65,8 @@ const SkeletonListStub = ({ compact = false }) => (
   </div>
 );
 
-const EmptyRow = ({ message, cta }) => (
-  <div className="bg-gray-50 rounded-2xl border border-dashed border-gray-200 py-10 px-6 text-center">
+const EmptyRow = ({ message, cta, role }) => (
+  <div role={role} className="bg-gray-50 rounded-2xl border border-dashed border-gray-200 py-10 px-6 text-center">
     <p className="text-gray-500 text-sm mb-3">{message}</p>
     {cta}
   </div>
@@ -206,8 +207,15 @@ const rankByRating = (list) =>
 const FeaturedPicks = ({ taken, version, claim }) => {
   const [products, setProducts] = useState(null);
   const [error, setError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   const poolRef = useRef(null);
   const pickedRef = useRef([]);
+
+  const handleRetry = () => {
+    setError(false);
+    setProducts(null);
+    setRetryKey((k) => k + 1);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -223,6 +231,7 @@ const FeaturedPicks = ({ taken, version, claim }) => {
         if (cancelled) return;
         pickedRef.current = picked;
         setProducts(picked);
+        setError(false);
         claim('featured', picked.map(productId));
       } catch (err) {
         if (cancelled) return;
@@ -233,7 +242,7 @@ const FeaturedPicks = ({ taken, version, claim }) => {
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [taken, version]);
+  }, [taken, version, retryKey]);
 
   return (
     <section className="mt-12 scroll-mt-36" aria-labelledby="featured-heading">
@@ -249,7 +258,19 @@ const FeaturedPicks = ({ taken, version, claim }) => {
         </Link>
       </div>
       {error ? (
-        <EmptyRow message="Couldn't load featured picks. Please retry." />
+        <EmptyRow
+          role="alert"
+          message="Couldn't load featured picks."
+          cta={
+            <Button
+              type="button"
+              onClick={handleRetry}
+              className="min-h-[44px] px-5 py-2 rounded-lg font-bold text-sm"
+            >
+              Try Again
+            </Button>
+          }
+        />
       ) : (
         <ProductRow products={products || []} loading={products === null} />
       )}
@@ -265,8 +286,15 @@ const Recommendations = ({ taken, version, claim }) => {
   const { wishlist } = useWishlist();
   const [products, setProducts] = useState(null);
   const [error, setError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   const guestPoolRef = useRef(null);
   const pickedRef = useRef([]);
+
+  const handleRetry = () => {
+    setError(false);
+    setProducts(null);
+    setRetryKey((k) => k + 1);
+  };
 
   const signalCategories = useMemo(() => {
     const counts = new Map();
@@ -309,6 +337,7 @@ const Recommendations = ({ taken, version, claim }) => {
           const { picked } = reserve(pool, taken, 'rec', pickedRef.current, 4);
           pickedRef.current = picked;
           setProducts(picked);
+          setError(false);
           claim('rec', picked.map(productId));
         } else {
           if (!guestPoolRef.current) {
@@ -320,6 +349,7 @@ const Recommendations = ({ taken, version, claim }) => {
           const { picked } = reserve(rankByReviews(guestPoolRef.current), taken, 'rec', pickedRef.current, 4);
           pickedRef.current = picked;
           setProducts(picked);
+          setError(false);
           claim('rec', picked.map(productId));
         }
       } catch (err) {
@@ -332,11 +362,13 @@ const Recommendations = ({ taken, version, claim }) => {
     load();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, signalCategories, taken, version]);
+  }, [user?.id, signalCategories, taken, version, retryKey]);
 
   const titled = user?.id && signalCategories.length;
   const ready = products !== null;
-  if (ready && !products.length) return null;
+  // Hide only on a genuine empty result — a fetch error must keep rendering
+  // the error row below (with its retry action), never silently vanish.
+  if (!error && ready && !products.length) return null;
 
   return (
     <section className="mt-12 scroll-mt-36" aria-labelledby="rec-heading">
@@ -347,7 +379,19 @@ const Recommendations = ({ taken, version, claim }) => {
         subtitle={titled ? 'Based on your wishlist and browsing history.' : 'Most reviewed by customers.'}
       />
       {error ? (
-        <EmptyRow message="Couldn't load recommendations. Please retry." />
+        <EmptyRow
+          role="alert"
+          message="Couldn't load recommendations."
+          cta={
+            <Button
+              type="button"
+              onClick={handleRetry}
+              className="min-h-[44px] px-5 py-2 rounded-lg font-bold text-sm"
+            >
+              Try Again
+            </Button>
+          }
+        />
       ) : (
         <ProductRow products={products || []} loading={!ready} />
       )}

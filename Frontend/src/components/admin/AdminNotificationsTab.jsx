@@ -85,7 +85,7 @@ export default function AdminNotificationsTab() {
                     <p className="text-sm text-gray-500">View all notifications and send broadcasts or targeted messages.</p>
                 </div>
                 <div className="flex flex-wrap gap-3">
-                    <Button type="button" onClick={() => setShowCompose(true)} className="px-4 py-2.5 flex items-center gap-2 rounded-lg font-bold text-sm transition-colors min-h-[44px]"><Send size={16} /> New Broadcast</Button>
+                    <Button type="button" onClick={() => setShowCompose(true)} className="px-4 py-2.5 flex items-center gap-2 rounded-lg font-bold text-sm transition-colors min-h-[44px]"><Send size={16} aria-hidden="true" /> New Broadcast</Button>
                     <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setPage(1); }} className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
                         {typeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
@@ -99,7 +99,7 @@ export default function AdminNotificationsTab() {
             {showCompose && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setShowCompose(false)} role="dialog" aria-modal="true">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl p-6" onClick={e => e.stopPropagation()}>
-                        <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><Bell size={20} className="text-teal-600" /> Compose Notification</h3>
+                        <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><Bell size={20} className="text-teal-600" aria-hidden="true" /> Compose Notification</h3>
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
@@ -139,7 +139,7 @@ export default function AdminNotificationsTab() {
             )}
 
             {loading ? (
-                <div className="py-16 flex justify-center"><Loader2 size={26} className="animate-spin text-teal-600" /></div>
+                <div className="py-16 flex justify-center"><Loader2 size={26} className="animate-spin text-teal-600" aria-hidden="true" /></div>
             ) : notifications.length === 0 ? (
                 <div className="py-16 text-center text-gray-500">No notifications found</div>
             ) : (
@@ -162,7 +162,7 @@ export default function AdminNotificationsTab() {
                                     <td className="px-4 py-3 font-medium text-gray-900">{n.title}</td>
                                     <td className="px-4 py-3 text-gray-500 hidden md:table-cell truncate max-w-xs">{n.message}</td>
                                     <td className="px-4 py-3 text-gray-600">{n.recipient ? `${n.recipient.name} (${n.recipient.email})` : <span className="text-amber-600 font-medium">Broadcast</span>}</td>
-                                    <td className="px-4 py-3">{n.read ? <CheckCircle2 size={16} className="text-green-500 mx-auto" /> : <span className="text-amber-600 font-medium">Unread</span>}</td>
+                                    <td className="px-4 py-3">{n.read ? <CheckCircle2 size={16} className="text-green-500 mx-auto" aria-hidden="true" /> : <span className="text-amber-600 font-medium">Unread</span>}</td>
                                     <td className="px-4 py-3 text-gray-500 hidden xl:table-cell">{formatDate(n.createdAt)}</td>
                                 </tr>
                             ))}

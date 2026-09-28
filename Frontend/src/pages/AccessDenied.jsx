@@ -3,15 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { ShieldX, Home, LogIn } from 'lucide-react';
 import Spinner from '../components/Spinner';
 import Button from '../components/ui/Button';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const AccessDenied = () => {
   const { user, authLoading } = useAuth();
   const navigate = useNavigate();
 
+  usePageTitle('Access Denied');
+
   if (authLoading) return <Spinner />;
 
   return (
-    <main className="min-h-[70vh] flex items-center justify-center px-4">
+    <div className="min-h-[70vh] flex items-center justify-center px-4">
       <div className="max-w-md w-full text-center space-y-6">
         <div className="flex justify-center">
           <div className="flex items-center justify-center w-20 h-20 rounded-full bg-red-50 border-2 border-red-100">
@@ -65,7 +68,7 @@ const AccessDenied = () => {
           )}
         </div>
       </div>
-    </main>
+    </div>
   );
 };
 

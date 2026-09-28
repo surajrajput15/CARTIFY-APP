@@ -8,6 +8,7 @@ import PasswordLoginForm from '../components/LoginFormComponents/PasswordLoginFo
 import OTPLoginForm from '../components/LoginFormComponents/OTPLoginForm';
 import ForgotPasswordForm from '../components/LoginFormComponents/ForgotPasswordForm';
 import GoogleLoginButton from '../components/LoginFormComponents/GoogleLoginButton';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const LoginPage = () => {
   const { login } = useAuth();
@@ -29,6 +30,8 @@ const LoginPage = () => {
 
   const [loginMethod, setLoginMethod] = useState('otp');
   const [isRegistering, setIsRegistering] = useState(false);
+
+  usePageTitle(isRegistering ? 'Create Account' : 'Sign In');
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [forgotStep, setForgotStep] = useState(1);
 

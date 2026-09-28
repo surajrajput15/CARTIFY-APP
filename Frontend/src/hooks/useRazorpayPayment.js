@@ -11,6 +11,9 @@ const RAZORPAY_SCRIPT_URL = 'https://checkout.razorpay.com/v1/checkout.js';
 
 export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAddress, couponCode, clearCoupon }) => {
   const [loading, setLoading] = useState(false);
+  // Inline payment-error for checkout (role=alert region) — transient toasts
+  // scroll away, so a failed/cancelled payment must also persist on the page.
+  const [paymentError, setPaymentError] = useState(null);
   // F-09: synchronous re-entrancy guard. `loading` state updates are async, so
   // a fast double-click could reach createPaymentOrder twice before the button
   // disables. Set/cleared in lockstep with setLoading around the async work.
@@ -83,12 +86,15 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
   const handlePayment = useCallback(async () => {
     logDebug('[Razorpay] handlePayment called', { selectedAddress: !!selectedAddress, cartLength: cart.length });
     if (loadingRef.current) return;
+    setPaymentError(null);
     if (!selectedAddress) {
       toast.error('Please select a delivery address!');
+      setPaymentError('Select a delivery address before paying.');
       return;
     }
     if (cart.length === 0) {
       toast.error('Your cart is empty!');
+      setPaymentError('Your cart is empty — add items before paying.');
       return;
     }
 
@@ -97,6 +103,7 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
     // with a clear user-facing message instead of opening a broken checkout modal.
     if (!RAZORPAY_KEY) {
       toast.error('Payment is not configured. Please contact support to enable checkout.');
+      setPaymentError('Payments are not configured yet. Please contact support to enable checkout.');
       setLoading(false);
       return;
     }
@@ -109,6 +116,7 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
     logDebug('[Razorpay] loadRazorpayScript result:', res);
     if (!res) {
       toast.error('Razorpay SDK failed to load. Please check your internet connection.');
+      setPaymentError('The payment window could not load. Check your internet connection and try again. No amount has been charged.');
       loadingRef.current = false;
       setLoading(false);
       return;
@@ -188,10 +196,12 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
               }
             } else {
               toast.error(verifyRes.data.message || "Payment could not be verified");
+              setPaymentError('Your payment has not been confirmed. If an amount was debited, it will be refunded automatically.');
             }
           } catch (err) {
             logError("Verification Error:", err.response?.data || err.message);
             toast.error(handleApiError(err, "Payment verification failed"));
+            setPaymentError('Your payment has not been confirmed. If an amount was debited, it will be refunded automatically.');
           }
         },
         modal: {
@@ -199,6 +209,7 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
             if (paymentResultHandled) return;
             paymentObjectRef.current = null;
             toast.error("Payment cancelled. You can retry whenever you're ready.");
+            setPaymentError('Payment cancelled. No amount has been charged — you can retry whenever you are ready.');
           },
         },
         prefill: {
@@ -220,12 +231,14 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
 
     } catch (error) {
       logError("Payment setup failed", error);
-      toast.error(handleApiError(error, "Something went wrong with the payment gateway."));
+      const message = handleApiError(error, "Something went wrong with the payment gateway.");
+      toast.error(message);
+      setPaymentError(`${message} No amount has been charged.`);
     } finally {
       loadingRef.current = false;
       setLoading(false);
     }
   }, [user, cart, clearCart, navigate, selectedAddress, couponCode, clearCoupon, loadRazorpayScript]);
 
-  return { loading, handlePayment };
+  return { loading, handlePayment, paymentError };
 };

@@ -13,7 +13,7 @@ const AdminHeader = ({ onBack, onSeed, onClearAll, showDevActions = false }) => 
                     <ArrowLeft size={16} className="mr-1" aria-hidden="true" /> Back to Store
                 </button>
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 flex items-center gap-3">
-                    <Package className="text-teal-600 flex-shrink-0" size={28} /> Admin Dashboard
+                    <Package className="text-teal-600 flex-shrink-0" size={28} aria-hidden="true" /> Admin Dashboard
                 </h1>
             </div>
             <div className="flex flex-wrap gap-2 sm:gap-3">
@@ -35,7 +35,7 @@ const AdminHeader = ({ onBack, onSeed, onClearAll, showDevActions = false }) => 
                 )}
                 {isProd && (
                     <span className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-500 bg-gray-50 rounded-lg">
-                        <Lock size={14} className="text-gray-500" />
+                        <Lock size={14} className="text-gray-500" aria-hidden="true" />
                         Dev actions hidden in production
                     </span>
                 )}

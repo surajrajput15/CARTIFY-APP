@@ -135,7 +135,7 @@ const Navbar = () => {
             <div className="flex items-center gap-4 text-teal-50">
               <LocationBar />
               <span className="hidden md:flex items-center gap-1.5 text-teal-100" aria-hidden="true">
-                <Truck size={13} />
+                <Truck size={13} aria-hidden="true" />
                 <span>Fast &amp; insured delivery</span>
               </span>
             </div>
@@ -159,7 +159,7 @@ const Navbar = () => {
                 <span className="hidden sm:inline font-medium">Help</span>
               </button>
               <span className="hidden lg:flex items-center gap-1.5 text-teal-100" aria-hidden="true">
-                <Phone size={13} />
+                <Phone size={13} aria-hidden="true" />
                 <span>+91 98765 43210</span>
               </span>
             </div>
@@ -392,7 +392,8 @@ const Navbar = () => {
             <button
               type="button"
               onClick={() => goCategory('all')}
-              className={`relative flex-shrink-0 min-w-[44px] min-h-[44px] px-3 rounded-md flex items-center text-sm font-medium transition-colors ${
+              onFocus={(e) => e.currentTarget.scrollIntoView({ block: 'nearest', inline: 'nearest' })}
+              className={`relative flex-shrink-0 min-w-[44px] min-h-[44px] px-3 rounded-md flex items-center text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-inset ${
                 activeCat === 'all' ? 'text-teal-600' : 'text-gray-600 hover:bg-teal-50 hover:text-teal-700'
               }`}
               aria-pressed={activeCat === 'all'}
@@ -418,7 +419,7 @@ const Navbar = () => {
                 <button
                   type="button"
                   onClick={() => setCategoryRetry((k) => k + 1)}
-                  className="text-teal-600 font-bold underline min-h-[44px] px-1"
+                  className="text-teal-600 font-bold underline min-h-[44px] px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-inset rounded"
                 >
                   Retry
                 </button>
@@ -428,7 +429,8 @@ const Navbar = () => {
                 key={c._id || c.name}
                 type="button"
                 onClick={() => goCategory(c.slug || c.name)}
-                className={`relative flex-shrink-0 min-w-[44px] min-h-[44px] px-3 rounded-md flex items-center text-sm font-medium capitalize transition-colors ${
+                onFocus={(e) => e.currentTarget.scrollIntoView({ block: 'nearest', inline: 'nearest' })}
+                className={`relative flex-shrink-0 min-w-[44px] min-h-[44px] px-3 rounded-md flex items-center text-sm font-medium capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-inset ${
                   activeCat === (c.slug || c.name) ? 'text-teal-600' : 'text-gray-600 hover:bg-teal-50 hover:text-teal-700'
                 }`}
                 aria-pressed={activeCat === (c.slug || c.name)}
@@ -445,7 +447,8 @@ const Navbar = () => {
                 key={cat}
                 type="button"
                 onClick={() => goCategory(cat)}
-                className={`relative flex-shrink-0 min-w-[44px] min-h-[44px] px-3 rounded-md flex items-center text-sm font-medium capitalize transition-colors ${
+                onFocus={(e) => e.currentTarget.scrollIntoView({ block: 'nearest', inline: 'nearest' })}
+                className={`relative flex-shrink-0 min-w-[44px] min-h-[44px] px-3 rounded-md flex items-center text-sm font-medium capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-inset ${
                   activeCat === cat ? 'text-teal-600' : 'text-gray-600 hover:bg-teal-50 hover:text-teal-700'
                 }`}
                 aria-pressed={activeCat === cat}

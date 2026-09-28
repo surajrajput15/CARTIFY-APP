@@ -10,8 +10,8 @@ const checklistItems = [
 
 const strengthConfig = {
   weak: { label: 'Weak', color: 'bg-red-500', textColor: 'text-red-600', barWidth: '33%' },
-  medium: { label: 'Medium', color: 'bg-yellow-400', textColor: 'text-yellow-600', barWidth: '66%' },
-  strong: { label: 'Strong', color: 'bg-green-500', textColor: 'text-green-600', barWidth: '100%' },
+  medium: { label: 'Medium', color: 'bg-yellow-400', textColor: 'text-yellow-700', barWidth: '66%' },
+  strong: { label: 'Strong', color: 'bg-green-500', textColor: 'text-green-700', barWidth: '100%' },
 };
 
 const PasswordStrengthMeter = ({ password, id }) => {
@@ -45,8 +45,8 @@ const PasswordStrengthMeter = ({ password, id }) => {
         {checklistItems.map((item) => {
           const passed = checks[item.key];
           return (
-            <li key={item.key} className={`flex items-center gap-2 text-xs font-medium ${passed ? 'text-green-600' : 'text-gray-500'}`}>
-              <span className={`text-sm font-bold ${passed ? 'text-green-500' : 'text-gray-300'}`}>
+            <li key={item.key} className={`flex items-center gap-2 text-xs font-medium ${passed ? 'text-green-700' : 'text-gray-500'}`}>
+              <span className={`text-sm font-bold ${passed ? 'text-green-700' : 'text-gray-500'}`}>
                 {passed ? '\u2713' : '\u2717'}
               </span>
               {item.label}

@@ -20,6 +20,7 @@ import { useAuth } from '../context/authContext';
 import { recordRecentView } from '../utils/recentlyViewed';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const ProductDetailsPage = () => {
   const { id } = useParams();
@@ -41,6 +42,9 @@ const ProductDetailsPage = () => {
 
   const loading = product === null;
   const relatedLoading = relatedProducts === null;
+
+  // Title follows the loaded product; falls back while fetching or on error.
+  usePageTitle(product?.title || 'Product Details');
 
   const fetchProduct = useCallback(() => {
     const myRequest = ++requestIdRef.current;
@@ -106,9 +110,9 @@ const ProductDetailsPage = () => {
 
   if (error) {
     return (
-      <main className="max-w-7xl mx-auto p-4 md:p-6 mt-4">
+      <div className="max-w-7xl mx-auto p-4 md:p-6 mt-4">
         <button onClick={handleGoBack} className="inline-flex items-center text-teal-600 hover:text-teal-800 mb-6 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 rounded-lg min-h-[44px] px-2" aria-label="Go back to previous page">
-          <ArrowLeft size={20} className="mr-2" />
+          <ArrowLeft size={20} className="mr-2" aria-hidden="true" />
           Back to Products
         </button>
         <Card className="min-h-[50vh] flex flex-col items-center justify-center rounded-2xl border p-8 sm:p-12">
@@ -119,17 +123,17 @@ const ProductDetailsPage = () => {
              onClick={fetchProduct}
             className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-colors shadow-md min-h-[44px]"
           >
-            <RefreshCw size={20} />
+            <RefreshCw size={20} aria-hidden="true" />
             Try Again
           </Button>
         </Card>
-      </main>
+      </div>
     );
   }
 
   if (loading) {
     return (
-      <main className="max-w-7xl mx-auto p-4 md:p-6 mt-4">
+      <div className="max-w-7xl mx-auto p-4 md:p-6 mt-4">
         <Card className="rounded-2xl border overflow-hidden flex flex-col md:flex-row animate-pulse">
           <div className="md:w-1/2 p-8 bg-gray-50 flex justify-center items-center">
             <div className="h-[300px] sm:h-[400px] w-full bg-gray-200 rounded-xl"></div>
@@ -147,7 +151,7 @@ const ProductDetailsPage = () => {
             <div className="h-14 w-full bg-gray-200 rounded"></div>
           </div>
         </Card>
-      </main>
+      </div>
     );
   }
 
@@ -209,9 +213,9 @@ const ProductDetailsPage = () => {
   };
 
   return (
-    <main className="max-w-7xl mx-auto p-4 md:p-6 mt-4">
+    <div className="max-w-7xl mx-auto p-4 md:p-6 mt-4">
       <button onClick={handleGoBack} className="inline-flex items-center text-teal-600 hover:text-teal-800 mb-6 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 rounded-lg min-h-[44px] px-2" aria-label="Go back to previous page">
-        <ArrowLeft size={20} className="mr-2" />
+        <ArrowLeft size={20} className="mr-2" aria-hidden="true" />
         Back to Products
       </button>
 
@@ -437,7 +441,7 @@ const ProductDetailsPage = () => {
           </div>
         </section>
       )}
-    </main>
+    </div>
   );
 };
 

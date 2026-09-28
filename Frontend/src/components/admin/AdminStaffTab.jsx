@@ -201,7 +201,7 @@ function AdminStaffTab() {
           <Card key={person._id} className="rounded-2xl border p-4 flex flex-col gap-3">
             <div className="flex items-start gap-3">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${person.role === 'warehouse' ? 'bg-teal-50 text-teal-600' : 'bg-blue-50 text-blue-600'}`} aria-hidden="true">
-                {person.role === 'warehouse' ? <Warehouse size={20} /> : <Truck size={20} />}
+                {person.role === 'warehouse' ? <Warehouse size={20} aria-hidden="true" /> : <Truck size={20} aria-hidden="true" />}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="font-bold text-gray-900 truncate">{person.name}</p>

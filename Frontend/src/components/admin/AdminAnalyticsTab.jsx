@@ -114,7 +114,7 @@ export default function AdminAnalyticsTab() {
     };
 
     if (loading) {
-        return <div className="py-16 flex justify-center"><Loader2 size={26} className="animate-spin text-teal-600" /></div>;
+        return <div className="py-16 flex justify-center"><Loader2 size={26} className="animate-spin text-teal-600" aria-hidden="true" /></div>;
     }
 
     return (
@@ -132,7 +132,7 @@ export default function AdminAnalyticsTab() {
                         <option value={180}>Last 180 days</option>
                         <option value={365}>Last 365 days</option>
                     </select>
-                    <button onClick={load} disabled={loading} className="px-4 py-2 border border-gray-300 rounded-lg text-sm flex items-center gap-2 hover:bg-gray-50"><RefreshCw size={14} /> Refresh</button>
+                    <button onClick={load} disabled={loading} className="px-4 py-2 border border-gray-300 rounded-lg text-sm flex items-center gap-2 hover:bg-gray-50"><RefreshCw size={14} aria-hidden="true" /> Refresh</button>
                 </div>
             </header>
 

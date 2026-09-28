@@ -18,6 +18,7 @@ import { MapContainer } from '../components/map/MapContainer';
 import useSocket from '../hooks/useSocket';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const STATUS_STEPS = ['assigned', 'accepted', 'picked_up', 'out_for_delivery', 'delivered'];
 
@@ -243,6 +244,7 @@ function DeliveryMap({ order }) {
 }
 
 function DeliveryPage() {
+  usePageTitle('Delivery Dashboard');
   const { user } = useAuth();
   const [tab, setTab] = useState('active');
   const [orders, setOrders] = useState([]);
@@ -363,7 +365,7 @@ function DeliveryPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <Card className="rounded-2xl border p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center shrink-0" aria-hidden="true">
-              <Package size={20} />
+              <Package size={20} aria-hidden="true" />
             </div>
             <div className="min-w-0">
               <p className="text-2xl font-bold text-gray-900 leading-none">{stats.active}</p>
@@ -372,7 +374,7 @@ function DeliveryPage() {
           </Card>
           <Card className="rounded-2xl border p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center shrink-0" aria-hidden="true">
-              <Package size={20} />
+              <Package size={20} aria-hidden="true" />
             </div>
             <div className="min-w-0">
               <p className="text-2xl font-bold text-gray-900 leading-none">{stats.todayCompleted}</p>
@@ -390,7 +392,7 @@ function DeliveryPage() {
           </Card>
           <Card className="rounded-2xl border p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0" aria-hidden="true">
-              <Package size={20} />
+              <Package size={20} aria-hidden="true" />
             </div>
             <div className="min-w-0">
               <p className="text-2xl font-bold text-gray-900 leading-none">{stats.weekCompleted}</p>

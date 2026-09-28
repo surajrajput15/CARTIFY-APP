@@ -12,8 +12,10 @@ import CouponInput from '../components/checkout/CouponInput';
 import { EmptyCartIllustration } from '../components/illustrations/EmptyStateIllustrations';
 import { variantLabel } from '../utils/variants';
 import Card from '../components/ui/Card';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const CartPage = () => {
+  usePageTitle('Cart');
   const { cart, removeFromCart, updateQuantity } = useCart();
   const { user } = useAuth();
 

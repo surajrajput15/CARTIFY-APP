@@ -28,12 +28,14 @@ import AdminReviewsTab from '../components/admin/AdminReviewsTab';
 import AdminNotificationsTab from '../components/admin/AdminNotificationsTab';
 import AdminSettingsTab from '../components/admin/AdminSettingsTab';
 import { isNetworkError } from '../utils/apiError';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const CLOSED_CONFIRM = { show: false, title: '', message: '', onConfirm: null, loading: false };
 
 const ADMIN_TABS = ['control', 'users', 'orders', 'products', 'categories', 'warehouses', 'coupons', 'campaigns', 'deliveries', 'analytics', 'reviews', 'notifications', 'activity', 'audit', 'settings'];
 
 const AdminPage = () => {
+  usePageTitle('Admin Dashboard');
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();

@@ -4,6 +4,7 @@ import { Ticket, Copy, Check, Loader2, AlertCircle, ShoppingCart } from 'lucide-
 import { useCart } from '../../context/cartContext';
 import { fetchAvailableCoupons } from '../../services/couponsApi';
 import { formatPrice } from '../../utils/format';
+import { handleApiError } from '../../utils/apiError';
 import Button from '../ui/Button';
 
 const CouponsTab = () => {
@@ -13,6 +14,7 @@ const CouponsTab = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   const items = cart || [];
   const totalAmount = items.reduce(
@@ -40,13 +42,13 @@ const CouponsTab = () => {
         if (!cancelled) setCoupons(data.coupons || []);
       })
       .catch((err) => {
-        if (!cancelled) setError(err?.response?.data?.message || 'Failed to load coupons');
+        if (!cancelled) setError(handleApiError(err, 'Failed to load coupons'));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [cart, totalAmount]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cart, totalAmount, retryKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCopy = async (code) => {
     try {
@@ -78,9 +80,18 @@ const CouponsTab = () => {
           Loading coupons…
         </div>
       ) : error ? (
-        <div className="flex items-center gap-2 mt-4 p-3 rounded-xl bg-red-50 text-red-600 text-sm" role="alert">
-          <AlertCircle size={16} className="shrink-0" aria-hidden="true" />
-          {error}
+        <div role="alert" className="mt-4 p-3 rounded-xl bg-red-50 text-red-600 text-sm">
+          <div className="flex items-start gap-2">
+            <AlertCircle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
+            <span>{error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setRetryKey((k) => k + 1)}
+            className="mt-2 ml-6 min-h-[44px] font-bold underline text-red-700 hover:text-red-800"
+          >
+            Try Again
+          </button>
         </div>
       ) : items.length === 0 ? (
         <div className="text-center py-10">

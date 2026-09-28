@@ -126,14 +126,14 @@ export default function AdminUsersTab() {
                         {statusOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} aria-hidden="true" />
                         <input type="text" placeholder="Search name, email, phone..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm bg-white" />
                     </div>
                 </div>
             </header>
 
             {loading ? (
-                <div className="py-16 flex justify-center"><Loader2 size={26} className="animate-spin text-teal-600" /></div>
+                <div className="py-16 flex justify-center"><Loader2 size={26} className="animate-spin text-teal-600" aria-hidden="true" /></div>
             ) : users.length === 0 ? (
                 <div className="py-16 text-center text-gray-500">No users found</div>
             ) : (
@@ -158,7 +158,7 @@ export default function AdminUsersTab() {
                                     <td className="px-4 py-3 text-gray-500 hidden lg:table-cell">{u.lastLoginAt ? formatDate(u.lastLoginAt) : 'Never'}</td>
                                     <td className="px-4 py-3 text-gray-500 hidden xl:table-cell">{formatDate(u.createdAt)}</td>
                                     <td className="px-4 py-3 text-right">
-                                        <ActionButton variant="ghost" onClick={e => { e.stopPropagation(); handleDetail(u); }}><Eye size={16} /> View</ActionButton>
+                                        <ActionButton variant="ghost" onClick={e => { e.stopPropagation(); handleDetail(u); }}><Eye size={16} aria-hidden="true" /> View</ActionButton>
                                     </td>
                                 </tr>
                             ))}
@@ -181,10 +181,10 @@ export default function AdminUsersTab() {
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
                         <header className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                             <h3 id="detail-title" className="text-xl font-bold text-gray-900">{selectedUser.name} ({selectedUser.email})</h3>
-                            <button onClick={closeDetail} className="p-1 rounded-lg hover:bg-gray-100" aria-label="Close"><EyeOff size={20} className="text-gray-500" /></button>
+                            <button onClick={closeDetail} className="p-1 rounded-lg hover:bg-gray-100" aria-label="Close"><EyeOff size={20} className="text-gray-500" aria-hidden="true" /></button>
                         </header>
                         <div className="p-6 overflow-y-auto flex-1">
-                            {detailLoading ? <div className="py-16 flex justify-center"><Loader2 size={26} className="animate-spin text-teal-600" /></div> : (
+                            {detailLoading ? <div className="py-16 flex justify-center"><Loader2 size={26} className="animate-spin text-teal-600" aria-hidden="true" /></div> : (
                                 <div className="space-y-6">
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                                         <div className="p-3 bg-gray-50 rounded-lg"><p className="text-gray-500">Status</p><p className="font-bold"><StatusBadge status={selectedUser.status} /></p></div>
@@ -204,7 +204,7 @@ export default function AdminUsersTab() {
 
                                     {selectedUser.addresses?.length && (
                                         <section>
-                                            <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2"><MapPin size={18} className="text-teal-600" /> Addresses</h4>
+                                            <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2"><MapPin size={18} className="text-teal-600" aria-hidden="true" /> Addresses</h4>
                                             <div className="space-y-2">
                                                 {selectedUser.addresses.map(a => (
                                                     <div key={a._id} className="p-3 bg-gray-50 rounded-lg text-sm">
@@ -218,7 +218,7 @@ export default function AdminUsersTab() {
                                     )}
 
                                     <section>
-                                        <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2"><Bell size={18} className="text-teal-600" /> Login History (last 10)</h4>
+                                        <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2"><Bell size={18} className="text-teal-600" aria-hidden="true" /> Login History (last 10)</h4>
                                         {loginHistory.length === 0 ? (
                                             <p className="text-gray-500 py-4">No login history found</p>
                                         ) : (
@@ -226,7 +226,7 @@ export default function AdminUsersTab() {
                                                 {loginHistory.map((evt, i) => (
                                                     <div key={i} className="p-3 bg-gray-50 rounded-lg text-sm flex items-center justify-between">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center"><ShieldCheck size={14} className="text-teal-600" /></div>
+                                                            <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center"><ShieldCheck size={14} className="text-teal-600" aria-hidden="true" /></div>
                                                             <div>
                                                                 <p className="font-medium">{evt.details?.method || 'Unknown'}</p>
                                                                 <p className="text-gray-500 text-xs">{formatDate(evt.timestamp)} • {evt.ip || 'IP unknown'}</p>

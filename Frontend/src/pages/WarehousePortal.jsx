@@ -21,6 +21,7 @@ import { fetchWarehouses } from '../services/warehousesApi';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const TABS = [
   { key: 'dashboard', label: 'Dashboard' },
@@ -56,7 +57,7 @@ function StockRow({ row, onSave, savingId }) {
             aria-label={expanded ? 'Collapse details' : 'Expand details'}
             aria-expanded={expanded}
           >
-            {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+            {expanded ? <ChevronDown size={16} aria-hidden="true" /> : <ChevronRight size={16} aria-hidden="true" />}
           </button>
         </td>
         <td className="p-3">
@@ -112,8 +113,8 @@ function StockRow({ row, onSave, savingId }) {
             <p>Product ID: <span className="font-mono">{row.productId}</span></p>
             <p className="mt-1">
               {low
-                ? <span className="inline-flex items-center gap-1 text-amber-700 font-semibold"><AlertTriangle size={13} /> At or below its low-stock threshold</span>
-                : <span className="inline-flex items-center gap-1 text-green-700 font-semibold"><CheckCircle2 size={13} /> Healthy stock level</span>}
+                ? <span className="inline-flex items-center gap-1 text-amber-700 font-semibold"><AlertTriangle size={13} aria-hidden="true" /> At or below its low-stock threshold</span>
+                : <span className="inline-flex items-center gap-1 text-green-700 font-semibold"><CheckCircle2 size={13} aria-hidden="true" /> Healthy stock level</span>}
             </p>
           </td>
         </tr>
@@ -224,6 +225,7 @@ function TransferForm({ onDone, onCancel, warehouseId }) {
 }
 
 function WarehousePortal() {
+  usePageTitle('Warehouse Portal');
   const { user } = useAuth();
   const isAdmin = Boolean(user?.isAdmin);
   const [tab, setTab] = useState('dashboard');
@@ -409,7 +411,7 @@ function WarehousePortal() {
             {/* Recent alerts */}
             <Card className="rounded-2xl border overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                <h3 className="font-bold text-gray-800 flex items-center gap-2"><AlertTriangle size={18} className="text-amber-500" /> Low-Stock Alerts</h3>
+                <h3 className="font-bold text-gray-800 flex items-center gap-2"><AlertTriangle size={18} className="text-amber-500" aria-hidden="true" /> Low-Stock Alerts</h3>
                 <button onClick={() => setTab('alerts')} className="text-xs font-bold text-teal-600 hover:text-teal-700">View all</button>
               </div>
               <div className="divide-y divide-gray-50">
@@ -510,7 +512,7 @@ function WarehousePortal() {
               <button onClick={() => setExpandedAlert((e) => (e === a._id ? null : a._id))}
                 className="w-full flex items-center justify-between gap-3 p-4 hover:bg-gray-50 text-left" aria-expanded={expandedAlert === a._id}>
                 <div className="flex items-center gap-3 min-w-0">
-                  {a.critical ? <XCircle size={20} className="text-red-500 shrink-0" /> : <AlertTriangle size={20} className="text-amber-500 shrink-0" />}
+                  {a.critical ? <XCircle size={20} className="text-red-500 shrink-0" /> : <AlertTriangle size={20} className="text-amber-500 shrink-0" aria-hidden="true" />}
                   <div className="min-w-0">
                     <p className="font-semibold text-gray-800 truncate">{a.productTitle}</p>
                     <p className="text-xs text-gray-500">{a.variantKey ? <code className="font-mono">{a.variantKey}</code> : 'Base'} · {a.productCategory}</p>

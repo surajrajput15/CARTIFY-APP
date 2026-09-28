@@ -20,7 +20,7 @@ function Stars({ rating }) {
     return (
         <span className="flex items-center gap-0.5">
             {[...Array(5)].map((_, i) => (
-                <Star key={i} size={14} className={i < rating ? 'text-amber-400 fill-current' : 'text-gray-300'} />
+                <Star key={i} size={14} className={i < rating ? 'text-amber-400 fill-current' : 'text-gray-300'} aria-hidden="true" />
             ))}
         </span>
     );
@@ -84,14 +84,14 @@ export default function AdminReviewsTab() {
                         {statusOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} aria-hidden="true" />
                         <input type="text" placeholder="Search user, title, comment..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm bg-white" />
                     </div>
                 </div>
             </header>
 
             {loading ? (
-                <div className="py-16 flex justify-center"><Loader2 size={26} className="animate-spin text-teal-600" /></div>
+                <div className="py-16 flex justify-center"><Loader2 size={26} className="animate-spin text-teal-600" aria-hidden="true" /></div>
             ) : reviews.length === 0 ? (
                 <div className="py-16 text-center text-gray-500">No reviews found</div>
             ) : (
@@ -122,7 +122,7 @@ export default function AdminReviewsTab() {
                                     <td className="px-4 py-3 text-right">
                                         {r.status === 'pending' && (
                                             <>
-                                                <button type="button" onClick={() => handleModerate(r._id, 'approve')} disabled={actionLoading === r._id} className="px-3 py-1.5 bg-green-600 text-white text-sm font-bold rounded-lg hover:bg-green-700 transition-colors min-h-[44px] disabled:opacity-50"><CheckCircle2 size={14} className="mr-1" /> Approve</button>
+                                                <button type="button" onClick={() => handleModerate(r._id, 'approve')} disabled={actionLoading === r._id} className="px-3 py-1.5 bg-green-600 text-white text-sm font-bold rounded-lg hover:bg-green-700 transition-colors min-h-[44px] disabled:opacity-50"><CheckCircle2 size={14} className="mr-1" aria-hidden="true" /> Approve</button>
                                                 <button type="button" onClick={() => handleModerate(r._id, 'hide')} disabled={actionLoading === r._id} className="px-3 py-1.5 bg-red-600 text-white text-sm font-bold rounded-lg hover:bg-red-700 transition-colors min-h-[44px] disabled:opacity-50 ml-2"><XCircle size={14} className="mr-1" /> Hide</button>
                                             </>
                                         )}
@@ -130,7 +130,7 @@ export default function AdminReviewsTab() {
                                             <button type="button" onClick={() => handleModerate(r._id, 'hide')} disabled={actionLoading === r._id} className="px-3 py-1.5 bg-red-600 text-white text-sm font-bold rounded-lg hover:bg-red-700 transition-colors min-h-[44px] disabled:opacity-50"><XCircle size={14} className="mr-1" /> Hide</button>
                                         )}
                                         {r.status === 'hidden' && (
-                                            <button type="button" onClick={() => handleModerate(r._id, 'approve')} disabled={actionLoading === r._id} className="px-3 py-1.5 bg-green-600 text-white text-sm font-bold rounded-lg hover:bg-green-700 transition-colors min-h-[44px] disabled:opacity-50"><CheckCircle2 size={14} className="mr-1" /> Approve</button>
+                                            <button type="button" onClick={() => handleModerate(r._id, 'approve')} disabled={actionLoading === r._id} className="px-3 py-1.5 bg-green-600 text-white text-sm font-bold rounded-lg hover:bg-green-700 transition-colors min-h-[44px] disabled:opacity-50"><CheckCircle2 size={14} className="mr-1" aria-hidden="true" /> Approve</button>
                                         )}
                                     </td>
                                 </tr>

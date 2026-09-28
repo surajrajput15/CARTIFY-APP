@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { HelpCircle, Mail, Phone, Package, RotateCcw, Truck, User } from 'lucide-react';
 import { SUPPORT_EMAIL, SHIPPING_CONFIG } from '../utils/constants';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const FAQS = [
   {
@@ -38,8 +39,9 @@ const FAQS = [
 ];
 
 const FaqPage = () => {
+  usePageTitle('FAQ');
   return (
-    <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
           <HelpCircle size={26} className="text-teal-600" aria-hidden="true" />
@@ -108,7 +110,7 @@ const FaqPage = () => {
           </a>
         </div>
       </div>
-    </main>
+    </div>
   );
 };
 

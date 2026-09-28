@@ -12,6 +12,7 @@ import { logError } from '../utils/logger';
 import HomeSections from '../components/HomeSections';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 // Whitelisted ?sort= values (F-17) — anything else falls back to 'newest'.
 const SORT_VALUES = ['newest', 'price_asc', 'price_desc', 'rating'];
@@ -56,6 +57,15 @@ const HomePage = () => {
   const sortValue = SORT_VALUES.includes(sortParam) ? sortParam : 'newest';
   const minParam = searchParams.get('min') || '';
   const maxParam = searchParams.get('max') || '';
+
+  // Route title reflects the active view: default, category filter or search.
+  usePageTitle(
+    searchQuery
+      ? `Search: ${searchQuery}`
+      : selectedCategory !== 'all'
+        ? `Products — ${titleCase(selectedCategory)}`
+        : 'Home'
+  );
 
   // F-13: exactly one effect owns fetching. The old category/page sync
   // effects re-triggered state on every filter change and duplicated fetches.
@@ -175,7 +185,7 @@ const HomePage = () => {
       : null;
 
   return (
-    <main className="max-w-7xl mx-auto p-4 md:p-6 mt-4">
+    <div className="max-w-7xl mx-auto p-4 md:p-6 mt-4">
       <HeroBanner productCount={catalogCount} />
 
       {!searchQuery && selectedCategory === 'all' && <ShopByCategory />}
@@ -251,19 +261,25 @@ const HomePage = () => {
       {loading ? (
         <SkeletonList count={8} />
       ) : fetchError === 'network' ? (
-        <div className="text-center py-12 sm:py-20 bg-gray-50 rounded-2xl border border-gray-100 px-4">
+        <div role="alert" className="text-center py-12 sm:py-20 bg-gray-50 rounded-2xl border border-gray-100 px-4">
           <SearchEmptyIllustration className="w-24 h-24 sm:w-32 sm:h-32 mx-auto mb-4" />
-          <h3 className="text-xl sm:text-2xl font-bold text-gray-700 mb-2">Can't load products</h3>
-          <p className="text-gray-500 max-w-md mx-auto text-sm sm:text-base">
-            The backend is unreachable. Check the yellow banner at the top of the page for details, or refresh once the server is back online.
+          <h3 className="text-xl sm:text-2xl font-bold text-gray-700 mb-2">Products could not load</h3>
+          <p className="text-gray-500 max-w-md mx-auto text-sm sm:text-base mb-6">
+            You appear to be offline or the server is unreachable. Check your connection and try again.
           </p>
+          <Button
+            onClick={handleRetry}
+            className="px-6 py-3 rounded-lg font-bold transition-colors min-h-[44px] inline-flex items-center"
+          >
+            Try Again
+          </Button>
         </div>
       ) : fetchError === 'server' ? (
-        <div className="text-center py-12 sm:py-20 bg-gray-50 rounded-2xl border border-gray-100 px-4">
+        <div role="alert" className="text-center py-12 sm:py-20 bg-gray-50 rounded-2xl border border-gray-100 px-4">
           <SearchEmptyIllustration className="w-24 h-24 sm:w-32 sm:h-32 mx-auto mb-4" />
-          <h3 className="text-xl sm:text-2xl font-bold text-gray-700 mb-2">Something went wrong</h3>
+          <h3 className="text-xl sm:text-2xl font-bold text-gray-700 mb-2">Products could not load</h3>
           <p className="text-gray-500 max-w-md mx-auto text-sm sm:text-base mb-6">
-            We couldn't load products just now. Please try again.
+            The server had a problem responding. This is usually temporary — try again in a moment.
           </p>
           <Button
             onClick={handleRetry}
@@ -364,7 +380,7 @@ const HomePage = () => {
       )}
 
       {!searchQuery && selectedCategory === 'all' && <HomeSections takenIds={gridIds} />}
-    </main>
+    </div>
   );
 };
 

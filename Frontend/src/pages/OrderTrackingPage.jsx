@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Navigation, MapPin, Package, Truck, Home, Clock, Loader2, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Navigation, MapPin, Package, Truck, Home, Clock, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/authContext';
 import api from '../api/axios';
 import { fetchMyOrders } from '../services/ordersApi';
@@ -8,6 +8,7 @@ import { MapContainer } from '../components/map/MapContainer';
 import { useLiveTracking } from '../hooks/useLiveTracking';
 import { distanceKm, estimateMinutes, formatEta, timeLabel, mapsDeepLink } from '../utils/geo';
 import Card from '../components/ui/Card';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const DELIVERY_STEPS = [
   { key: 'assigned', label: 'Order assigned', icon: Package },
@@ -64,22 +65,29 @@ function Timeline({ status, timestamps }) {
 }
 
 function OrderTrackingPage() {
+  usePageTitle('Track Order');
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, authLoading } = useAuth();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [orderError, setOrderError] = useState(null);
+  // Separates "this order doesn't exist / no access" from a failed fetch so
+  // only the recoverable case offers a retry.
+  const [orderNotFound, setOrderNotFound] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   const [mapKey, setMapKey] = useState(0);
 
   const { position, deliveryStatus, connected, error } = useLiveTracking(id, { enabled: true });
 
   // Load the order (must be the user's own order or admin)
   useEffect(() => {
-    if (!id || !user) return;
+    if (!id || authLoading || !user) return;
     let cancelled = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- resets loading while the order refetches
     setLoading(true);
+    setOrderError(null);
+    setOrderNotFound(false);
     const load = async () => {
       try {
         const res = await fetchMyOrders(user.id);
@@ -93,17 +101,20 @@ function OrderTrackingPage() {
           const adminList = adminRes?.data?.orders || [];
           const adminFound = adminList.find((o) => o._id === id);
           if (adminFound) setOrder(adminFound);
-          else setOrderError('Order not found or you do not have access.');
+          else {
+            setOrderNotFound(true);
+            setOrderError('Order not found or you do not have access.');
+          }
         }
       } catch {
-        setOrderError('Could not load order details.');
+        setOrderError('We could not reach the server to load this order. Check your connection and try again.');
       } finally {
         if (!cancelled) setLoading(false);
       }
     };
     load();
     return () => { cancelled = true; };
-  }, [id, user]);
+  }, [id, user, authLoading, retryKey]);
 
   const destination = useMemo(() => {
     const a = order?.shippingAddress;
@@ -121,6 +132,33 @@ function OrderTrackingPage() {
   const statusEffective = deliveryStatus || order?.deliveryStatus || 'not_assigned';
   const trackable = ['assigned', 'accepted', 'picked_up', 'out_for_delivery'].includes(statusEffective);
 
+  // Signed-out visitors used to sit behind an endless spinner here — give them
+  // a real state (with a way out) instead. Derived at render time so the
+  // effect never has to setState synchronously for the logged-out case.
+  if (!authLoading && !user) {
+    return (
+      <div role="alert" className="max-w-2xl mx-auto px-4 py-16 text-center">
+        <AlertCircle size={40} className="text-red-400 mx-auto mb-4" aria-hidden="true" />
+        <h1 className="text-xl font-bold text-gray-800 mb-2">Please sign in</h1>
+        <p className="text-gray-500 mb-6">Sign in to track this order.</p>
+        <div className="flex items-center justify-center gap-4">
+          <button
+            onClick={() => navigate('/login')}
+            className="min-h-[44px] px-6 py-2 rounded-lg bg-teal-600 text-white font-bold hover:bg-teal-700 transition-colors"
+          >
+            Sign In
+          </button>
+          <button
+            onClick={() => navigate(-1)}
+            className="min-h-[44px] px-4 font-semibold text-teal-600 hover:text-teal-700"
+          >
+            Go back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -131,11 +169,28 @@ function OrderTrackingPage() {
 
   if (orderError || !order) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <p className="text-2xl mb-2">🔍</p>
-        <h1 className="text-xl font-bold text-gray-800 mb-2">Order not found</h1>
+      <div role="alert" className="max-w-2xl mx-auto px-4 py-16 text-center">
+        <AlertCircle size={40} className="text-red-400 mx-auto mb-4" aria-hidden="true" />
+        <h1 className="text-xl font-bold text-gray-800 mb-2">
+          {orderNotFound ? 'Order not found' : 'Order could not load'}
+        </h1>
         <p className="text-gray-500 mb-6">{orderError}</p>
-        <button onClick={() => navigate(-1)} className="text-teal-600 font-semibold">Go back</button>
+        <div className="flex items-center justify-center gap-4">
+          {!orderNotFound && (
+            <button
+              onClick={() => setRetryKey((k) => k + 1)}
+              className="min-h-[44px] px-6 py-2 rounded-lg bg-teal-600 text-white font-bold hover:bg-teal-700 transition-colors"
+            >
+              Try Again
+            </button>
+          )}
+          <button
+            onClick={() => navigate(-1)}
+            className="min-h-[44px] px-4 font-semibold text-teal-600 hover:text-teal-700"
+          >
+            Go back
+          </button>
+        </div>
       </div>
     );
   }

@@ -65,7 +65,7 @@ const ForgotPasswordForm = ({
   return (
     <div className="animate-fade-in-up">
       <button onClick={handleBack} className="flex items-center text-sm font-bold text-teal-600 hover:text-teal-700 mb-6 transition-colors">
-        <ArrowLeft size={16} className="mr-1" /> Back to Login
+        <ArrowLeft size={16} className="mr-1" aria-hidden="true" /> Back to Login
       </button>
 
       {forgotStep === 1 ? (
@@ -75,12 +75,12 @@ const ForgotPasswordForm = ({
           <div>
             <label htmlFor="forgot-email" className="block text-sm font-bold text-gray-700 mb-2">Email Address</label>
             <div className="relative">
-              <Mail className="absolute inset-y-0 left-3 top-4 h-5 w-5 text-gray-500" />
+              <Mail className="absolute inset-y-0 left-3 top-4 h-5 w-5 text-gray-500" aria-hidden="true" />
               <Input id="forgot-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" className="block w-full pl-10 pr-3 py-4 border-gray-200 rounded-xl font-medium bg-gray-50" placeholder="name@example.com" />
             </div>
           </div>
           <Button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 py-4 rounded-xl font-bold text-lg transition-all shadow-md">
-            {loading ? <Loader2 className="animate-spin" size={24} /> : 'Send Reset OTP'}
+            {loading ? <Loader2 className="animate-spin" size={24} aria-hidden="true" /> : 'Send Reset OTP'}
           </Button>
         </form>
       ) : (
@@ -99,7 +99,7 @@ const ForgotPasswordForm = ({
             <PasswordInput id="forgot-new-password" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Min. 8 characters, 1 upper, 1 lower, 1 number" required minLength="8" />
           </div>
           <Button type="submit" variant="dark" disabled={loading} className="w-full flex items-center justify-center gap-2 py-4 rounded-xl font-bold text-lg transition-all shadow-md mt-2">
-            {loading ? <Loader2 className="animate-spin" size={24} /> : 'Save New Password'}
+            {loading ? <Loader2 className="animate-spin" size={24} aria-hidden="true" /> : 'Save New Password'}
           </Button>
         </form>
       )}

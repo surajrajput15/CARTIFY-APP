@@ -33,13 +33,14 @@ class ErrorBoundary extends Component {
     if (this.state.hasError) {
       return (
         <div className="min-h-[70vh] flex flex-col items-center justify-center px-4">
-          <Card className="rounded-2xl border p-12 max-w-md w-full text-center">
+          <Card className="rounded-2xl border p-12 max-w-md w-full text-center" role="alert">
             <div className="bg-red-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
               <AlertTriangle size={40} className="text-red-500" aria-hidden="true" />
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-2">Something Went Wrong</h1>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-2">This page hit a problem</h1>
             <p className="text-gray-500 mb-8">
-              An unexpected error occurred. Please try again or return to the home page.
+              An unexpected error stopped this page from loading. Your cart and account are unaffected —
+              try again, or return to the home page.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button

@@ -59,7 +59,7 @@ const AdminCouponsTab = () => {
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-bold">Coupons</h2>
         <Button onClick={openAdd} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-bold min-h-[44px]">
-          <Plus size={18} /> Add Coupon
+          <Plus size={18} aria-hidden="true" /> Add Coupon
         </Button>
       </div>
 
@@ -144,7 +144,7 @@ const AdminCouponsTab = () => {
                   <td className="p-3 flex justify-end gap-1">
                     <button onClick={() => handleToggle(c._id)} className="p-2 hover:bg-gray-100 rounded min-w-[44px] min-h-[44px]" aria-label="Toggle"><Power size={16} /></button>
                     <button onClick={() => openEdit(c)} className="p-2 hover:bg-gray-100 rounded min-w-[44px] min-h-[44px]" aria-label="Edit"><Edit2 size={16} /></button>
-                    <button onClick={() => handleDelete(c._id)} className="p-2 hover:bg-red-50 text-red-600 rounded min-w-[44px] min-h-[44px]" aria-label="Delete"><Trash2 size={16} /></button>
+                    <button onClick={() => handleDelete(c._id)} className="p-2 hover:bg-red-50 text-red-600 rounded min-w-[44px] min-h-[44px]" aria-label="Delete"><Trash2 size={16} aria-hidden="true" /></button>
                   </td>
                 </tr>
               ))}

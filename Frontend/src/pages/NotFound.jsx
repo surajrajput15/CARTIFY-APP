@@ -1,9 +1,11 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Home, ArrowLeft } from 'lucide-react';
 import { NotFoundIllustration } from '../components/illustrations/EmptyStateIllustrations';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const NotFound = () => {
   const navigate = useNavigate();
+  usePageTitle('404');
   // Go back when there is somewhere to go back to (e.g. a mistyped checkout
   // step); otherwise fall back to Home so we never eject the user from the app.
   const handleGoBack = () => {
@@ -15,7 +17,7 @@ const NotFound = () => {
   };
 
   return (
-    <main className="min-h-[70vh] flex flex-col items-center justify-center px-4 py-10">
+    <div className="min-h-[70vh] flex flex-col items-center justify-center px-4 py-10">
       <NotFoundIllustration className="w-48 h-48 sm:w-56 sm:h-56 mb-6" />
       <h1 className="text-5xl sm:text-6xl font-black text-gray-900 mb-2">404</h1>
       <p className="text-lg sm:text-xl font-bold text-gray-700 mb-2">Page Not Found</p>
@@ -38,7 +40,7 @@ const NotFound = () => {
           Back to Home
         </Link>
       </div>
-    </main>
+    </div>
   );
 };
 

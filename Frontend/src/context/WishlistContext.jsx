@@ -21,6 +21,9 @@ export const WishlistProvider = ({ children }) => {
   const { user } = useAuth();
   const [wishlist, setWishlist] = useState([]);
   const [wishlistLoading, setWishlistLoading] = useState(true);
+  // True only when a signed-in fetch failed — lets the page show "couldn't
+  // load" instead of misleading the user with an empty wishlist.
+  const [wishlistError, setWishlistError] = useState(false);
   const wishlistRef = useRef(wishlist);
 
   useEffect(() => {
@@ -58,6 +61,7 @@ export const WishlistProvider = ({ children }) => {
     // 401 (POST /wishlist/add noise). Bail out without hitting the API.
     if (!user?.id) {
       setWishlistLoading(false);
+      setWishlistError(false);
       return wishlistRef.current;
     }
     try {
@@ -66,9 +70,11 @@ export const WishlistProvider = ({ children }) => {
       setWishlist(items);
       saveToLocal(items);
       setWishlistLoading(false);
+      setWishlistError(false);
       return items;
     } catch {
       setWishlistLoading(false);
+      setWishlistError(true);
       return wishlistRef.current;
     }
   }, [saveToLocal, user?.id]);
@@ -91,6 +97,7 @@ export const WishlistProvider = ({ children }) => {
         setWishlist([]);
         saveToLocal([]);
         setWishlistLoading(false);
+        setWishlistError(false);
       })();
       return () => { cancelled = true; };
     }
@@ -108,10 +115,12 @@ export const WishlistProvider = ({ children }) => {
         setWishlist(serverProducts);
         saveToLocal(serverProducts);
         setWishlistLoading(false);
+        setWishlistError(false);
       } catch {
         if (cancelled) return;
         setWishlist([]);
         setWishlistLoading(false);
+        setWishlistError(true);
       }
     })();
 
@@ -173,12 +182,13 @@ export const WishlistProvider = ({ children }) => {
     () => ({
       wishlist,
       wishlistLoading,
+      wishlistError,
       isWishlisted: isWishlistedCheck,
       addToWishlist: addToWishlistHandler,
       removeFromWishlist: removeFromWishlistHandler,
       refreshWishlist: fetchWishlistFromServer,
     }),
-    [wishlist, wishlistLoading, isWishlistedCheck, addToWishlistHandler, removeFromWishlistHandler, fetchWishlistFromServer]
+    [wishlist, wishlistLoading, wishlistError, isWishlistedCheck, addToWishlistHandler, removeFromWishlistHandler, fetchWishlistFromServer]
   );
 
   return (

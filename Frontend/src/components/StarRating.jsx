@@ -8,11 +8,9 @@ const StarRating = ({ rating = 0, size = 14, className = '' }) => {
   return (
     <div className={`flex items-center gap-0.5 ${className}`} aria-hidden="true">
       {[1, 2, 3, 4, 5].map((i) => (
-        <Star
-          key={i}
+        <Star key={i}
           size={size}
-          className={i <= fullStars ? 'fill-current text-yellow-400' : 'fill-current text-gray-200'}
-        />
+          className={i <= fullStars ? 'fill-current text-yellow-400' : 'fill-current text-gray-200'} aria-hidden="true" />
       ))}
     </div>
   );

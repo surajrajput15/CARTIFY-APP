@@ -193,7 +193,7 @@ const AdminAuditLogsTab = () => {
                           aria-label={expanded === l._id ? 'Collapse details' : 'Expand details'}
                           aria-expanded={expanded === l._id}
                         >
-                          {expanded === l._id ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                          {expanded === l._id ? <ChevronDown size={16} aria-hidden="true" /> : <ChevronRight size={16} aria-hidden="true" />}
                         </button>
                       </td>
                       <td className="p-3 text-gray-600 whitespace-nowrap">{formatDate(l.timestamp)}</td>

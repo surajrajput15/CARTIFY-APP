@@ -99,7 +99,7 @@ function App() {
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="animate-spin text-teal-600" size={36} />
+        <Loader2 className="animate-spin text-teal-600" size={36} aria-hidden="true" />
       </div>
     );
   }

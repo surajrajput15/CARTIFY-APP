@@ -14,8 +14,20 @@ import AddressManager from '../components/profile/AddressManager';
 import SettingsTab from '../components/profile/SettingsTab';
 import CouponsTab from '../components/profile/CouponsTab';
 import NotificationsTab from '../components/profile/NotificationsTab';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const VALID_TABS = ['profile', 'orders', 'coupons', 'notifications', 'addresses', 'settings'];
+
+// Route title follows the open tab so deep-links (?tab=orders) get an
+// accurate document title too.
+const TAB_TITLES = {
+  profile: 'My Account',
+  orders: 'My Orders',
+  coupons: 'My Coupons',
+  notifications: 'Notifications',
+  addresses: 'My Addresses',
+  settings: 'Settings'
+};
 
 const CLOSED_CONFIRM = { show: false, title: '', message: '', confirmLabel: 'Confirm', cancelLabel: 'Cancel', onConfirm: null, loading: false };
 
@@ -27,7 +39,9 @@ const ProfilePage = () => {
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'profile');
   const [confirmModal, setConfirmModal] = useState(CLOSED_CONFIRM);
 
-  const { orders, loadingOrders, fetchOrders } = useOrders(user?.id);
+  usePageTitle(TAB_TITLES[activeTab] || 'My Account');
+
+  const { orders, loadingOrders, ordersError, fetchOrders } = useOrders(user?.id);
   const { addresses, addressesLoading, fetchAddresses, saveAddress, deleteAddress } = useAddresses(user?.id, false);
   const { isEditing, editName, setEditName, editGender, setEditGender, updateLoading, handleToggleEdit, handleUpdateProfile, deleteAccount } = useProfile();
   const { changing: changingPassword, changePassword } = useChangePassword();
@@ -135,7 +149,7 @@ const ProfilePage = () => {
   };
 
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
       <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-6 sm:mb-8">My Account</h1>
 
       <div className="flex flex-col md:flex-row gap-4 sm:gap-6 md:gap-8">
@@ -157,7 +171,9 @@ const ProfilePage = () => {
             />
           )}
 
-          {activeTab === 'orders' && <OrdersTab orders={orders} loading={loadingOrders} />}
+          {activeTab === 'orders' && (
+            <OrdersTab orders={orders} loading={loadingOrders} error={ordersError} onRetry={fetchOrders} />
+          )}
 
           {activeTab === 'coupons' && <CouponsTab />}
 
@@ -195,7 +211,7 @@ const ProfilePage = () => {
           onCancel={() => setConfirmModal(CLOSED_CONFIRM)}
         />
       )}
-    </main>
+    </div>
   );
 };
 

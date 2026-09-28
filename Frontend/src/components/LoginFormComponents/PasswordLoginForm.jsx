@@ -35,7 +35,7 @@ const PasswordLoginForm = ({
       <div>
         <label htmlFor="auth-email" className="block text-sm font-bold text-gray-700 mb-2">Email Address</label>
         <div className="relative">
-          <Mail className="absolute inset-y-0 left-3 top-4 h-5 w-5 text-gray-500" />
+          <Mail className="absolute inset-y-0 left-3 top-4 h-5 w-5 text-gray-500" aria-hidden="true" />
           <Input id="auth-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" className="block w-full pl-10 pr-3 py-4 border-gray-200 rounded-xl font-medium bg-gray-50" placeholder="name@example.com" />
         </div>
       </div>
@@ -63,7 +63,7 @@ const PasswordLoginForm = ({
       </div>
 
       <Button type="submit" variant="dark" disabled={loading} className="w-full flex items-center justify-center py-4 rounded-xl font-bold text-lg transition-all shadow-md mt-4">
-        {loading ? <Loader2 className="animate-spin" size={24} /> : (isRegistering ? 'Sign Up' : 'Login')}
+        {loading ? <Loader2 className="animate-spin" size={24} aria-hidden="true" /> : (isRegistering ? 'Sign Up' : 'Login')}
       </Button>
 
       {claimMode && isRegistering && (
@@ -97,7 +97,7 @@ const PasswordLoginForm = ({
                 disabled={loading}
                 className="flex-1 px-4 py-2.5 rounded-lg font-bold disabled:opacity-50"
               >
-                {loading ? <Loader2 className="animate-spin inline" size={18} /> : 'Claim & Set Password'}
+                {loading ? <Loader2 className="animate-spin inline" size={18} aria-hidden="true" /> : 'Claim & Set Password'}
               </Button>
             ) : (
               <Button
@@ -106,7 +106,7 @@ const PasswordLoginForm = ({
                 disabled={loading}
                 className="flex-1 px-4 py-2.5 rounded-lg font-bold disabled:opacity-50"
               >
-                {loading ? <Loader2 className="animate-spin inline" size={18} /> : 'Send OTP to My Email'}
+                {loading ? <Loader2 className="animate-spin inline" size={18} aria-hidden="true" /> : 'Send OTP to My Email'}
               </Button>
             )}
           </div>

@@ -83,18 +83,18 @@ const OTPLoginForm = ({
           <div>
             <label htmlFor="otp-email" className="block text-sm font-bold text-gray-700 mb-2">Email Address</label>
             <div className="relative">
-              <Mail className="absolute inset-y-0 left-3 top-4 h-5 w-5 text-gray-500" />
+              <Mail className="absolute inset-y-0 left-3 top-4 h-5 w-5 text-gray-500" aria-hidden="true" />
               <Input id="otp-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" className="block w-full pl-10 pr-3 py-4 border-gray-200 rounded-xl font-medium bg-gray-50" placeholder="e.g. name@example.com" />
             </div>
           </div>
           <Button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 py-4 rounded-xl font-bold text-lg transition-all shadow-md">
-            {loading ? <Loader2 className="animate-spin" size={24} /> : 'Get OTP'} {!loading && <ArrowRight size={20} />}
+            {loading ? <Loader2 className="animate-spin" size={24} aria-hidden="true" /> : 'Get OTP'} {!loading && <ArrowRight size={20} aria-hidden="true" />}
           </Button>
         </form>
       ) : (
         <form ref={formRef} onSubmit={handleVerifyOtp} aria-busy={loading} className="space-y-8 animate-fade-in-up">
           <button type="button" onClick={() => setStep(1)} className="flex items-center text-sm font-bold text-teal-600 hover:text-teal-700 mb-4">
-            <ArrowLeft size={16} className="mr-1" /> Change Email
+            <ArrowLeft size={16} className="mr-1" aria-hidden="true" /> Change Email
           </button>
           <div>
             <h2 className="text-3xl font-extrabold text-gray-900 mb-2">Enter OTP</h2>
@@ -106,7 +106,7 @@ const OTPLoginForm = ({
             ))}
           </div>
           <Button type="submit" variant="dark" disabled={loading} className="w-full flex items-center justify-center gap-2 py-4 rounded-xl font-bold text-lg transition-all shadow-md">
-            {loading ? <Loader2 className="animate-spin" size={24} /> : 'Verify & Login'} {!loading && <ShieldCheck size={20} />}
+            {loading ? <Loader2 className="animate-spin" size={24} aria-hidden="true" /> : 'Verify & Login'} {!loading && <ShieldCheck size={20} aria-hidden="true" />}
           </Button>
         </form>
       )}
