@@ -108,7 +108,7 @@ const AdminPage = () => {
       if (isNetworkError(err)) {
         toast.error('Backend is unreachable. Please start the server and try again.');
       } else {
-        toast.error('Upload failed');
+        toast.error(err?.response?.data?.message || 'Upload failed');
       }
     }
   };
