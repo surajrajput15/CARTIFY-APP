@@ -40,7 +40,11 @@ export const AuthProvider = ({ children }) => {
     try {
       const { data } = await api.get('/api/auth/me');
       setUser(data.user);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      try {
+        localStorage.setItem('user', JSON.stringify(data.user));
+      } catch {
+        // Storage unavailable — session stays in-memory
+      }
     } catch (err) {
       // Network errors (backend down) and 401s (not logged in) are silent.
       // The BackendStatusBanner already surfaces network failures.
@@ -67,7 +71,11 @@ export const AuthProvider = ({ children }) => {
   }, [fetchUser]);
 
   const login = useCallback((userData) => {
-    localStorage.setItem('user', JSON.stringify(userData));
+    try {
+      localStorage.setItem('user', JSON.stringify(userData));
+    } catch {
+      // Storage unavailable — session stays in-memory
+    }
     setUser(userData);
   }, []);
 
@@ -80,7 +88,11 @@ export const AuthProvider = ({ children }) => {
         logError('Logout error:', err);
       }
     } finally {
-      localStorage.removeItem('user');
+      try {
+        localStorage.removeItem('user');
+      } catch {
+        // ignore
+      }
       setUser(null);
     }
   }, []);

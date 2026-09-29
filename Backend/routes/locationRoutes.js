@@ -5,6 +5,7 @@ const router = express.Router();
 const DeliveryLocation = require('../models/DeliveryLocation');
 const Order = require('../models/Order');
 const { protect, delivery } = require('../middleware/auth');
+const { emitCourierLocation } = require('../socket/socketServer');
 
 // Simple rate limit for GPS pings: max ~1 ping/5s sustained (12/min) per partner.
 // The client throttles to 10s; this guards against a runaway tab.
@@ -68,6 +69,14 @@ router.post('/', protect, delivery, async (req, res, next) => {
     );
 
     lastPingByPartner.set(req.user._id.toString(), now);
+
+    emitCourierLocation({
+      orderId: order._id.toString(),
+      latitude: location.latitude,
+      longitude: location.longitude,
+      partnerId: req.user._id.toString(),
+      updatedAt: location.updatedAt
+    });
 
     res.status(200).json({
       latitude: location.latitude,

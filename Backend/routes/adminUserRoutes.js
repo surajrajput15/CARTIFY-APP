@@ -96,7 +96,7 @@ router.get('/:id', protect, admin, async (req, res, next) => {
                     }
                 }
             ]),
-            Address.find({ userId: user._id }).select('fullName phone street city state pincode isDefault').sort({ isDefault: -1 }).limit(10).lean(),
+            Address.find({ userId: user._id }).select('fullName phone street city state pinCode isDefault').sort({ isDefault: -1 }).limit(10).lean(),
             UserActivity.find({ userId: user._id, event: 'AUTH_LOGIN' })
                 .sort({ timestamp: -1 })
                 .limit(10)
@@ -144,10 +144,25 @@ router.patch('/:id/status', protect, admin, ownerOnly, auditLogMiddleware('UPDAT
         }
 
         const patch = {};
-        if (action === 'block')        { patch.status = 'blocked';      patch.blockedAt = new Date(); patch.blockReason = req.body?.reason || null; }
-        if (action === 'unblock')      { patch.status = 'active';       patch.blockedAt = null;       patch.blockReason = null; }
-        if (action === 'deactivate')   { patch.status = 'deactivated';  patch.deactivatedAt = new Date(); }
-        if (action === 'activate')     { patch.status = 'active';       patch.deactivatedAt = null; }
+        if (action === 'block') {
+            patch.status = 'blocked';
+            patch.blockedAt = new Date();
+            patch.blockReason = req.body?.reason || null;
+            user.refreshToken = undefined;
+            user.refreshTokenExpire = undefined;
+            user.previousRefreshToken = undefined;
+            user.previousRefreshTokenExpire = undefined;
+        }
+        if (action === 'unblock') { patch.status = 'active'; patch.blockedAt = null; patch.blockReason = null; }
+        if (action === 'deactivate') {
+            patch.status = 'deactivated';
+            patch.deactivatedAt = new Date();
+            user.refreshToken = undefined;
+            user.refreshTokenExpire = undefined;
+            user.previousRefreshToken = undefined;
+            user.previousRefreshTokenExpire = undefined;
+        }
+        if (action === 'activate') { patch.status = 'active'; patch.deactivatedAt = null; }
 
         await applyOwnerRole(user);
         Object.assign(user, patch);

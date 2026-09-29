@@ -12,6 +12,7 @@ const Coupon = require('../models/Coupon');
 const { finalisePaidOrder } = require('../utils/orderFulfillment');
 const { applyCouponAtCheckout } = require('../utils/couponEngine');
 const { buildVariantKey } = require('../utils/variants');
+const { emitOrderUpdate } = require('../socket/socketServer');
 const { adminMutateGuard } = require('../utils/routeLimiters');
 const rateLimit = require('express-rate-limit');
 
@@ -370,13 +371,29 @@ router.post('/create-order', protect, paymentLimiter, activityLogger('CHECKOUT_S
                 expireAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
                 paidAt: new Date(),
             });
-            // Stock reservation for free orders (same atomic guards as paid path)
+            // Stock reservation for free orders (variant-aware, same atomic guards as paid path)
             let stockShortfall = false;
             const ids = orderItems.map(i => i.productId);
             const stockDocs = await Product.find({ _id: { $in: ids } }).lean();
             const byId = new Map(stockDocs.map(p => [p._id.toString(), p.countInStock]));
             const applied = [];
             for (const it of orderItems) {
+                if (it.variantKey) {
+                    const product = stockDocs.find(p => p._id.toString() === it.productId.toString());
+                    const variant = product?.variants?.find(v => buildVariantKey(v) === it.variantKey);
+                    if (variant) {
+                        const r = await Product.updateOne(
+                            { _id: it.productId, 'variants.size': variant.size || null, 'variants.color': variant.color || null, 'variants.stock': { $gte: it.quantity } },
+                            { $inc: { 'variants.$.stock': -it.quantity } }
+                        );
+                        if (r.modifiedCount === 1) {
+                            applied.push(it);
+                            continue;
+                        }
+                        stockShortfall = true;
+                        break;
+                    }
+                }
                 const stk = byId.get(it.productId.toString());
                 if (stk == null) continue;
                 const r = await Product.updateOne({ _id: it.productId, countInStock: { $gte: it.quantity } }, { $inc: { countInStock: -it.quantity } });
@@ -385,7 +402,15 @@ router.post('/create-order', protect, paymentLimiter, activityLogger('CHECKOUT_S
             }
             if (stockShortfall) {
                 for (const d of applied) {
-                    await Product.updateOne({ _id: d.productId }, { $inc: { countInStock: d.quantity } });
+                    if (d.variantKey) {
+                        const parsed = d.variantKey.split('|');
+                        await Product.updateOne(
+                            { _id: d.productId, 'variants.size': parsed[0] || null, 'variants.color': parsed[1] || null },
+                            { $inc: { 'variants.$.stock': d.quantity } }
+                        );
+                    } else {
+                        await Product.updateOne({ _id: d.productId }, { $inc: { countInStock: d.quantity } });
+                    }
                 }
                 freeOrder.stockShortfall = true;
             }
@@ -707,11 +732,31 @@ router.post('/refund/:orderId', protect, admin, adminMutateGuard, auditLogMiddle
             amount: Math.round(order.totalPrice * 100)
         });
 
+        // Restore stock if the order didn't have a stock shortfall
+        if (!order.stockShortfall && Array.isArray(order.orderItems)) {
+            for (const item of order.orderItems) {
+                if (item.variantKey) {
+                    const parsed = item.variantKey.split('|');
+                    await Product.updateOne(
+                        { _id: item.productId, 'variants.size': parsed[0] || null, 'variants.color': parsed[1] || null },
+                        { $inc: { 'variants.$.stock': item.quantity } }
+                    );
+                } else {
+                    await Product.updateOne(
+                        { _id: item.productId },
+                        { $inc: { countInStock: item.quantity } }
+                    );
+                }
+            }
+        }
+
         const updated = await Order.findByIdAndUpdate(
             order._id,
             { $set: { paymentStatus: 'Refunded', status: 'Cancelled', refundId: refund.id } },
             { returnDocument: 'after' }
         );
+
+        emitOrderUpdate(updated);
 
         res.status(200).json({ message: 'Refund initiated', refund, order: updated });
     } catch (error) {

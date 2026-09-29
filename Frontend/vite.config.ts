@@ -55,7 +55,6 @@ export default defineConfig({
           if (id.includes('node_modules')) {
             // leaflet first — `react-leaflet` would otherwise match `react`.
             if (id.includes('leaflet')) return 'vendor-maps'
-            if (id.includes('recharts') || /node_modules\/d3-/.test(id) || id.includes('victory')) return 'vendor-charts'
             if (id.includes('socket.io') || id.includes('engine.io')) return 'vendor-socket'
             if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
               return 'vendor-react'

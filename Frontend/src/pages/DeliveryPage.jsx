@@ -383,7 +383,7 @@ function DeliveryPage() {
           </Card>
           <Card className="rounded-2xl border p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0" aria-hidden="true">
-              <XCircle size={20} />
+              <XCircle size={20} aria-hidden="true" />
             </div>
             <div className="min-w-0">
               <p className="text-2xl font-bold text-gray-900 leading-none">{stats.todayFailed}</p>

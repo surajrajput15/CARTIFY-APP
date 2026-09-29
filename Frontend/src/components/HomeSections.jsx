@@ -641,6 +641,7 @@ useEffect(() => {
 
 const HomeSections = ({ takenIds = [] }) => {
   const claimsRef = useRef(new Map());
+  const initialSyncRef = useRef(false);
   const [version, setVersion] = useState(0);
 
   useEffect(() => {
@@ -649,7 +650,10 @@ const HomeSections = ({ takenIds = [] }) => {
     (takenIds || []).forEach((id) => {
       if (id && claims.get(id) !== 'grid') { claims.set(id, 'grid'); changed = true; }
     });
-    if (changed || version === 0) setVersion((v) => v + 1);
+    if (changed || !initialSyncRef.current) {
+      initialSyncRef.current = true;
+      setVersion((v) => v + 1);
+    }
   }, [takenIds]);
 
   const claim = (owner, ids) => {

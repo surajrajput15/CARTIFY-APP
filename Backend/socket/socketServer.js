@@ -75,8 +75,11 @@ const initSocket = (httpServer) => {
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       if (decoded.type === 'refresh') return next(new Error('Not authorized, token failed'));
-      const user = await UserRef.findById(decoded.id).select('name email role isAdmin');
+      const user = await UserRef.findById(decoded.id).select('name email role isAdmin status');
       if (!user) return next(new Error('User not found'));
+      if (user.status === 'blocked' || user.status === 'deactivated') {
+        return next(new Error('Account suspended or deactivated'));
+      }
 
       socket.user = {
         id: user._id.toString(),

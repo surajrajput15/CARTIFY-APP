@@ -13,8 +13,8 @@ router.get('/mine', protect, async (req, res, next) => {
         const skip = (page - 1) * limit;
         const unreadOnly = req.query.unread === 'true';
 
-        const filter = { recipient: req.user._id };
-        if (unreadOnly) filter.read = false;
+        const recipientFilter = { $or: [{ recipient: req.user._id }, { recipient: null }] };
+        const filter = unreadOnly ? { $and: [recipientFilter, { read: false }] } : recipientFilter;
 
         const [notifications, total, unreadCount] = await Promise.all([
             Notification.find(filter)
@@ -23,7 +23,7 @@ router.get('/mine', protect, async (req, res, next) => {
                 .limit(limit)
                 .lean(),
             Notification.countDocuments(filter),
-            Notification.countDocuments({ recipient: req.user._id, read: false })
+            Notification.countDocuments({ $and: [recipientFilter, { read: false }] })
         ]);
 
         res.status(200).json({ notifications, total, page, pages: Math.ceil(total / limit), unreadCount });
@@ -42,7 +42,7 @@ router.patch('/:id/read', protect, async (req, res, next) => {
         }
 
         const notification = await Notification.findOneAndUpdate(
-            { _id: id, recipient: req.user._id },
+            { _id: id, $or: [{ recipient: req.user._id }, { recipient: null }] },
             { $set: { read: true, readAt: new Date() } },
             { returnDocument: 'after' }
         ).lean();

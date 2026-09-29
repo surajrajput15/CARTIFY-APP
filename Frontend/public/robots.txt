@@ -1,2 +1,14 @@
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /admin/
+Disallow: /delivery
+Disallow: /delivery/
+Disallow: /warehouse
+Disallow: /warehouse/
+Disallow: /profile
+Disallow: /profile/
+Disallow: /checkout
+Disallow: /checkout/
+Disallow: /order-confirmation
+Disallow: /reset-password

@@ -60,7 +60,11 @@ const LocationBar = () => {
             lng: position.longitude,
             source: 'gps',
           };
-          localStorage.setItem(STORE_KEY, JSON.stringify(next));
+          try {
+            localStorage.setItem(STORE_KEY, JSON.stringify(next));
+          } catch {
+            // Storage unavailable (quota/private mode) — continue in-memory
+          }
           setChoice(next);
           setGeocodeError('');
           setOpen(false);
@@ -80,7 +84,11 @@ const LocationBar = () => {
       lng: addr.longitude,
       source: 'address',
     };
-    localStorage.setItem(STORE_KEY, JSON.stringify(next));
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify(next));
+    } catch {
+      // Storage unavailable (quota/private mode) — continue in-memory
+    }
     setChoice(next);
     setOpen(false);
   }, []);

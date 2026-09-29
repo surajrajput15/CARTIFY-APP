@@ -26,7 +26,7 @@ const PasswordLoginForm = ({
         <div>
           <label htmlFor="auth-name" className="block text-sm font-bold text-gray-700 mb-2">Full Name</label>
           <div className="relative">
-            <UserIcon className="absolute inset-y-0 left-3 top-4 h-5 w-5 text-gray-500" />
+            <UserIcon className="absolute inset-y-0 left-3 top-4 h-5 w-5 text-gray-500" aria-hidden="true" />
             <Input id="auth-name" type="text" required value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" className="block w-full pl-10 pr-3 py-4 border-gray-200 rounded-xl font-medium bg-gray-50" placeholder="John Doe" />
           </div>
         </div>

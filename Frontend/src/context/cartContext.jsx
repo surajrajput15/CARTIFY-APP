@@ -53,7 +53,11 @@ export const CartProvider = ({ children }) => {
   const prevUserIdRef = useRef(user?.id ?? null);
 
   const persistLocal = useCallback((cartData) => {
-    localStorage.setItem('cart', JSON.stringify(cartData));
+    try {
+      localStorage.setItem('cart', JSON.stringify(cartData));
+    } catch {
+      // Storage unavailable or quota exceeded — keep in-memory
+    }
   }, []);
 
   const debouncedSave = useCallback((cartData) => {
@@ -89,7 +93,7 @@ export const CartProvider = ({ children }) => {
         setCart([]);
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
         if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
-        localStorage.removeItem('cart');
+        try { localStorage.removeItem('cart'); } catch { /* ignore */ }
         // F-04: the persisted coupon belongs to the outgoing user too — clear
         // it here even if no screen with `useCoupon` mounted (piggyback on the
         // same auth transition). Mounted instances empty-cart-clear their state.
@@ -132,7 +136,7 @@ export const CartProvider = ({ children }) => {
     setCart([]);
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
-    localStorage.removeItem('cart');
+    try { localStorage.removeItem('cart'); } catch { /* ignore */ }
     if (syncedUserRef.current) {
       clearServerCart().catch(() => {});
     }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/authContext';
 import toast from 'react-hot-toast';
@@ -12,23 +12,24 @@ import AdminHeader from '../components/admin/AdminHeader';
 import AdminFilterBar from '../components/admin/AdminFilterBar';
 import ProductTable from '../components/admin/ProductTable';
 import ProductFormModal from '../components/admin/ProductFormModal';
-import AdminOrdersTab from '../components/admin/AdminOrdersTab';
-import AdminCouponsTab from '../components/admin/AdminCouponsTab';
-import AdminDeliveryMap from '../components/admin/AdminDeliveryMap';
-import AdminDeliveryAssign from '../components/admin/AdminDeliveryAssign';
-import AdminCategoriesTab from '../components/admin/AdminCategoriesTab';
-import AdminWarehousesTab from '../components/admin/AdminWarehousesTab';
-import AdminCampaignsTab from '../components/admin/AdminCampaignsTab';
-import AdminAuditLogsTab from '../components/admin/AdminAuditLogsTab';
-import AdminUserActivityTab from '../components/admin/AdminUserActivityTab';
-import AdminControlTab from '../components/admin/AdminControlTab';
-import AdminUsersTab from '../components/admin/AdminUsersTab';
-import AdminAnalyticsTab from '../components/admin/AdminAnalyticsTab';
-import AdminReviewsTab from '../components/admin/AdminReviewsTab';
-import AdminNotificationsTab from '../components/admin/AdminNotificationsTab';
-import AdminSettingsTab from '../components/admin/AdminSettingsTab';
 import { isNetworkError } from '../utils/apiError';
 import { usePageTitle } from '../hooks/usePageTitle';
+
+const AdminOrdersTab = lazy(() => import('../components/admin/AdminOrdersTab'));
+const AdminCouponsTab = lazy(() => import('../components/admin/AdminCouponsTab'));
+const AdminDeliveryMap = lazy(() => import('../components/admin/AdminDeliveryMap'));
+const AdminDeliveryAssign = lazy(() => import('../components/admin/AdminDeliveryAssign'));
+const AdminCategoriesTab = lazy(() => import('../components/admin/AdminCategoriesTab'));
+const AdminWarehousesTab = lazy(() => import('../components/admin/AdminWarehousesTab'));
+const AdminCampaignsTab = lazy(() => import('../components/admin/AdminCampaignsTab'));
+const AdminAuditLogsTab = lazy(() => import('../components/admin/AdminAuditLogsTab'));
+const AdminUserActivityTab = lazy(() => import('../components/admin/AdminUserActivityTab'));
+const AdminControlTab = lazy(() => import('../components/admin/AdminControlTab'));
+const AdminUsersTab = lazy(() => import('../components/admin/AdminUsersTab'));
+const AdminAnalyticsTab = lazy(() => import('../components/admin/AdminAnalyticsTab'));
+const AdminReviewsTab = lazy(() => import('../components/admin/AdminReviewsTab'));
+const AdminNotificationsTab = lazy(() => import('../components/admin/AdminNotificationsTab'));
+const AdminSettingsTab = lazy(() => import('../components/admin/AdminSettingsTab'));
 
 const CLOSED_CONFIRM = { show: false, title: '', message: '', onConfirm: null, loading: false };
 
@@ -311,9 +312,7 @@ const AdminPage = () => {
         ))}
       </nav>
 
-      {adminTab === 'control' && <AdminControlTab />}
-
-      {adminTab === 'products' && (
+      {adminTab === 'products' ? (
         <>
           <AdminHeader onBack={() => navigate('/')} onSeed={handleSeed} onClearAll={handleClearAll} showDevActions={true} />
 
@@ -367,38 +366,29 @@ const AdminPage = () => {
             <ProductTable products={filteredProducts} onEdit={handleEdit} onDelete={handleDelete} />
           )}
         </>
+      ) : (
+        <Suspense fallback={<div className="py-12 flex justify-center"><Spinner /></div>}>
+          {adminTab === 'control' && <AdminControlTab />}
+          {adminTab === 'users' && <AdminUsersTab />}
+          {adminTab === 'orders' && <AdminOrdersTab />}
+          {adminTab === 'categories' && <AdminCategoriesTab />}
+          {adminTab === 'warehouses' && <AdminWarehousesTab />}
+          {adminTab === 'coupons' && <AdminCouponsTab />}
+          {adminTab === 'campaigns' && <AdminCampaignsTab />}
+          {adminTab === 'deliveries' && (
+            <div className="space-y-4 sm:space-y-6">
+              <AdminDeliveryAssign />
+              <AdminDeliveryMap />
+            </div>
+          )}
+          {adminTab === 'analytics' && <AdminAnalyticsTab />}
+          {adminTab === 'reviews' && <AdminReviewsTab />}
+          {adminTab === 'notifications' && <AdminNotificationsTab />}
+          {adminTab === 'audit' && <AdminAuditLogsTab />}
+          {adminTab === 'activity' && <AdminUserActivityTab />}
+          {adminTab === 'settings' && <AdminSettingsTab />}
+        </Suspense>
       )}
-
-      {adminTab === 'users' && <AdminUsersTab />}
-
-      {adminTab === 'orders' && <AdminOrdersTab />}
-
-      {adminTab === 'categories' && <AdminCategoriesTab />}
-
-      {adminTab === 'warehouses' && <AdminWarehousesTab />}
-
-      {adminTab === 'coupons' && <AdminCouponsTab />}
-
-      {adminTab === 'campaigns' && <AdminCampaignsTab />}
-
-      {adminTab === 'deliveries' && (
-        <div className="space-y-4 sm:space-y-6">
-          <AdminDeliveryAssign />
-          <AdminDeliveryMap />
-        </div>
-      )}
-
-      {adminTab === 'analytics' && <AdminAnalyticsTab />}
-
-      {adminTab === 'reviews' && <AdminReviewsTab />}
-
-      {adminTab === 'notifications' && <AdminNotificationsTab />}
-
-      {adminTab === 'audit' && <AdminAuditLogsTab />}
-
-      {adminTab === 'activity' && <AdminUserActivityTab />}
-
-      {adminTab === 'settings' && <AdminSettingsTab />}
 
       {confirmModal.show && (
         <ConfirmModal

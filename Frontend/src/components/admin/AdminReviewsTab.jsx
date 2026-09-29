@@ -80,12 +80,12 @@ export default function AdminReviewsTab() {
                     <p className="text-sm text-gray-500">Moderate customer reviews: approve or hide. Pending reviews are not visible on the storefront.</p>
                 </div>
                 <div className="flex flex-wrap gap-3">
-                    <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }} className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
+                    <select aria-label="Filter by review status" value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }} className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
                         {statusOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} aria-hidden="true" />
-                        <input type="text" placeholder="Search user, title, comment..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm bg-white" />
+                        <input type="text" aria-label="Search reviews" placeholder="Search user, title, comment..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm bg-white" />
                     </div>
                 </div>
             </header>
@@ -123,11 +123,11 @@ export default function AdminReviewsTab() {
                                         {r.status === 'pending' && (
                                             <>
                                                 <button type="button" onClick={() => handleModerate(r._id, 'approve')} disabled={actionLoading === r._id} className="px-3 py-1.5 bg-green-600 text-white text-sm font-bold rounded-lg hover:bg-green-700 transition-colors min-h-[44px] disabled:opacity-50"><CheckCircle2 size={14} className="mr-1" aria-hidden="true" /> Approve</button>
-                                                <button type="button" onClick={() => handleModerate(r._id, 'hide')} disabled={actionLoading === r._id} className="px-3 py-1.5 bg-red-600 text-white text-sm font-bold rounded-lg hover:bg-red-700 transition-colors min-h-[44px] disabled:opacity-50 ml-2"><XCircle size={14} className="mr-1" /> Hide</button>
+                                                <button type="button" onClick={() => handleModerate(r._id, 'hide')} disabled={actionLoading === r._id} className="px-3 py-1.5 bg-red-600 text-white text-sm font-bold rounded-lg hover:bg-red-700 transition-colors min-h-[44px] disabled:opacity-50 ml-2"><XCircle size={14} className="mr-1" aria-hidden="true" /> Hide</button>
                                             </>
                                         )}
                                         {r.status === 'approved' && (
-                                            <button type="button" onClick={() => handleModerate(r._id, 'hide')} disabled={actionLoading === r._id} className="px-3 py-1.5 bg-red-600 text-white text-sm font-bold rounded-lg hover:bg-red-700 transition-colors min-h-[44px] disabled:opacity-50"><XCircle size={14} className="mr-1" /> Hide</button>
+                                            <button type="button" onClick={() => handleModerate(r._id, 'hide')} disabled={actionLoading === r._id} className="px-3 py-1.5 bg-red-600 text-white text-sm font-bold rounded-lg hover:bg-red-700 transition-colors min-h-[44px] disabled:opacity-50"><XCircle size={14} className="mr-1" aria-hidden="true" /> Hide</button>
                                         )}
                                         {r.status === 'hidden' && (
                                             <button type="button" onClick={() => handleModerate(r._id, 'approve')} disabled={actionLoading === r._id} className="px-3 py-1.5 bg-green-600 text-white text-sm font-bold rounded-lg hover:bg-green-700 transition-colors min-h-[44px] disabled:opacity-50"><CheckCircle2 size={14} className="mr-1" aria-hidden="true" /> Approve</button>

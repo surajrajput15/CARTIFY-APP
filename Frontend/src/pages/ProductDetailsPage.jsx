@@ -62,7 +62,7 @@ const ProductDetailsPage = () => {
         setError(message);
         toast.error(message);
       });
-  }, [id]);
+  }, [id, user?.id]);
 
   // Per-product UI reset when navigating between products (route-driven, so
   // there is no local handler to hang it on) — one-shot, intentional.

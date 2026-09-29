@@ -22,9 +22,21 @@ const protect = async (req, res, next) => {
     if (decoded.type === 'refresh') {
       return res.status(401).json({ message: 'Not authorized, token failed' });
     }
-    req.user = await User.findById(decoded.id).select('-password -otp -otpExpire -refreshToken -refreshTokenExpire');
+    req.user = await User.findById(decoded.id).select('-password -otp -otpExpire -refreshToken -refreshTokenExpire -previousRefreshToken -previousRefreshTokenExpire');
     if (!req.user) {
       return res.status(401).json({ message: 'User not found' });
+    }
+    if (req.user.status === 'blocked') {
+      return res.status(403).json({
+        message: req.user.blockReason ? `Your account has been suspended: ${req.user.blockReason}` : 'Your account has been suspended. Please contact support.',
+        code: 'ACCOUNT_BLOCKED'
+      });
+    }
+    if (req.user.status === 'deactivated') {
+      return res.status(403).json({
+        message: 'Your account is deactivated. Please contact support to reactivate.',
+        code: 'ACCOUNT_DEACTIVATED'
+      });
     }
     next();
   } catch (error) {

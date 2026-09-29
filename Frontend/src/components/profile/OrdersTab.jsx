@@ -137,8 +137,8 @@ const OrdersTab = ({ orders, loading, error, onRetry }) => {
                     </div>
                     <div>
                       <p className="text-sm font-bold text-gray-800 mb-1">Items ({(order.orderItems || []).length})</p>
-                      {(order.orderItems || []).map((item) => (
-                        <p key={item.productId} className="text-sm text-gray-600">
+                      {(order.orderItems || []).map((item, i) => (
+                        <p key={`${item.productId || item._id || item.title || 'item'}-${i}`} className="text-sm text-gray-600">
                           {item.productId ? (
                             <Link
                               to={`/product/${item.productId}`}

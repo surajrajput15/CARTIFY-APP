@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const { logger } = require('../utils/logger');
 const router = express.Router();
 const Order = require('../models/Order');
@@ -7,7 +7,7 @@ const mongoose = require('mongoose');
 const { protect, admin, delivery } = require('../middleware/auth');
 const { auditLogMiddleware } = require('../middleware/auditLog');
 const { adminMutateGuard, staffActionGuard } = require('../utils/routeLimiters');
-const { isValidOrderTransition, isValidDeliveryTransition, canCancelOrder, canFailDelivery } = require('../utils/orderStatus');
+const { orderStatusWorkflow, isValidOrderTransition, isValidDeliveryTransition, canCancelOrder, canFailDelivery } = require('../utils/orderStatus');
 const { emitOrderUpdate } = require('../socket/socketServer');
 
 // Order records are built entirely server-side during the payment flow:
@@ -45,14 +45,7 @@ router.get('/myorders/:userId', protect, async (req, res, next) => {
     }
 });
 
-const ORDER_STATUSES = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
-const ALLOWED_TRANSITIONS = {
-    Pending: ['Processing', 'Cancelled'],
-    Processing: ['Shipped', 'Cancelled'],
-    Shipped: ['Delivered', 'Cancelled'],
-    Delivered: [],
-    Cancelled: [],
-};
+const ORDER_STATUSES = Object.keys(orderStatusWorkflow);
 
 // GET ALL ORDERS (Admin) - paginated, optional status filter, with customer info
 router.get('/admin', protect, admin, async (req, res, next) => {
@@ -102,8 +95,7 @@ router.patch('/:id/status', protect, admin, auditLogMiddleware('UPDATE_ORDER_STA
 
         const existing = await Order.findById(req.params.id);
         if (!existing) return res.status(404).json({ message: "Order not found" });
-        const allowed = ALLOWED_TRANSITIONS[existing.status] || [];
-        if (existing.status !== status && !allowed.includes(status)) {
+        if (existing.status !== status && !isValidOrderTransition(existing.status, status)) {
             return res.status(400).json({ message: `Cannot transition from ${existing.status} to ${status}` });
         }
 
@@ -114,6 +106,8 @@ router.patch('/:id/status', protect, admin, auditLogMiddleware('UPDATE_ORDER_STA
         );
 
         if (!order) return res.status(404).json({ message: "Order not found" });
+
+        emitOrderUpdate(order);
 
         res.status(200).json({ message: "Order status updated", order });
     } catch (error) {
@@ -180,6 +174,8 @@ router.post('/:id/assign-delivery', protect, admin, adminMutateGuard, auditLogMi
             return res.status(404).json({ message: 'Order not found' });
         }
 
+        emitOrderUpdate(updatedOrder);
+
         res.status(200).json({
             message: 'Delivery partner assigned successfully',
             order: updatedOrder
@@ -236,6 +232,8 @@ router.post('/:id/accept-delivery', protect, delivery, staffActionGuard, auditLo
             return res.status(404).json({ message: 'Order not found' });
         }
 
+        emitOrderUpdate(updatedOrder);
+
         res.status(200).json({
             message: 'Delivery assignment accepted',
             order: updatedOrder
@@ -291,6 +289,8 @@ router.post('/:id/pickup-delivery', protect, delivery, staffActionGuard, auditLo
         if (!updatedOrder) {
             return res.status(404).json({ message: 'Order not found' });
         }
+
+        emitOrderUpdate(updatedOrder);
 
         res.status(200).json({
             message: 'Order picked up successfully',
@@ -355,6 +355,8 @@ router.post('/:id/out-for-delivery', protect, delivery, staffActionGuard, auditL
             return res.status(404).json({ message: 'Order not found' });
         }
 
+        emitOrderUpdate(updatedOrder);
+
         res.status(200).json({
             message: 'Order is out for delivery',
             order: updatedOrder
@@ -417,6 +419,8 @@ router.post('/:id/complete-delivery', protect, delivery, staffActionGuard, audit
             return res.status(404).json({ message: 'Order not found' });
         }
 
+        emitOrderUpdate(updatedOrder);
+
         res.status(200).json({
             message: 'Delivery completed successfully',
             order: updatedOrder
@@ -478,6 +482,8 @@ router.post('/:id/fail-delivery', protect, delivery, staffActionGuard, auditLogM
         if (!updatedOrder) {
             return res.status(404).json({ message: 'Order not found' });
         }
+
+        emitOrderUpdate(updatedOrder);
 
         // A failed delivery on an order that never shipped can be resolved by simply
         // cancelling (and refunding) it, so surface whether that path is still open.

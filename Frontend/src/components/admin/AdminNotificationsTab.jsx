@@ -86,7 +86,7 @@ export default function AdminNotificationsTab() {
                 </div>
                 <div className="flex flex-wrap gap-3">
                     <Button type="button" onClick={() => setShowCompose(true)} className="px-4 py-2.5 flex items-center gap-2 rounded-lg font-bold text-sm transition-colors min-h-[44px]"><Send size={16} aria-hidden="true" /> New Broadcast</Button>
-                    <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setPage(1); }} className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
+                    <select aria-label="Filter by notification type" value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setPage(1); }} className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
                         {typeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                     <label className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white cursor-pointer">
@@ -102,18 +102,18 @@ export default function AdminNotificationsTab() {
                         <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2"><Bell size={20} className="text-teal-600" aria-hidden="true" /> Compose Notification</h3>
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                                <select value={compose.type} onChange={e => setCompose({ ...compose, type: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg text-sm">
+                                <label htmlFor="compose-type" className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                                <select id="compose-type" value={compose.type} onChange={e => setCompose({ ...compose, type: e.target.value })} className="w-full p-2 border border-gray-300 rounded-lg text-sm">
                                     {['system', 'order', 'promotion', 'stock', 'security'].map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                                <input type="text" value={compose.title} onChange={e => setCompose({ ...compose, title: e.target.value })} placeholder="Notification title" className="w-full p-2 border border-gray-300 rounded-lg text-sm" />
+                                <label htmlFor="compose-title" className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                                <input id="compose-title" type="text" value={compose.title} onChange={e => setCompose({ ...compose, title: e.target.value })} placeholder="Notification title" className="w-full p-2 border border-gray-300 rounded-lg text-sm" />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
-                                <textarea value={compose.message} onChange={e => setCompose({ ...compose, message: e.target.value })} rows={4} placeholder="Notification message" className="w-full p-2 border border-gray-300 rounded-lg text-sm" />
+                                <label htmlFor="compose-message" className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                                <textarea id="compose-message" value={compose.message} onChange={e => setCompose({ ...compose, message: e.target.value })} rows={4} placeholder="Notification message" className="w-full p-2 border border-gray-300 rounded-lg text-sm" />
                             </div>
                             <div>
                                 <label className="flex items-center gap-2 cursor-pointer">
@@ -123,8 +123,8 @@ export default function AdminNotificationsTab() {
                             </div>
                             {!compose.broadcast && (
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Recipient User ID</label>
-                                    <input type="text" value={compose.recipientId} onChange={e => setCompose({ ...compose, recipientId: e.target.value })} placeholder="Target user _id" className="w-full p-2 border border-gray-300 rounded-lg text-sm" />
+                                    <label htmlFor="compose-recipient" className="block text-sm font-medium text-gray-700 mb-1">Recipient User ID</label>
+                                    <input id="compose-recipient" type="text" value={compose.recipientId} onChange={e => setCompose({ ...compose, recipientId: e.target.value })} placeholder="Target user _id" className="w-full p-2 border border-gray-300 rounded-lg text-sm" />
                                 </div>
                             )}
                         </div>

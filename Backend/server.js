@@ -81,15 +81,6 @@ if (process.env.NODE_ENV === 'production') {
   }
 }
 
-// Import Routes
-const productRoutes = require('./routes/productRoutes');
-const authRoutes = require('./routes/authRoutes');
-const orderRoutes = require('./routes/orderRoutes');
-const addressRoutes = require('./routes/addressRoutes');
-const cartRoutes = require('./routes/cartRoutes');
-const paymentRoutes = require('./routes/paymentRoutes');
-const uploadRoutes = require('./routes/uploadRoutes');
-const couponRoutes = require('./routes/couponRoutes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -125,7 +116,7 @@ app.use(cors({
       callback(null, true);
     } else {
       console.log('[CORS] Blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
+      callback(null, false);
     }
   },
   credentials: true

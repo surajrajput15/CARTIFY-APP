@@ -5,6 +5,9 @@ const path = require('path');
 const fs = require('fs');
 const cloudinary = require('cloudinary').v2;
 const Product = require('../models/Product');
+const InventoryItem = require('../models/InventoryItem');
+const Wishlist = require('../models/Wishlist');
+const Review = require('../models/Review');
 const { protect, admin, softProtect } = require('../middleware/auth');
 const { auditLogMiddleware } = require('../middleware/auditLog');
 const { activityLogger } = require('../middleware/userActivity');
@@ -402,7 +405,12 @@ router.delete('/clear', protect, admin, adminMutateGuard, auditLogMiddleware('DE
     ownerOnly(req, res, next);
 }, async (req, res) => {
     try {
-        await Product.deleteMany({});
+        await Promise.all([
+            Product.deleteMany({}),
+            InventoryItem.deleteMany({}),
+            Wishlist.deleteMany({}),
+            Review.deleteMany({})
+        ]);
         res.status(200).json({ message: "Database cleared successfully! 🧹✨" });
     } catch (error) {
         logger.error({ err: error }, "❌ Product delete error:");
@@ -419,6 +427,14 @@ router.delete('/:id', protect, admin, adminMutateGuard, auditLogMiddleware('DELE
         }
         // Clean up the uploaded image file so deleted products don't leak disk space.
         unlinkUploadedImage(product.image);
+
+        // Cascade delete dependent records
+        await Promise.all([
+            InventoryItem.deleteMany({ productId: product._id }),
+            Wishlist.deleteMany({ productId: product._id }),
+            Review.deleteMany({ product: product._id })
+        ]);
+
         res.status(200).json({ message: "Product deleted successfully! 🗑️" });
     } catch (error) {
         if (error.name === 'CastError') {

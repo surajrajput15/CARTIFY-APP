@@ -66,6 +66,32 @@ router.patch('/:id/status', protect, admin, ownerOnly, auditLogMiddleware('MODER
             return res.status(404).json({ message: 'Review not found' });
         }
 
+        // Recalculate average rating and review count for the product
+        if (review.product) {
+            const stats = await Review.aggregate([
+                { $match: { product: new mongoose.Types.ObjectId(review.product), status: 'approved' } },
+                {
+                    $group: {
+                        _id: '$product',
+                        count: { $sum: 1 },
+                        avgRating: { $avg: '$rating' }
+                    }
+                }
+            ]);
+            if (stats.length > 0) {
+                const rate = Math.round(stats[0].avgRating * 10) / 10;
+                await Product.findByIdAndUpdate(review.product, {
+                    'rating.rate': rate,
+                    'rating.count': stats[0].count
+                });
+            } else {
+                await Product.findByIdAndUpdate(review.product, {
+                    'rating.rate': 0,
+                    'rating.count': 0
+                });
+            }
+        }
+
         res.status(200).json({ message: `Review ${status}d successfully`, review });
     } catch (error) {
         logger.error({ err: error }, 'Admin moderate review error');

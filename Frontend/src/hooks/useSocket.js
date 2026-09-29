@@ -133,11 +133,12 @@ export function useSocket() {
 
   // Cleanup all handlers on unmount
   useEffect(() => {
+    const handlersMap = handlersRef.current;
     return () => {
-      handlersRef.current.forEach((handlers, event) => {
+      handlersMap.forEach((handlers, event) => {
         handlers.forEach((h) => off(event, h));
       });
-      handlersRef.current.clear();
+      handlersMap.clear();
     };
   }, [off]);
 

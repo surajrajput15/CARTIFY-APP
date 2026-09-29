@@ -24,9 +24,9 @@ const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
 // alerts, ledger, transfers and stock writes.
 const myWarehouse = async (req, res) => {
   if (req.user.isAdmin) {
-    const id = req.query.warehouseId;
+    const id = req.query.warehouseId || req.body?.warehouseId;
     if (!isValidId(id)) {
-      res.status(403).json({ message: 'Select a warehouse first (pass ?warehouseId=).' });
+      res.status(403).json({ message: 'Select a warehouse first (pass ?warehouseId= or body warehouseId).' });
       return null;
     }
     const warehouseDoc = await Warehouse.findById(id);

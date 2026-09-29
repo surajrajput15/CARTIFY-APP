@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { MapPin, Navigation, RefreshCw, Truck, Package, Users, Loader2 } from 'lucide-react';
 import { Map, Marker, Polyline, FitBounds } from '../map/Map';
@@ -30,7 +30,6 @@ function AdminDeliveryMap() {
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [livePositions, setLivePositions] = useState({});
   const { connected, socket } = useSocket();
-  const dataRef = useRef(null);
 
   const loadOrders = useCallback(async () => {
     setLoading(true);
@@ -52,7 +51,6 @@ function AdminDeliveryMap() {
   // Live courier:location events update the map + list in realtime
   useEffect(() => {
     if (!connected) return;
-    dataRef.current = livePositions;
     const handler = (payload) => {
       if (payload.partnerId && payload.latitude != null && payload.longitude != null) {
         setLivePositions((prev) => ({

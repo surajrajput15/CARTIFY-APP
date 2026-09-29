@@ -43,11 +43,32 @@ const Order = require('../models/Order');
 const Address = require('../models/Address');
 const Cart = require('../models/Cart');
 const Coupon = require('../models/Coupon');
+const Wishlist = require('../models/Wishlist');
+const Notification = require('../models/Notification');
+const DeliveryLocation = require('../models/DeliveryLocation');
 const sendEmail = require('../utils/sendEmail');
 const { applyOwnerRole } = require('../utils/ownerValidator');
 const { protect } = require('../middleware/auth');
 const { auditLogMiddleware } = require('../middleware/auditLog');
 const { logActivity, activityLogger } = require('../middleware/userActivity');
+
+const checkUserStatus = (user, res) => {
+  if (user.status === 'blocked') {
+    res.status(403).json({
+      message: user.blockReason ? `Your account has been suspended: ${user.blockReason}` : 'Your account has been suspended. Please contact support.',
+      code: 'ACCOUNT_BLOCKED'
+    });
+    return false;
+  }
+  if (user.status === 'deactivated') {
+    res.status(403).json({
+      message: 'Your account is deactivated. Please contact support to reactivate.',
+      code: 'ACCOUNT_DEACTIVATED'
+    });
+    return false;
+  }
+  return true;
+};
 
 const googleClient = process.env.GOOGLE_CLIENT_ID
   ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
@@ -314,6 +335,8 @@ router.post('/verify-otp', credentialGuard, async (req, res) => {
         // cannot be used to enumerate which emails are registered.
         if (!user) return res.status(400).json({ message: "Invalid or expired OTP." });
 
+        if (!checkUserStatus(user, res)) return;
+
         // Lock the OTP after too many failed guesses, but only while it is still
         // valid — the lock implicitly expires with the OTP, and requesting a
         // fresh OTP resets the counter, so users can always self-unlock.
@@ -475,6 +498,8 @@ router.post('/login', credentialGuard, async (req, res) => {
         }
         clearLoginFails(email);
 
+        if (!checkUserStatus(user, res)) return;
+
         // Owner allowlist sync right before token issuance — same rule as
         // google/register: owner is promoted, everyone else stripped.
         await applyOwnerRole(user);
@@ -525,10 +550,25 @@ router.post('/refresh', sessionGuard, async (req, res) => {
             return res.status(401).json({ message: 'Invalid token type' });
         }
 
-        const user = await User.findById(decoded.id).select('+refreshToken +refreshTokenExpire');
+        const user = await User.findById(decoded.id).select('+refreshToken +refreshTokenExpire status blockReason');
         if (!user || !user.refreshToken) {
             clearAuthCookies(res);
             return res.status(401).json({ message: 'Session not found' });
+        }
+
+        if (user.status === 'blocked' || user.status === 'deactivated') {
+            user.refreshToken = undefined;
+            user.refreshTokenExpire = undefined;
+            user.previousRefreshToken = undefined;
+            user.previousRefreshTokenExpire = undefined;
+            await user.save();
+            clearAuthCookies(res);
+            return res.status(403).json({
+                message: user.status === 'blocked'
+                    ? (user.blockReason ? `Your account has been suspended: ${user.blockReason}` : 'Your account has been suspended. Please contact support.')
+                    : 'Your account is deactivated. Please contact support to reactivate.',
+                code: user.status === 'blocked' ? 'ACCOUNT_BLOCKED' : 'ACCOUNT_DEACTIVATED'
+            });
         }
 
         // Three distinct outcomes — never lumped:
@@ -704,6 +744,8 @@ router.post('/reset-password', credentialGuard, async (req, res) => {
         // Invalidate existing refresh tokens on password reset
         user.refreshToken = undefined;
         user.refreshTokenExpire = undefined;
+        user.previousRefreshToken = undefined;
+        user.previousRefreshTokenExpire = undefined;
         await user.save();
 
         res.status(200).json({ message: "Password reset successful! You can now login." });
@@ -779,6 +821,9 @@ router.delete('/delete/:id', sessionGuard, protect, auditLogMiddleware('DELETE_A
             Order.deleteMany({ userId: userObjectId }),
             Address.deleteMany({ userId: userObjectId }),
             Cart.deleteOne({ userId: userObjectId }),
+            Wishlist.deleteMany({ userId: userObjectId }),
+            Notification.deleteMany({ recipient: userObjectId }),
+            DeliveryLocation.deleteOne({ deliveryPartnerId: userObjectId }),
             Coupon.updateMany(
                 { 'usedBy.userId': userObjectId },
                 { $pull: { usedBy: { userId: userObjectId } } }
@@ -910,6 +955,8 @@ router.post('/google', credentialGuard, async (req, res) => {
             });
             await user.save();
         }
+
+        if (!checkUserStatus(user, res)) return;
 
         // Owner allowlist sync happens right before token issuance: the owner
         // is auto-promoted (fresh Google signups included), everyone else is
