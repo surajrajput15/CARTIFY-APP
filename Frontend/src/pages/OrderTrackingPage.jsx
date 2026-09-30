@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Navigation, MapPin, Package, Truck, Home, Clock, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/authContext';
 import api from '../api/axios';
-import { fetchMyOrders } from '../services/ordersApi';
+import { fetchMyOrders, fetchOrderById } from '../services/ordersApi';
 import { MapContainer } from '../components/map/MapContainer';
 import { useLiveTracking } from '../hooks/useLiveTracking';
 import { distanceKm, estimateMinutes, formatEta, timeLabel, mapsDeepLink } from '../utils/geo';
@@ -90,24 +90,18 @@ function OrderTrackingPage() {
     setOrderNotFound(false);
     const load = async () => {
       try {
-        const res = await fetchMyOrders(user.id);
-        const list = Array.isArray(res.data) ? res.data : res.data.orders || [];
-        const found = list.find((o) => o._id === id);
-        if (found) {
-          setOrder(found);
-        } else {
-          // Admin may track any order via the admin map — try the admin route
-          const adminRes = await api.get('/api/orders/admin/delivery').catch(() => null);
-          const adminList = adminRes?.data?.orders || [];
-          const adminFound = adminList.find((o) => o._id === id);
-          if (adminFound) setOrder(adminFound);
-          else {
-            setOrderNotFound(true);
-            setOrderError('Order not found or you do not have access.');
-          }
+        const res = await fetchOrderById(id);
+        if (!cancelled && res.data) {
+          setOrder(res.data);
         }
-      } catch {
-        setOrderError('We could not reach the server to load this order. Check your connection and try again.');
+      } catch (err) {
+        if (cancelled) return;
+        if (err.response?.status === 404 || err.response?.status === 403) {
+          setOrderNotFound(true);
+          setOrderError(err.response?.data?.message || 'Order not found or you do not have access.');
+        } else {
+          setOrderError('We could not reach the server to load this order. Check your connection and try again.');
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }

@@ -7,8 +7,8 @@ vi.mock('react-router-dom', () => ({
 
 import OrdersTab from './OrdersTab';
 
-const makeOrder = (status, deliveryStatus) => ({
-  _id: 'order_9876543210',
+const makeOrder = (status, deliveryStatus, id = 'order_9876543210') => ({
+  _id: id,
   status,
   deliveryStatus,
   paymentStatus: 'Paid',
@@ -78,4 +78,21 @@ describe('OrdersTab details (F-16 — timeline + item links)', () => {
     // Items without a productId render as plain text, not a broken link.
     expect(screen.queryByRole('link', { name: 'No Link Item' })).not.toBeInTheDocument();
   });
+
+  it('renders Cancel Order button for cancellable orders (Pending, Processing) and opens confirmation modal', () => {
+    render(<OrdersTab orders={[makeOrder('Processing')]} loading={false} />);
+    const cancelBtn = screen.getByRole('button', { name: 'Cancel Order' });
+    expect(cancelBtn).toBeInTheDocument();
+
+    fireEvent.click(cancelBtn);
+    expect(screen.getByRole('heading', { name: 'Cancel Order' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Yes, Cancel Order' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Keep Order' })).toBeInTheDocument();
+  });
+
+  it('does not render Cancel Order button for completed or shipped orders', () => {
+    render(<OrdersTab orders={[makeOrder('Shipped', null, 'order_shipped_1'), makeOrder('Delivered', null, 'order_delivered_2')]} loading={false} />);
+    expect(screen.queryByRole('button', { name: 'Cancel Order' })).not.toBeInTheDocument();
+  });
 });
+

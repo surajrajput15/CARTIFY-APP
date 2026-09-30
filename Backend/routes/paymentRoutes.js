@@ -297,6 +297,9 @@ router.post('/create-order', protect, paymentLimiter, activityLogger('CHECKOUT_S
                 return res.status(400).json({ message: appliedCoupon.evaluate.message || 'Coupon cannot be applied' });
             }
             couponCode = rawCoupon;
+            discountAmount = appliedCoupon.evaluate.discount;
+            totalPaise = appliedCoupon.evaluate.finalAmountPaise;
+            calculatedTotal = appliedCoupon.evaluate.finalAmount;
             couponSnapshot = {
                 code: coupon.code,
                 type: coupon.type,

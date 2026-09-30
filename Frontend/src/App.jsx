@@ -30,6 +30,7 @@ const AdminPage = lazy(() => import('./pages/AdminPage'));
 const DeliveryPage = lazy(() => import('./pages/DeliveryPage'));
 const WarehousePortal = lazy(() => import('./pages/WarehousePortal'));
 const OrderTrackingPage = lazy(() => import('./pages/OrderTrackingPage'));
+const OrderConfirmationPage = lazy(() => import('./pages/OrderConfirmationPage'));
 const FaqPage = lazy(() => import('./pages/FaqPage'));
 
 // F-49: per-route Suspense — a lazy chunk only swaps its own route element;
@@ -57,6 +58,7 @@ const AdminPageWithError = withErrorBoundary(AdminPage);
 const DeliveryPageWithError = withErrorBoundary(DeliveryPage);
 const WarehousePortalWithError = withErrorBoundary(WarehousePortal);
 const OrderTrackingPageWithError = withErrorBoundary(OrderTrackingPage);
+const OrderConfirmationPageWithError = withErrorBoundary(OrderConfirmationPage);
 const AccessDeniedWithError = withErrorBoundary(AccessDenied);
 const FaqPageWithError = withErrorBoundary(FaqPage);
 
@@ -157,6 +159,14 @@ function App() {
                 />
                 <Route path="/product/:id" element={<ProductDetailsPageWithError />} />
                 <Route path="/track/:id" element={<OrderTrackingPageWithError />} />
+                <Route
+                  path="/order-confirmation/:id"
+                  element={
+                    <RoleGuard>
+                      <OrderConfirmationPageWithError />
+                    </RoleGuard>
+                  }
+                />
                 <Route path="/faq" element={<FaqPageWithError />} />
                 
                 {/* Access denied page - also reachable directly */}

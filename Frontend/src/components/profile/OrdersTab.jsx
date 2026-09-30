@@ -1,8 +1,13 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { formatPrice, formatDate } from '../../utils/format';
+import { cancelOrder } from '../../services/ordersApi';
 import Card from '../ui/Card';
+import ConfirmModal from '../ConfirmModal';
+
+const CANCELLABLE_STATUSES = ['Pending', 'Confirmed', 'Processing'];
 
 const ORDER_STATUS_STYLES = {
   Pending: { label: 'Pending', className: 'bg-gray-100 text-gray-600' },
@@ -19,6 +24,26 @@ const STATUS_STEPS = ['Pending', 'Processing', 'Shipped', 'Delivered'];
 
 const OrdersTab = ({ orders, loading, error, onRetry }) => {
   const [expandedId, setExpandedId] = useState(null);
+  const [orderToCancel, setOrderToCancel] = useState(null);
+  const [cancelling, setCancelling] = useState(false);
+
+  const handleConfirmCancel = async () => {
+    if (!orderToCancel) return;
+    setCancelling(true);
+    try {
+      await cancelOrder(orderToCancel._id);
+      toast.success('Order cancelled successfully');
+      setOrderToCancel(null);
+      if (onRetry) {
+        onRetry();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to cancel order');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   const getPaymentLabel = (status) => {
     if (status === 'Paid') return { label: 'Paid', className: 'bg-green-50 text-green-700' };
     return { label: 'Payment Pending', className: 'bg-yellow-50 text-yellow-700' };
@@ -106,6 +131,15 @@ const OrdersTab = ({ orders, loading, error, onRetry }) => {
                       Track Delivery
                     </Link>
                   )}
+                  {CANCELLABLE_STATUSES.includes(order.status) && (
+                    <button
+                      type="button"
+                      onClick={() => setOrderToCancel(order)}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold rounded-lg transition-colors"
+                    >
+                      Cancel Order
+                    </button>
+                  )}
                 </div>
                 {expanded && (
                   <div className="mt-3 pt-3 border-t border-gray-200 space-y-3">
@@ -166,6 +200,17 @@ const OrdersTab = ({ orders, loading, error, onRetry }) => {
             );
           })}
         </div>
+      )}
+      {orderToCancel && (
+        <ConfirmModal
+          title="Cancel Order"
+          message={`Are you sure you want to cancel order #${orderToCancel._id.slice(-8)}? Any reserved items will be released back to inventory.`}
+          confirmLabel="Yes, Cancel Order"
+          cancelLabel="Keep Order"
+          loading={cancelling}
+          onCancel={() => setOrderToCancel(null)}
+          onConfirm={handleConfirmCancel}
+        />
       )}
     </Card>
   );

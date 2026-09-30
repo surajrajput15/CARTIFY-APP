@@ -9,6 +9,7 @@ const { auditLogMiddleware } = require('../middleware/auditLog');
 const { adminMutateGuard, staffActionGuard } = require('../utils/routeLimiters');
 const { orderStatusWorkflow, isValidOrderTransition, isValidDeliveryTransition, canCancelOrder, canFailDelivery } = require('../utils/orderStatus');
 const { emitOrderUpdate } = require('../socket/socketServer');
+const { restoreOrderStock } = require('../utils/orderFulfillment');
 
 // Order records are built entirely server-side during the payment flow:
 //   POST /api/payment/create-order  -> persists a Pending order (server-calculated total)
@@ -106,6 +107,10 @@ router.patch('/:id/status', protect, admin, auditLogMiddleware('UPDATE_ORDER_STA
         );
 
         if (!order) return res.status(404).json({ message: "Order not found" });
+
+        if (status === 'Cancelled' && existing.status !== 'Cancelled') {
+            await restoreOrderStock(existing);
+        }
 
         emitOrderUpdate(order);
 
@@ -720,6 +725,105 @@ router.get('/admin/delivery', protect, admin, async (req, res, next) => {
         }
         logger.error({ err: error }, 'Admin delivery orders error:');
         res.status(500).json({ message: 'Failed to fetch delivery orders' });
+    }
+});
+
+// CANCEL ORDER - customer (owner) or admin can cancel an order in cancellable stage.
+router.post('/:id/cancel', protect, auditLogMiddleware('CANCEL_ORDER', 'Order'), async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: "Invalid order ID format" });
+        }
+
+        const order = await Order.findById(id);
+        if (!order) {
+            return res.status(404).json({ message: "Order not found" });
+        }
+
+        const isOwner = order.userId.toString() === req.user._id.toString();
+        const isAdmin = Boolean(req.user.isAdmin);
+
+        if (!isOwner && !isAdmin) {
+            return res.status(403).json({ message: "Not authorized to cancel this order" });
+        }
+
+        if (order.status === 'Cancelled') {
+            return res.status(400).json({ message: "Order is already cancelled" });
+        }
+
+        if (!canCancelOrder(order.status)) {
+            return res.status(400).json({ 
+                message: `Cannot cancel order in ${order.status} stage. Please contact customer support.` 
+            });
+        }
+
+        const updateFields = {
+            status: 'Cancelled',
+        };
+        if (order.deliveryStatus && order.deliveryStatus !== 'delivered') {
+            updateFields.deliveryStatus = 'cancelled';
+        }
+
+        const updatedOrder = await Order.findByIdAndUpdate(
+            id,
+            { $set: updateFields },
+            { returnDocument: 'after' }
+        );
+
+        // Restore stock and release coupon
+        await restoreOrderStock(order);
+
+        emitOrderUpdate(updatedOrder);
+
+        res.status(200).json({
+            message: "Order cancelled successfully",
+            order: updatedOrder
+        });
+    } catch (error) {
+        if (error.name === 'ValidationError' || error.name === 'CastError') {
+            return next(error);
+        }
+        logger.error({ err: error }, "Order cancellation error:");
+        res.status(500).json({ message: "Failed to cancel order" });
+    }
+});
+
+// GET SINGLE ORDER BY ID - accessible by owner, assigned delivery partner, or admin.
+// Placed after all specific static routes (/admin, /delivery/*) so ':id' never captures subroute prefixes.
+router.get('/:id', protect, async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: "Invalid order ID format" });
+        }
+
+        const order = await Order.findById(id)
+            .populate('deliveryPartnerId', 'name phone email role')
+            .populate('userId', 'name email phone')
+            .lean();
+
+        if (!order) {
+            return res.status(404).json({ message: "Order not found" });
+        }
+
+        const orderUserId = order.userId?._id ? order.userId._id.toString() : order.userId?.toString();
+        const isOwner = orderUserId === req.user._id.toString();
+        const isAdmin = Boolean(req.user.isAdmin);
+        const deliveryPartnerId = order.deliveryPartnerId?._id ? order.deliveryPartnerId._id.toString() : order.deliveryPartnerId?.toString();
+        const isAssignedDelivery = deliveryPartnerId === req.user._id.toString();
+
+        if (!isOwner && !isAdmin && !isAssignedDelivery) {
+            return res.status(403).json({ message: "Not authorized to view this order" });
+        }
+
+        res.status(200).json(order);
+    } catch (error) {
+        if (error.name === 'ValidationError' || error.name === 'CastError') {
+            return next(error);
+        }
+        logger.error({ err: error }, "Single order fetch error:");
+        res.status(500).json({ message: "Failed to fetch order details." });
     }
 });
 

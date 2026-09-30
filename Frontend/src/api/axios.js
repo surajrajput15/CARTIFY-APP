@@ -108,10 +108,26 @@ const GET_CACHE_TTL_MS = 30_000;
 const getCache = new Map(); // key -> { data, expires }
 const inflightGets = new Map(); // key -> Promise<response>
 
+export const clearGetCache = () => {
+  getCache.clear();
+  inflightGets.clear();
+};
+
 const isGet = (config) => (config.method || 'get').toLowerCase() === 'get';
+
+const PRIVATE_ENDPOINT_PATTERNS = [
+  '/api/cart',
+  '/api/auth/me',
+  '/api/wishlist',
+  '/api/notifications',
+  '/api/addresses',
+  '/api/orders/myorders'
+];
 
 const getCacheKey = (config) => {
   if (!config.url || config.dataCache === false) return null;
+  // Private user-scoped endpoints must always be fresh — never cached across user switches
+  if (PRIVATE_ENDPOINT_PATTERNS.some((p) => config.url.includes(p))) return null;
   // The CSRF token rotates — a cached one turns every retry into a 403 loop.
   if (config.url.includes('csrf-token')) return null;
   let qs = '';

@@ -155,9 +155,6 @@ couponSchema.methods.apply = function(userId, orderAmount, items = []) {
     };
 };
 
-// Method to record usage — atomic so concurrent Paid finalisations can never
-// overshoot usageLimit (global) or userLimit (per-user). Both guards live in the
-// DB filter; callers treat a null return as "limit hit concurrently".
 couponSchema.methods.recordUsage = function(userId) {
     const mongoose = require('mongoose');
     const uid = new mongoose.Types.ObjectId(String(userId));
@@ -187,6 +184,23 @@ couponSchema.methods.recordUsage = function(userId) {
         {
             $inc: { usedCount: 1 },
             $push: { usedBy: { userId: uid, usedAt: new Date() } },
+        },
+        { returnDocument: 'after' }
+    );
+};
+
+// Method to release coupon usage on order cancellation or refund
+couponSchema.methods.releaseUsage = function(userId) {
+    const mongoose = require('mongoose');
+    const uid = new mongoose.Types.ObjectId(String(userId));
+    return this.constructor.findOneAndUpdate(
+        {
+            _id: this._id,
+            usedCount: { $gt: 0 }
+        },
+        {
+            $inc: { usedCount: -1 },
+            $pull: { usedBy: { userId: uid } }
         },
         { returnDocument: 'after' }
     );

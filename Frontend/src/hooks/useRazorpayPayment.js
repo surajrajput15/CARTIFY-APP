@@ -140,7 +140,8 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
         toast.success('Order placed successfully! 🎉 (100% coupon applied)');
         clearCart();
         if (clearCoupon) clearCoupon();
-        navigate('/profile?tab=orders');
+        const confirmedOrderId = data.orderId || data.savedOrder?._id;
+        navigate(confirmedOrderId ? `/order-confirmation/${confirmedOrderId}` : '/profile?tab=orders');
         return;
       }
 
@@ -192,7 +193,8 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
                 toast.success("Payment Successful! 🎉 Order Placed.");
                 clearCart();
                 if (clearCoupon) clearCoupon();
-                navigate('/profile?tab=orders');
+                const confirmedOrderId = verifyRes.data.order?._id || order.id;
+                navigate(confirmedOrderId ? `/order-confirmation/${confirmedOrderId}` : '/profile?tab=orders');
               }
             } else {
               toast.error(verifyRes.data.message || "Payment could not be verified");

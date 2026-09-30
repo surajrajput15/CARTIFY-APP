@@ -475,8 +475,10 @@ curl http://localhost:5000/health
 | Method | Route | Auth | Description |
 |--------|-------|------|-------------|
 | GET | `/myorders/:userId` | JWT | User order history (own orders only) |
+| GET | `/:id` | JWT | Single order details (Owner, Admin, or Delivery Partner) |
+| POST | `/:id/cancel` | JWT | Cancel order in cancellable stage & restore stock (Owner or Admin) |
 | GET | `/admin` | Admin | All orders (paginated, status filter) |
-| PATCH | `/:id/status` | Admin | Update order status |
+| PATCH | `/:id/status` | Admin | Update order status (with auto-restock on Cancelled) |
 
 > Order records are created server-side during the payment flow (see `/api/payment` below); the client never submits prices, totals, or order status.
 

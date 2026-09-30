@@ -44,6 +44,8 @@ const orderSchema = new mongoose.Schema({
     // Set to true when payment was captured but stock reservation failed at verify-time.
     // Flags the order for fulfilment/refund so it is never silently treated as a clean sale.
     stockShortfall: { type: Boolean, default: false },
+    // Tracks whether reserved stock for a paid order has been restored upon cancellation/refund
+    stockRestored: { type: Boolean, default: false },
     // Final Amount — always recomputed server-side on creation, never accepted from client
     totalPrice: { 
         type: Number, 

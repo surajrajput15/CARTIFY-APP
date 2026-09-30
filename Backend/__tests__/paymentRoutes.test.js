@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
 const User = require('../models/User');
+const Coupon = require('../models/Coupon');
 const { buildTestApp, getCsrfToken } = require('./testApp');
 
 const app = buildTestApp();
@@ -120,6 +121,38 @@ describe('Payment Routes', () => {
 
       // Either 200 (real Razorpay keys) or 502 (test env without real keys) is acceptable
       expect([200, 502]).toContain(res.status);
+    });
+
+    it('should correctly apply coupon and create free-order when 100% discount coupon is applied', async () => {
+      const coupon = await Coupon.create({
+        code: 'FREE100',
+        type: 'percentage',
+        value: 100,
+        validUntil: new Date(Date.now() + 86400000 * 5),
+        isActive: true,
+      });
+
+      const csrfToken = await getCsrfToken(userAgent);
+
+      const res = await userAgent
+        .post('/api/payment/create-order')
+        .set('X-CSRF-Token', csrfToken)
+        .send({
+          items: [{ productId: product._id.toString(), quantity: 1 }],
+          shippingAddress: {
+            fullName: 'Test User', phone: '9876543210', street: '123 Test St',
+            city: 'Test City', state: 'Test State', pinCode: '123456',
+          },
+          couponCode: 'FREE100',
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.freeOrder).toBe(true);
+      expect(res.body.savedOrder.couponCode).toBe('FREE100');
+      expect(res.body.savedOrder.discountAmount).toBe(1000);
+      expect(res.body.savedOrder.originalTotal).toBe(1000);
+      expect(res.body.savedOrder.totalPrice).toBe(0);
+      expect(res.body.savedOrder.paymentStatus).toBe('Paid');
     });
   });
 

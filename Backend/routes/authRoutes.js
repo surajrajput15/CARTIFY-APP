@@ -812,13 +812,31 @@ router.delete('/delete/:id', sessionGuard, protect, auditLogMiddleware('DELETE_A
         if (req.user._id.toString() !== req.params.id) {
             return res.status(403).json({ message: "You can only delete your own account." });
         }
-        // Cascade: remove the user together with all of their orders, cart, saved addresses
-        // and coupon usage so no orphaned personal data is left behind.
+        // Compliance & privacy: anonymize user profile, deactivate account, and remove
+        // transient personal data (addresses, cart, wishlist, notifications, pending orders).
+        // Historical paid orders are retained for legal, financial, and fulfillment records.
         const mongoose = require('mongoose');
         const userObjectId = new mongoose.Types.ObjectId(req.params.id);
+        
+        const userToDeactivate = await User.findById(req.params.id);
+        if (userToDeactivate) {
+            userToDeactivate.status = 'deactivated';
+            userToDeactivate.deactivatedAt = new Date();
+            userToDeactivate.name = 'Deleted Account';
+            userToDeactivate.email = `deleted_${userToDeactivate._id}@cartify.invalid`;
+            userToDeactivate.password = undefined;
+            userToDeactivate.refreshToken = undefined;
+            userToDeactivate.refreshTokenExpire = undefined;
+            userToDeactivate.previousRefreshToken = undefined;
+            userToDeactivate.previousRefreshTokenExpire = undefined;
+            userToDeactivate.otp = undefined;
+            userToDeactivate.otpExpire = undefined;
+            userToDeactivate.phone = null;
+            await userToDeactivate.save();
+        }
+
         await Promise.all([
-            User.findByIdAndDelete(req.params.id),
-            Order.deleteMany({ userId: userObjectId }),
+            Order.deleteMany({ userId: userObjectId, paymentStatus: 'Pending' }),
             Address.deleteMany({ userId: userObjectId }),
             Cart.deleteOne({ userId: userObjectId }),
             Wishlist.deleteMany({ userId: userObjectId }),

@@ -1,5 +1,5 @@
 import { createContext, useState, useContext, useCallback, useEffect, useRef } from 'react';
-import api from '../api/axios';
+import api, { clearGetCache } from '../api/axios';
 import { isNetworkError } from '../utils/apiError';
 import { logError } from '../utils/logger';
 
@@ -71,6 +71,7 @@ export const AuthProvider = ({ children }) => {
   }, [fetchUser]);
 
   const login = useCallback((userData) => {
+    clearGetCache();
     try {
       localStorage.setItem('user', JSON.stringify(userData));
     } catch {
@@ -80,6 +81,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const logout = useCallback(async () => {
+    clearGetCache();
     try {
       await api.post('/api/auth/logout');
     } catch (err) {
