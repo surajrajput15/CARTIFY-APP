@@ -22,6 +22,7 @@ const BackendStatusContext = createContext({
   reportNetworkSuccess: () => {},
   retry: () => {},
   retryCount: 0,
+  onlineCount: 0,
 });
 
 export const useBackendStatus = () => useContext(BackendStatusContext);
@@ -41,6 +42,7 @@ export const BackendStatusProvider = ({ children }) => {
   const [lastErrorAt, setLastErrorAt] = useState(null);
   const [outageId, setOutageId] = useState(0);
   const [retryCount, setRetryCount] = useState(0);
+  const [onlineCount, setOnlineCount] = useState(0);
 
   // Refs so the callbacks stay stable and the probe effect can read/write
   // without re-subscribing on every render.
@@ -56,6 +58,7 @@ export const BackendStatusProvider = ({ children }) => {
     attemptRef.current = 0;
     setIsOffline(false);
     setIsRecovering(false);
+    setOnlineCount((c) => c + 1);
   }, []);
 
   const reportNetworkError = useCallback(() => {
@@ -160,6 +163,7 @@ export const BackendStatusProvider = ({ children }) => {
         reportNetworkSuccess,
         retry,
         retryCount,
+        onlineCount,
       }}
     >
       {children}

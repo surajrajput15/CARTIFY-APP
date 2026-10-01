@@ -1,0 +1,24 @@
+name: Render Backend Keep-Alive
+
+on:
+  schedule:
+    # Run every 10 minutes (cron format: minute hour day month day-of-week)
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  ping:
+    name: Ping Backend Health
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping Cartify Render Health Endpoint
+        run: |
+          echo "Pinging Cartify API on Render..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 45 "https://cartify-api-10g3.onrender.com/health" || echo "000")
+          echo "HTTP response status: $STATUS"
+          if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 400 ]; then
+            echo "Backend is warm and responding ($STATUS)!"
+          else
+            echo "Backend returned $STATUS (waking up or pending)"
+          fi

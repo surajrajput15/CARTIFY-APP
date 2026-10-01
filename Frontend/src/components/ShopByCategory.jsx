@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Cpu, Shirt, Footprints, Watch, Armchair, Sparkles, LayoutGrid, ArrowRight
@@ -6,6 +6,7 @@ import {
 import { fetchCategories } from '../services/categoriesApi';
 import { PRODUCT_CATEGORIES } from '../utils/constants';
 import Button from './ui/Button';
+import { useBackendStatus } from '../context/BackendStatusContext';
 
 const ICON_MAP = {
   electronics: Cpu,
@@ -33,6 +34,33 @@ const ShopByCategory = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
+
+  const { isOffline, retryCount } = useBackendStatus();
+  const wasOfflineRef = useRef(false);
+
+  // Self-healing: auto-refetch categories when backend recovers from cold start/outage
+  useEffect(() => {
+    if (isOffline) {
+      wasOfflineRef.current = true;
+    } else if (wasOfflineRef.current) {
+      wasOfflineRef.current = false;
+      if (error) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- auto-refetch when backend comes online
+        setRetryKey((k) => k + 1);
+      }
+    }
+  }, [isOffline, error]);
+
+  const prevRetryCountRef = useRef(retryCount);
+  useEffect(() => {
+    if (prevRetryCountRef.current !== retryCount) {
+      prevRetryCountRef.current = retryCount;
+      if (error) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- manual retry from status banner
+        setRetryKey((k) => k + 1);
+      }
+    }
+  }, [retryCount, error]);
 
   // Refetch effect keyed on retryKey (manual retry / mount).
   useEffect(() => {

@@ -13,6 +13,7 @@ import HomeSections from '../components/HomeSections';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useBackendStatus } from '../context/BackendStatusContext';
 
 // Whitelisted ?sort= values (F-17) — anything else falls back to 'newest'.
 const SORT_VALUES = ['newest', 'price_asc', 'price_desc', 'rating'];
@@ -40,6 +41,34 @@ const HomePage = () => {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
   const [retryKey, setRetryKey] = useState(0);
+
+  const { isOffline, retryCount } = useBackendStatus();
+  const wasOfflineRef = useRef(false);
+
+  // Self-healing: auto-refetch products when backend recovers from cold start/outage
+  useEffect(() => {
+    if (isOffline) {
+      wasOfflineRef.current = true;
+    } else if (wasOfflineRef.current) {
+      wasOfflineRef.current = false;
+      if (fetchError) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- auto-refetch when backend comes online
+        setRetryKey((k) => k + 1);
+      }
+    }
+  }, [isOffline, fetchError]);
+
+  // Refetch when manual retry is clicked in the banner
+  const prevRetryCountRef = useRef(retryCount);
+  useEffect(() => {
+    if (prevRetryCountRef.current !== retryCount) {
+      prevRetryCountRef.current = retryCount;
+      if (fetchError) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- manual retry from status banner
+        setRetryKey((k) => k + 1);
+      }
+    }
+  }, [retryCount, fetchError]);
 
   // F-12: the URL is the single source of truth for the whole result view —
   // ?search= ?category= and ?page= are read straight from it (Navbar rail,

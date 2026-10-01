@@ -94,7 +94,7 @@ const api = axios.create({
   baseURL: API_URL,
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true,
-  timeout: 15000, // 15s default — prevents hung requests on dead backend
+  timeout: 25000, // 25s default — gives Render free-tier cold-starts enough headroom to boot
 });
 
 // ---------------------------------------------------------------------------
@@ -229,6 +229,25 @@ api.interceptors.response.use(
     if (originalRequest?.__cacheKey) {
       originalRequest.__deferred?.reject(error);
       inflightGets.delete(originalRequest.__cacheKey);
+    }
+
+    // Cold start retry: Render free tier can take 25-45s to boot.
+    // For idempotent GET requests, if the error is a network error (timeout/unreachable)
+    // or HTTP 502/503/504 (gateway waking up), retry with backoff before declaring offline.
+    const isColdStartCandidate =
+      originalRequest &&
+      isGet(originalRequest) &&
+      !originalRequest._noRetry &&
+      (isNetworkError(error) || [502, 503, 504].includes(error?.response?.status));
+
+    if (isColdStartCandidate) {
+      originalRequest._coldStartRetries = (originalRequest._coldStartRetries || 0) + 1;
+      if (originalRequest._coldStartRetries <= 2) {
+        // Backoff: 1500ms on first retry, 3000ms on second retry
+        const backoffMs = originalRequest._coldStartRetries * 1500;
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
+        return api(originalRequest);
+      }
     }
 
     // Network errors (backend down, CORS, DNS) — only log on STATE TRANSITIONS
