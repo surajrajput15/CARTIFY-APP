@@ -2,7 +2,7 @@
 // Users type "+91 98765 43210", "098765-43210", "110 001" etc. — these accept
 // such inputs and return canonical digits, or null when nothing valid remains.
 
-const normalizeIndianPhone = (value) => {
+export const normalizeIndianPhone = (value) => {
   if (typeof value !== 'string' && typeof value !== 'number') return null;
   let digits = String(value).replace(/[^\d]/g, '');
   // Strip leading 0091 or 91 country code
@@ -18,10 +18,8 @@ const normalizeIndianPhone = (value) => {
   return /^[6-9]\d{9}$/.test(digits) ? digits : null;
 };
 
-const normalizePinCode = (value) => {
+export const normalizePinCode = (value) => {
   if (typeof value !== 'string' && typeof value !== 'number') return null;
   const digits = String(value).replace(/[^\d]/g, '');
   return /^\d{6}$/.test(digits) ? digits : null;
 };
-
-module.exports = { normalizeIndianPhone, normalizePinCode };

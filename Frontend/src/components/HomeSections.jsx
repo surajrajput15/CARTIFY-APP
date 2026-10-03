@@ -504,12 +504,18 @@ const BuyAgain = () => {
             }
           });
         });
-        const targets = ids.slice(0, 4);
-        const resolved = await Promise.all(
-          targets.map((id) => fetchProductById(id).then((r) => r.data).catch(() => null))
-        );
+        const targets = ids.slice(0, 8);
+        if (targets.length === 0) {
+          setProducts([]);
+          return;
+        }
+        // Match against active catalog to avoid 404s for removed/re-seeded products
+        const resCatalog = await fetchProducts({ limit: 40 });
         if (cancelled) return;
-        setProducts(resolved.filter(Boolean));
+        const catalog = Array.isArray(resCatalog.data) ? resCatalog.data : (resCatalog.data?.products ?? []);
+        const catalogMap = new Map(catalog.map((p) => [String(p._id || p.id), p]));
+        const matched = targets.map((id) => catalogMap.get(String(id))).filter(Boolean).slice(0, 4);
+        setProducts(matched);
       })
       .catch((err) => {
         if (cancelled) return;

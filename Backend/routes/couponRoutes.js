@@ -3,7 +3,7 @@ const { logger } = require('../utils/logger');
 const router = express.Router();
 const Coupon = require('../models/Coupon');
 const Order = require('../models/Order');
-const { protect, admin } = require('../middleware/auth');
+const { protect, admin, softProtect } = require('../middleware/auth');
 const { auditLogMiddleware } = require('../middleware/auditLog');
 const { adminMutateGuard } = require('../utils/routeLimiters');
 const { evaluateCoupon, findBestCoupon, findAvailableCoupons } = require('../utils/couponEngine');
@@ -207,7 +207,7 @@ router.get('/:id', protect, admin, async (req, res) => {
 });
 
 // 4. VALIDATE COUPON (User facing - for checkout)
-router.post('/validate', protect, async (req, res) => {
+router.post('/validate', softProtect, async (req, res) => {
     try {
         const { code, orderAmount } = req.body;
         // Default items to [] and reject non-arrays — downstream uses
@@ -238,10 +238,12 @@ router.post('/validate', protect, async (req, res) => {
             return res.status(400).json({ message: check.message });
         }
 
-        // Per-user usage limit (checked here, debited later on Paid only).
-        const userUsage = coupon.usedBy.filter(u => u.userId?.toString() === req.user._id.toString()).length;
-        if (userUsage >= coupon.userLimit) {
-            return res.status(400).json({ message: 'You have already used this coupon maximum times' });
+        // Per-user usage limit (checked here if authenticated, debited later on Paid only).
+        if (req.user && req.user._id) {
+            const userUsage = coupon.usedBy.filter(u => u.userId?.toString() === req.user._id.toString()).length;
+            if (userUsage >= coupon.userLimit) {
+                return res.status(400).json({ message: 'You have already used this coupon maximum times' });
+            }
         }
 
         res.status(200).json({

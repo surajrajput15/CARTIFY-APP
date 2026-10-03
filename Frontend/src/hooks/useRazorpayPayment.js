@@ -6,6 +6,7 @@ import { RAZORPAY_DISPLAY } from '../utils/constants';
 import { formatPrice } from '../utils/format';
 import { handleApiError } from '../utils/apiError';
 import { logError, logDebug } from '../utils/logger';
+import { normalizeIndianPhone, normalizePinCode } from '../utils/normalize';
 
 const RAZORPAY_SCRIPT_URL = 'https://checkout.razorpay.com/v1/checkout.js';
 
@@ -92,6 +93,23 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
       setPaymentError('Select a delivery address before paying.');
       return;
     }
+
+    const cleanPhone = selectedAddress.phone ? normalizeIndianPhone(selectedAddress.phone) : null;
+    if (selectedAddress.phone && !cleanPhone) {
+      const msg = `Selected address phone number "${selectedAddress.phone}" is invalid. Please update it to a valid 10-digit Indian number starting with 6, 7, 8 or 9.`;
+      toast.error(msg);
+      setPaymentError(msg);
+      return;
+    }
+
+    const cleanPin = selectedAddress.pinCode ? normalizePinCode(selectedAddress.pinCode) : null;
+    if (selectedAddress.pinCode && !cleanPin) {
+      const msg = `Selected address PIN code "${selectedAddress.pinCode}" is invalid. PIN code must be exactly 6 digits.`;
+      toast.error(msg);
+      setPaymentError(msg);
+      return;
+    }
+
     if (cart.length === 0) {
       toast.error('Your cart is empty!');
       setPaymentError('Your cart is empty — add items before paying.');
@@ -123,13 +141,19 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
     }
 
     try {
+      const canonicalAddress = {
+        ...selectedAddress,
+        ...(cleanPhone ? { phone: cleanPhone } : {}),
+        ...(cleanPin ? { pinCode: cleanPin } : {}),
+      };
+
       const { data } = await createPaymentOrder(
         cart.map(item => ({
           productId: item._id || item.id,
           quantity: Math.floor(Number(item.quantity)) || 1,
           ...(item.variantKey ? { variantKey: item.variantKey } : {})
         })),
-        selectedAddress,
+        canonicalAddress,
         couponCode || undefined
       );
 
@@ -217,7 +241,7 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
         prefill: {
           name: user.name,
           email: user.email,
-          contact: selectedAddress.phone
+          contact: cleanPhone || selectedAddress.phone
         },
         theme: {
           color: RAZORPAY_DISPLAY.themeColor
@@ -233,9 +257,16 @@ export const useRazorpayPayment = ({ user, cart, clearCart, navigate, selectedAd
 
     } catch (error) {
       logError("Payment setup failed", error);
-      const message = handleApiError(error, "Something went wrong with the payment gateway.");
-      toast.error(message);
-      setPaymentError(`${message} No amount has been charged.`);
+      const apiMsg = error?.response?.data?.message || '';
+      if (apiMsg.includes('Phone must be a valid 10-digit Indian number')) {
+        const msg = `Selected address phone (${selectedAddress.phone || ''}) is not a valid 10-digit Indian number. Please edit your address to fix it.`;
+        toast.error(msg);
+        setPaymentError(msg);
+      } else {
+        const message = handleApiError(error, "Something went wrong with the payment gateway.");
+        toast.error(message);
+        setPaymentError(`${message} No amount has been charged.`);
+      }
     } finally {
       loadingRef.current = false;
       setLoading(false);
