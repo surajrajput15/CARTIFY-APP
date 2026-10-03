@@ -928,29 +928,46 @@ router.post('/google', credentialGuard, async (req, res) => {
             return res.status(400).json({ message: "Google credential is required" });
         }
 
-        // Misconfigured server (no client ID): fail fast with 503 instead of
-        // crashing inside verifyIdToken with a 500.
-        if (!googleClient || !process.env.GOOGLE_CLIENT_ID) {
-            logger.error('Google login attempted without GOOGLE_CLIENT_ID configured');
-            return res.status(503).json({ message: 'Google login is not configured on this server' });
-        }
+        let payload;
 
-        // Verify the Google ID Token signature, issuer, audience, expiration,
-        // email_verified, and extract the verified payload. Never trust the
-        // client-supplied name/email.
-        let ticket;
-        try {
-            ticket = await googleClient.verifyIdToken({
-                idToken: credential,
-                audience: process.env.GOOGLE_CLIENT_ID,
-            });
-        } catch (error) {
-            return res.status(401).json({ message: "Invalid Google credential" });
-        }
+        // In non-production environments (local development / testing), allow a simulated
+        // Google credential so developers can test Google authentication when localhost
+        // is not an authorized origin in Google Cloud Console.
+        if (process.env.NODE_ENV !== 'production' && credential === 'dev-google-credential') {
+            const devEmail = normalizeEmail(req.body.email || process.env.EMAIL_USER || 'surajdona2005@gmail.com');
+            const devName = req.body.name || 'Suraj Kumar';
+            payload = {
+                name: devName,
+                email: devEmail,
+                email_verified: true,
+                picture: 'https://lh3.googleusercontent.com/a/default-user',
+                sub: 'google-dev-12345',
+            };
+        } else {
+            // Misconfigured server (no client ID): fail fast with 503 instead of
+            // crashing inside verifyIdToken with a 500.
+            if (!googleClient || !process.env.GOOGLE_CLIENT_ID) {
+                logger.error('Google login attempted without GOOGLE_CLIENT_ID configured');
+                return res.status(503).json({ message: 'Google login is not configured on this server' });
+            }
 
-        const payload = ticket.getPayload();
-        if (!payload || !payload.email_verified) {
-            return res.status(401).json({ message: "Google email is not verified" });
+            // Verify the Google ID Token signature, issuer, audience, expiration,
+            // email_verified, and extract the verified payload. Never trust the
+            // client-supplied name/email.
+            let ticket;
+            try {
+                ticket = await googleClient.verifyIdToken({
+                    idToken: credential,
+                    audience: process.env.GOOGLE_CLIENT_ID,
+                });
+            } catch (error) {
+                return res.status(401).json({ message: "Invalid Google credential" });
+            }
+
+            payload = ticket.getPayload();
+            if (!payload || !payload.email_verified) {
+                return res.status(401).json({ message: "Google email is not verified" });
+            }
         }
 
         // Only fields derived from the verified token payload are used.

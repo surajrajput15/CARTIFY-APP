@@ -215,9 +215,13 @@ const HomePage = () => {
 
   return (
     <div className="max-w-7xl mx-auto p-4 md:p-6 mt-4">
-      <HeroBanner productCount={catalogCount} />
-
-      {!searchQuery && selectedCategory === 'all' && <ShopByCategory />}
+      {!searchQuery && selectedCategory === 'all' && (
+        <>
+          <HeroBanner productCount={catalogCount} />
+          <ShopByCategory />
+          <HomeSections takenIds={gridIds} />
+        </>
+      )}
 
       <div id="products" className="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-1 scroll-mt-36">
         <div>
@@ -402,13 +406,33 @@ const HomePage = () => {
             </p>
           ) : (
             <p className="text-gray-500 max-w-md mx-auto">
-              No products available in this category right now. Try a different category.
+              No products available in this category right now. Try a different category or clear active filters.
             </p>
           )}
+          <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
+            {(Boolean(searchQuery) || selectedCategory !== 'all' || minParam !== '' || maxParam !== '' || sortValue !== 'newest') && (
+              <Button
+                variant="outline"
+                onClick={() => setSearchParams({})}
+                className="px-5 py-2.5 rounded-xl font-bold min-h-[44px]"
+              >
+                Clear All Filters
+              </Button>
+            )}
+            <Button
+              onClick={() => {
+                setSearchParams({});
+                setTimeout(() => {
+                  document.getElementById('shop-by-category')?.scrollIntoView({ behavior: 'smooth' });
+                }, 100);
+              }}
+              className="px-5 py-2.5 rounded-xl font-bold min-h-[44px]"
+            >
+              Browse Categories
+            </Button>
+          </div>
         </div>
       )}
-
-      {!searchQuery && selectedCategory === 'all' && <HomeSections takenIds={gridIds} />}
     </div>
   );
 };

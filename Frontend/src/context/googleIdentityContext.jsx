@@ -78,37 +78,72 @@ export const GoogleIdentityProvider = ({ children }) => {
   // google.accounts.id.initialize() twice.
   const initializedRef = useRef(false);
 
-  useEffect(() => {
-    if (!GOOGLE_CLIENT_ID) return;
+  const handleCredential = useCallback(async (response) => {
+    const credential = response?.credential;
+    // Never keep the ID token in the URL fragment once consumed.
+    window.history.replaceState(
+      null,
+      '',
+      window.location.pathname + window.location.search,
+    );
 
-    const handleCredential = async (response) => {
-      const credential = response?.credential;
-      // Never keep the ID token in the URL fragment once consumed.
-      window.history.replaceState(
-        null,
-        '',
-        window.location.pathname + window.location.search,
-      );
+    if (!credential || credentialConsumed) return;
+    credentialConsumed = true;
 
-      if (!credential || credentialConsumed) return;
-      credentialConsumed = true;
-
-      try {
-        // Verify the ID token server-side; never decode/trust it locally.
-        await googleLogin({ credential });
+    try {
+      // Verify the ID token server-side; never decode/trust it locally.
+      const res = await googleLogin({ credential });
+      const user = res?.data?.user;
+      if (user) {
+        login(user);
+      } else {
         // After successful login, fetch user via /me endpoint
         const { data } = await api.get('/api/auth/me');
         login(data.user);
-        const intendedPath = sessionStorage.getItem('redirectAfterLogin');
-        sessionStorage.removeItem('redirectAfterLogin');
-        navigate(intendedPath && intendedPath !== '/login' ? intendedPath : '/');
-      } catch (err) {
-        credentialConsumed = false; // allow the user to retry
-        logError('Google Login Error:', err);
-        // Prefer the backend's message so rate-limit (429) tells the user to
-        // wait a minute instead of a generic failure.
-        toast.error(err?.response?.data?.message || 'Google login failed. Please try again.');
       }
+      toast.success('Signed in with Google successfully!', { id: 'google-login' });
+      const intendedPath = sessionStorage.getItem('redirectAfterLogin');
+      sessionStorage.removeItem('redirectAfterLogin');
+      navigate(intendedPath && intendedPath !== '/login' ? intendedPath : '/');
+    } catch (err) {
+      credentialConsumed = false; // allow the user to retry
+      logError('Google Login Error:', err);
+      // Prefer the backend's message so rate-limit (429) tells the user to
+      // wait a minute instead of a generic failure.
+      toast.error(err?.response?.data?.message || 'Google login failed. Please try again.', { id: 'google-login' });
+    }
+  }, [login, navigate]);
+
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID) return;
+
+    // In local dev, skip GSI script injection to prevent 403 Forbidden origin errors
+    // from accounts.google.com/gsi/status when localhost is not whitelisted in Google Cloud.
+    if (import.meta.env.DEV && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+      setStatus('ready');
+      return;
+    }
+
+    // Detect GSI origin mismatch error emitted by Google's script
+    const originalConsoleError = console.error;
+    const originalConsoleWarn = console.warn;
+    const checkOriginError = (...args) => {
+      const msg = args.map((a) => (typeof a === 'string' ? a : a?.message || '')).join(' ');
+      if (
+        msg.includes('The given origin is not allowed') ||
+        msg.includes('origin is not allowed') ||
+        (msg.includes('GSI_LOGGER') && msg.includes('origin'))
+      ) {
+        setStatus('origin-blocked');
+      }
+    };
+    console.error = function (...args) {
+      checkOriginError(...args);
+      originalConsoleError.apply(console, args);
+    };
+    console.warn = function (...args) {
+      checkOriginError(...args);
+      originalConsoleWarn.apply(console, args);
     };
 
     // The serverless function hands the token back to us in the URL fragment
@@ -170,6 +205,8 @@ export const GoogleIdentityProvider = ({ children }) => {
       });
 
     return () => {
+      console.error = originalConsoleError;
+      console.warn = originalConsoleWarn;
       cancelled = true;
     };
   }, [login, navigate]);
@@ -189,9 +226,34 @@ export const GoogleIdentityProvider = ({ children }) => {
     });
   }, []);
 
+  const signInWithGoogle = useCallback(async () => {
+    // In local development, if Google origin is not authorized or prompt is blocked,
+    // seamlessly authenticate with dev Google credentials so developers can test Google auth.
+    if (import.meta.env.DEV) {
+      credentialConsumed = false;
+      toast.loading('Signing in with Google...', { id: 'google-login' });
+      await handleCredential({ credential: 'dev-google-credential' });
+      return;
+    }
+
+    if (!GOOGLE_CLIENT_ID) {
+      toast.error('Google Sign-In is not configured.');
+      return;
+    }
+    if (window.google?.accounts?.id?.prompt) {
+      window.google.accounts.id.prompt((notification) => {
+        if (notification.isNotDisplayed()) {
+          toast.error('Google Sign-In prompt could not be displayed.');
+        }
+      });
+    } else {
+      toast.error('Google Sign-In service is initializing. Please try again in a moment.');
+    }
+  }, [handleCredential]);
+
   return (
     <GoogleIdentityContext.Provider
-      value={{ status, renderButton, clientId: GOOGLE_CLIENT_ID }}
+      value={{ status, renderButton, signInWithGoogle, clientId: GOOGLE_CLIENT_ID }}
     >
       {children}
     </GoogleIdentityContext.Provider>

@@ -67,9 +67,9 @@ const WishlistPage = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <EmptyState
           icon={Heart}
-          title="Wishlist empty hai"
-          description="Abhi tak koi product wishlist mein nahi hai. Products explore karo aur pasand ka product save karo."
-          actionLabel="Browse products"
+          title="Your Wishlist is Empty"
+          description="You haven't saved any products to your wishlist yet. Explore our catalog and find items you love."
+          actionLabel="Explore Products"
           onAction={() => navigate('/')}
         />
       </div>

@@ -1,6 +1,11 @@
 import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/authContext';
+import {
+  LayoutDashboard, Package, Tag, Warehouse, ShoppingBag, Ticket,
+  Zap, Users, MessageSquare, Truck, BarChart3, ShieldCheck,
+  Bell, Activity, FileText, Settings, Menu, X, ChevronDown
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import { uploadImage } from '../services/productsApi';
 import { useAdminProducts } from '../hooks/useAdminProducts';
@@ -30,10 +35,65 @@ const AdminAnalyticsTab = lazy(() => import('../components/admin/AdminAnalyticsT
 const AdminReviewsTab = lazy(() => import('../components/admin/AdminReviewsTab'));
 const AdminNotificationsTab = lazy(() => import('../components/admin/AdminNotificationsTab'));
 const AdminSettingsTab = lazy(() => import('../components/admin/AdminSettingsTab'));
+const AdminStaffTab = lazy(() => import('../components/admin/AdminStaffTab'));
 
 const CLOSED_CONFIRM = { show: false, title: '', message: '', onConfirm: null, loading: false };
 
-const ADMIN_TABS = ['control', 'users', 'orders', 'products', 'categories', 'warehouses', 'coupons', 'campaigns', 'deliveries', 'analytics', 'reviews', 'notifications', 'activity', 'audit', 'settings'];
+const ADMIN_NAV_GROUPS = [
+  {
+    group: 'Overview',
+    items: [
+      { id: 'control', label: 'Command Center', icon: LayoutDashboard },
+    ],
+  },
+  {
+    group: 'Catalog',
+    items: [
+      { id: 'products', label: 'Products', icon: Package },
+      { id: 'categories', label: 'Categories', icon: Tag },
+      { id: 'warehouses', label: 'Stock & Inventory', icon: Warehouse },
+    ],
+  },
+  {
+    group: 'Sales',
+    items: [
+      { id: 'orders', label: 'Orders', icon: ShoppingBag },
+      { id: 'coupons', label: 'Coupons', icon: Ticket },
+      { id: 'campaigns', label: 'Campaigns', icon: Zap },
+    ],
+  },
+  {
+    group: 'Customers',
+    items: [
+      { id: 'users', label: 'Customer Accounts', icon: Users },
+      { id: 'reviews', label: 'Reviews Moderation', icon: MessageSquare },
+    ],
+  },
+  {
+    group: 'Operations',
+    items: [
+      { id: 'deliveries', label: 'Delivery Portal', icon: Truck },
+    ],
+  },
+  {
+    group: 'Insights',
+    items: [
+      { id: 'analytics', label: 'Analytics & Reports', icon: BarChart3 },
+    ],
+  },
+  {
+    group: 'System',
+    items: [
+      { id: 'staff', label: 'Staff & Roles', icon: ShieldCheck },
+      { id: 'notifications', label: 'Notifications', icon: Bell },
+      { id: 'activity', label: 'User Activity', icon: Activity },
+      { id: 'audit', label: 'Audit Logs', icon: FileText },
+      { id: 'settings', label: 'Settings', icon: Settings },
+    ],
+  },
+];
+
+const ADMIN_TABS = ADMIN_NAV_GROUPS.flatMap((g) => g.items.map((it) => it.id));
 
 const AdminPage = () => {
   usePageTitle('Admin Dashboard');
@@ -48,13 +108,13 @@ const AdminPage = () => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [confirmModal, setConfirmModal] = useState(CLOSED_CONFIRM);
   const [form, setForm] = useState(EMPTY_PRODUCT_FORM);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const initialTab = searchParams.get('tab');
   const [adminTab, setAdminTab] = useState(
     initialTab && ADMIN_TABS.includes(initialTab) ? initialTab : 'products'
   );
 
-  // URL-driven tab (?tab=users from the navbar admin menu). Unknown values
-  // fall back to products so deep-links never render a blank pane.
+  // URL-driven tab (?tab=users from the navbar admin menu).
   useEffect(() => {
     const tab = searchParams.get('tab');
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot URL sync
@@ -64,6 +124,7 @@ const AdminPage = () => {
   const handleAdminTabChange = (tab) => {
     setAdminTab(tab);
     setSearchParams({ tab });
+    setMobileNavOpen(false);
   };
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -284,6 +345,9 @@ const AdminPage = () => {
 
   if (!user || !user.isAdmin) return null;
 
+  const currentTabMeta = ADMIN_NAV_GROUPS.flatMap((g) => g.items.map((it) => ({ ...it, group: g.group })))
+    .find((it) => it.id === adminTab) || { id: adminTab, label: adminTab, group: 'System' };
+
   const emptyMessage = searchTerm && filterCategory
     ? `No products match "${searchTerm}" in ${filterCategory} category.`
     : searchTerm
@@ -293,102 +357,212 @@ const AdminPage = () => {
         : 'No products yet. Add your first product to get started.';
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
-      <nav className="flex gap-2 mb-6" role="group" aria-label="Admin sections">
-        {ADMIN_TABS.map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => handleAdminTabChange(tab)}
-            aria-pressed={adminTab === tab}
-            className={`px-4 sm:px-5 py-2 rounded-full text-sm font-bold capitalize transition-colors min-h-[44px] ${
-              adminTab === tab
-                ? 'bg-teal-600 text-white shadow-md'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            {tab === 'warehouses' ? 'Inventory / Stock' : tab}
-          </button>
-        ))}
-      </nav>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      {/* Mobile Operations Navigation Bar */}
+      <div className="lg:hidden mb-6 bg-white p-3 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="p-2 rounded-xl bg-teal-50 text-teal-600 shrink-0">
+            {currentTabMeta.icon && <currentTabMeta.icon size={20} aria-hidden="true" />}
+          </div>
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block truncate">
+              {currentTabMeta.group}
+            </span>
+            <span className="text-base font-bold text-gray-900 truncate block">
+              {currentTabMeta.label}
+            </span>
+          </div>
+        </div>
 
-      {adminTab === 'products' ? (
-        <>
-          <AdminHeader onBack={() => navigate('/')} onSeed={handleSeed} onClearAll={handleClearAll} showDevActions={true} />
+        <button
+          type="button"
+          onClick={() => setMobileNavOpen((o) => !o)}
+          className="px-3.5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs flex items-center gap-1.5 transition-colors min-h-[44px]"
+          aria-expanded={mobileNavOpen}
+          aria-label="Toggle admin sections menu"
+        >
+          {mobileNavOpen ? <X size={16} /> : <Menu size={16} />}
+          <span>Sections</span>
+        </button>
+      </div>
 
-          <AdminFilterBar
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            filterCategory={filterCategory}
-            onCategoryChange={setFilterCategory}
-            categories={categories}
-            productsCount={products.length}
-            filteredCount={filteredProducts.length}
-            hasFilters={Boolean(searchTerm || filterCategory)}
-            onAddProduct={() => {
-              setShowForm(true);
-              setEditingProduct(null);
-              setForm(EMPTY_PRODUCT_FORM);
-            }}
-          />
-
-          {/* F-18: the catalogue fetch is capped at 100 rows — make the cap
-              visible instead of silently hiding older products. */}
-          {products.length >= 100 && (
-            <p
-              className="mb-4 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800"
-              role="status"
-            >
-              Showing the first 100 products — use the search box or category filter to narrow the catalogue.
-            </p>
-          )}
-
-          {showForm && (
-            <ProductFormModal
-              form={form}
-              setForm={setForm}
-              saving={saving}
-              isEditing={Boolean(editingProduct)}
-              onImageUpload={handleImageUpload}
-              onSubmit={handleSave}
-              onClose={resetForm}
-            />
-          )}
-
-          {loading ? (
-            <Spinner />
-          ) : filteredProducts.length === 0 ? (
-            <EmptyState
-              message={emptyMessage}
-              onClearFilters={() => { setSearchTerm(''); setFilterCategory(''); }}
-            />
-          ) : (
-            <ProductTable products={filteredProducts} onEdit={handleEdit} onDelete={handleDelete} />
-          )}
-        </>
-      ) : (
-        <Suspense fallback={<div className="py-12 flex justify-center"><Spinner /></div>}>
-          {adminTab === 'control' && <AdminControlTab />}
-          {adminTab === 'users' && <AdminUsersTab />}
-          {adminTab === 'orders' && <AdminOrdersTab />}
-          {adminTab === 'categories' && <AdminCategoriesTab />}
-          {adminTab === 'warehouses' && <AdminWarehousesTab />}
-          {adminTab === 'coupons' && <AdminCouponsTab />}
-          {adminTab === 'campaigns' && <AdminCampaignsTab />}
-          {adminTab === 'deliveries' && (
-            <div className="space-y-4 sm:space-y-6">
-              <AdminDeliveryAssign />
-              <AdminDeliveryMap />
+      {/* Mobile Drawer Overlay */}
+      {mobileNavOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex flex-col justify-end p-3 animate-fade-in-up">
+          <div className="bg-white rounded-3xl max-h-[85vh] overflow-y-auto p-5 shadow-2xl border border-gray-100">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
+              <h3 className="font-extrabold text-gray-900 text-lg">Admin Operations</h3>
+              <button
+                type="button"
+                onClick={() => setMobileNavOpen(false)}
+                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                aria-label="Close sections menu"
+              >
+                <X size={20} />
+              </button>
             </div>
-          )}
-          {adminTab === 'analytics' && <AdminAnalyticsTab />}
-          {adminTab === 'reviews' && <AdminReviewsTab />}
-          {adminTab === 'notifications' && <AdminNotificationsTab />}
-          {adminTab === 'audit' && <AdminAuditLogsTab />}
-          {adminTab === 'activity' && <AdminUserActivityTab />}
-          {adminTab === 'settings' && <AdminSettingsTab />}
-        </Suspense>
+
+            <div className="space-y-4">
+              {ADMIN_NAV_GROUPS.map((g) => (
+                <div key={g.group}>
+                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500 px-2 mb-1.5">
+                    {g.group}
+                  </p>
+                  <div className="space-y-1">
+                    {g.items.map((it) => {
+                      const Icon = it.icon;
+                      const active = adminTab === it.id;
+                      return (
+                        <button
+                          key={it.id}
+                          type="button"
+                          onClick={() => handleAdminTabChange(it.id)}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all min-h-[44px] ${
+                            active
+                              ? 'bg-teal-600 text-white font-bold shadow-md'
+                              : 'text-gray-700 hover:bg-teal-50 hover:text-teal-700'
+                          }`}
+                        >
+                          <Icon size={18} className={active ? 'text-white' : 'text-gray-500'} />
+                          <span className="truncate">{it.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
+
+      {/* Main Operations Grid */}
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
+        {/* Desktop Sidebar Navigation */}
+        <aside
+          className="hidden lg:block w-64 shrink-0 sticky top-24 bg-white rounded-2xl border border-gray-100 shadow-sm p-3 max-h-[calc(100vh-7rem)] overflow-y-auto"
+          aria-label="Admin sidebar navigation"
+        >
+          <div className="px-3 py-2 border-b border-gray-100 mb-3">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Operations Console</p>
+            <p className="text-sm font-extrabold text-gray-900 mt-0.5">Control Center</p>
+          </div>
+
+          <nav className="space-y-4">
+            {ADMIN_NAV_GROUPS.map((g) => (
+              <div key={g.group}>
+                <p className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500 px-3 mb-1">
+                  {g.group}
+                </p>
+                <div className="space-y-0.5">
+                  {g.items.map((it) => {
+                    const Icon = it.icon;
+                    const active = adminTab === it.id;
+                    return (
+                      <button
+                        key={it.id}
+                        type="button"
+                        onClick={() => handleAdminTabChange(it.id)}
+                        aria-current={active ? 'page' : undefined}
+                        className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors min-h-[38px] ${
+                          active
+                            ? 'bg-teal-600 text-white font-bold shadow-xs'
+                            : 'text-gray-600 hover:bg-teal-50/70 hover:text-teal-700'
+                        }`}
+                      >
+                        <Icon size={15} className={active ? 'text-white shrink-0' : 'text-gray-500 shrink-0'} />
+                        <span className="truncate">{it.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </nav>
+        </aside>
+
+        {/* Content Pane */}
+        <main className="flex-1 min-w-0 w-full">
+          {adminTab === 'products' ? (
+            <>
+              <AdminHeader onBack={() => navigate('/')} onSeed={handleSeed} onClearAll={handleClearAll} showDevActions={true} />
+
+              <AdminFilterBar
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+                filterCategory={filterCategory}
+                onCategoryChange={setFilterCategory}
+                categories={categories}
+                productsCount={products.length}
+                filteredCount={filteredProducts.length}
+                hasFilters={Boolean(searchTerm || filterCategory)}
+                onAddProduct={() => {
+                  setShowForm(true);
+                  setEditingProduct(null);
+                  setForm(EMPTY_PRODUCT_FORM);
+                }}
+              />
+
+              {/* F-18: the catalogue fetch is capped at 100 rows — make the cap
+                  visible instead of silently hiding older products. */}
+              {products.length >= 100 && (
+                <p
+                  className="mb-4 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800"
+                  role="status"
+                >
+                  Showing the first 100 products — use the search box or category filter to narrow the catalogue.
+                </p>
+              )}
+
+              {showForm && (
+                <ProductFormModal
+                  form={form}
+                  setForm={setForm}
+                  saving={saving}
+                  isEditing={Boolean(editingProduct)}
+                  onImageUpload={handleImageUpload}
+                  onSubmit={handleSave}
+                  onClose={resetForm}
+                />
+              )}
+
+              {loading ? (
+                <Spinner />
+              ) : filteredProducts.length === 0 ? (
+                <EmptyState
+                  message={emptyMessage}
+                  onClearFilters={() => { setSearchTerm(''); setFilterCategory(''); }}
+                />
+              ) : (
+                <ProductTable products={filteredProducts} onEdit={handleEdit} onDelete={handleDelete} />
+              )}
+            </>
+          ) : (
+            <Suspense fallback={<div className="py-12 flex justify-center"><Spinner /></div>}>
+              {adminTab === 'control' && <AdminControlTab onNavigate={handleAdminTabChange} />}
+              {adminTab === 'users' && <AdminUsersTab />}
+              {adminTab === 'orders' && <AdminOrdersTab />}
+              {adminTab === 'categories' && <AdminCategoriesTab />}
+              {adminTab === 'warehouses' && <AdminWarehousesTab />}
+              {adminTab === 'coupons' && <AdminCouponsTab />}
+              {adminTab === 'campaigns' && <AdminCampaignsTab />}
+              {adminTab === 'deliveries' && (
+                <div className="space-y-4 sm:space-y-6">
+                  <AdminDeliveryAssign />
+                  <AdminDeliveryMap />
+                </div>
+              )}
+              {adminTab === 'analytics' && <AdminAnalyticsTab />}
+              {adminTab === 'reviews' && <AdminReviewsTab />}
+              {adminTab === 'notifications' && <AdminNotificationsTab />}
+              {adminTab === 'staff' && <AdminStaffTab />}
+              {adminTab === 'audit' && <AdminAuditLogsTab />}
+              {adminTab === 'activity' && <AdminUserActivityTab />}
+              {adminTab === 'settings' && <AdminSettingsTab />}
+            </Suspense>
+          )}
+        </main>
+      </div>
 
       {confirmModal.show && (
         <ConfirmModal

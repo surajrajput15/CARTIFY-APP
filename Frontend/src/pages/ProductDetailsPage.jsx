@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../context/cartContext';
-import { ShoppingCart, ArrowLeft, RefreshCw, Minus, Plus, Lock, Heart } from 'lucide-react';
+import { ShoppingCart, ArrowLeft, RefreshCw, Minus, Plus, Lock, Heart, Star, MessageSquare, CheckCircle2 } from 'lucide-react';
 import { getStockStatus } from '../utils/stockStatus';
 import { resolveImageUrl, PLACEHOLDER_IMG } from '../utils/imageUrl';
-import { formatPrice, formatNumber } from '../utils/format';
+import { formatPrice, formatNumber, formatDate } from '../utils/format';
 import { getShippingMessage } from '../utils/constants';
 import StockBadge from '../components/StockBadge';
 import StarRating from '../components/StarRating';
@@ -13,6 +13,7 @@ import { ErrorIllustration } from '../components/illustrations/EmptyStateIllustr
 import toast from 'react-hot-toast';
 import { logError } from '../utils/logger';
 import { fetchProductById, fetchProducts } from '../services/productsApi';
+import { fetchProductReviews, createReview } from '../services/reviewApi';
 import ProductCard from '../components/ProductCard';
 import { useWishlist } from '../context/WishlistContext';
 import { hasVariants, getVariantOptions, findVariant, variantPrice, isOptionAvailable, buildVariantKey, variantLabel } from '../utils/variants';
@@ -40,6 +41,15 @@ const ProductDetailsPage = () => {
   const { user } = useAuth();
   const [wishlisted, setWishlisted] = useState(false);
 
+  // Customer Reviews state
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewTitle, setReviewTitle] = useState('');
+  const [reviewComment, setReviewComment] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
+
   const loading = product === null;
   const relatedLoading = relatedProducts === null;
 
@@ -64,6 +74,21 @@ const ProductDetailsPage = () => {
       });
   }, [id, user?.id]);
 
+  const fetchReviews = useCallback((productId) => {
+    if (!productId) return;
+    setReviewsLoading(true);
+    fetchProductReviews(productId)
+      .then((res) => {
+        setReviews(res.data?.reviews || []);
+      })
+      .catch(() => {
+        setReviews([]);
+      })
+      .finally(() => {
+        setReviewsLoading(false);
+      });
+  }, []);
+
   // Per-product UI reset when navigating between products (route-driven, so
   // there is no local handler to hang it on) — one-shot, intentional.
   useEffect(() => {
@@ -73,6 +98,10 @@ const ProductDetailsPage = () => {
     setQuantity(1);
     setSelectedSize(null);
     setSelectedColor(null);
+    setShowReviewForm(false);
+    setReviewTitle('');
+    setReviewComment('');
+    setReviewRating(5);
     fetchProduct();
   }, [fetchProduct]);
 
@@ -90,13 +119,45 @@ const ProductDetailsPage = () => {
       });
   }, []);
 
-  // Wishlist + related sync on route/product change (one-shot UI reset).
+  // Wishlist + related + reviews sync on route/product change.
   useEffect(() => {
     if (!product) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reset on product id change
     setWishlisted(isWishlisted(product._id));
     fetchRelated(product.category, product._id);
-  }, [product, fetchRelated, isWishlisted]);
+    fetchReviews(product._id);
+  }, [product, fetchRelated, isWishlisted, fetchReviews]);
+
+  const handleSubmitReview = async (e) => {
+    e.preventDefault();
+    if (!user) {
+      sessionStorage.setItem('redirectAfterLogin', `/product/${id}`);
+      navigate('/login');
+      return;
+    }
+    if (!reviewTitle.trim() || !reviewComment.trim()) {
+      toast.error('Please enter a headline and comment for your review');
+      return;
+    }
+    setSubmittingReview(true);
+    try {
+      await createReview({
+        productId: product._id,
+        rating: reviewRating,
+        title: reviewTitle.trim(),
+        comment: reviewComment.trim()
+      });
+      toast.success('Review submitted successfully! It will appear once approved.');
+      setShowReviewForm(false);
+      setReviewTitle('');
+      setReviewComment('');
+      setReviewRating(5);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to submit review');
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
 
   const handleGoBack = () => {
     const hasHistory = window.history.length > 1;
@@ -415,6 +476,182 @@ const ProductDetailsPage = () => {
           </p>
         </div>
       </Card>
+
+      {/* Customer Reviews Section */}
+      <section className="mt-10 sm:mt-12" aria-labelledby="reviews-heading">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div>
+            <h2 id="reviews-heading" className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <span className="w-1 h-7 bg-teal-500 rounded-full" aria-hidden="true" />
+              Customer Reviews
+            </h2>
+            <div className="flex items-center gap-2 mt-1">
+              <StarRating rating={product.rating?.rate} size={16} />
+              <span className="text-sm font-bold text-gray-800">
+                {Number(product.rating?.rate) || 0} out of 5
+              </span>
+              <span className="text-gray-400 text-sm">·</span>
+              <span className="text-sm text-gray-500">
+                {reviews.length ? `${reviews.length} customer review${reviews.length === 1 ? '' : 's'}` : `${formatNumber(product.rating?.count || 0)} global ratings`}
+              </span>
+            </div>
+          </div>
+
+          <Button
+            onClick={() => {
+              if (!user) {
+                sessionStorage.setItem('redirectAfterLogin', `/product/${id}`);
+                navigate('/login');
+              } else {
+                setShowReviewForm((v) => !v);
+              }
+            }}
+            className="self-start sm:self-auto px-5 py-2.5 rounded-xl font-bold text-sm min-h-[44px] inline-flex items-center gap-2"
+          >
+            <MessageSquare size={16} aria-hidden="true" />
+            {showReviewForm ? 'Cancel Review' : 'Write a Review'}
+          </Button>
+        </div>
+
+        {/* Review Form Drawer / Card */}
+        {showReviewForm && (
+          <Card className="p-5 sm:p-6 rounded-2xl border border-teal-100 bg-teal-50/30 mb-8 animate-fade-in-up">
+            <h3 className="text-lg font-bold text-gray-900 mb-1">Share your thoughts on this product</h3>
+            <p className="text-xs text-gray-500 mb-4">Reviews help other shoppers make informed choices. All feedback is moderated.</p>
+
+            <form onSubmit={handleSubmitReview} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                  Your Rating
+                </label>
+                <div className="flex items-center gap-1.5" role="radiogroup" aria-label="Rating selection">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setReviewRating(star)}
+                      className="p-1 rounded hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-teal-500 min-w-[36px] min-h-[36px] flex items-center justify-center"
+                      aria-label={`${star} star${star > 1 ? 's' : ''}`}
+                    >
+                      <Star
+                        size={26}
+                        className={star <= reviewRating ? 'text-amber-400 fill-amber-400' : 'text-gray-300'}
+                        aria-hidden="true"
+                      />
+                    </button>
+                  ))}
+                  <span className="text-sm font-semibold text-gray-700 ml-2">
+                    {reviewRating === 5 ? 'Excellent' : reviewRating === 4 ? 'Good' : reviewRating === 3 ? 'Average' : reviewRating === 2 ? 'Poor' : 'Terrible'}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="review-title" className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  Headline
+                </label>
+                <input
+                  id="review-title"
+                  type="text"
+                  maxLength={100}
+                  value={reviewTitle}
+                  onChange={(e) => setReviewTitle(e.target.value)}
+                  placeholder="What's most important to know?"
+                  className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label htmlFor="review-comment" className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  Detailed Review
+                </label>
+                <textarea
+                  id="review-comment"
+                  rows={4}
+                  maxLength={1000}
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  placeholder="What did you like or dislike? How was the fit, material, or performance?"
+                  className="w-full p-3.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 resize-y"
+                  required
+                />
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <span className="text-xs text-gray-500">
+                  Posting as <span className="font-semibold text-gray-800">{user?.name}</span>
+                </span>
+                <Button
+                  type="submit"
+                  disabled={submittingReview}
+                  className="px-6 py-2.5 rounded-xl font-bold min-h-[44px]"
+                >
+                  {submittingReview ? 'Submitting...' : 'Submit Review'}
+                </Button>
+              </div>
+            </form>
+          </Card>
+        )}
+
+        {/* Reviews List */}
+        {reviewsLoading ? (
+          <div className="space-y-4">
+            {[1, 2].map((n) => (
+              <div key={n} className="p-4 rounded-xl border border-gray-100 bg-white animate-pulse space-y-2">
+                <div className="h-4 w-32 bg-gray-200 rounded"></div>
+                <div className="h-4 w-48 bg-gray-200 rounded"></div>
+                <div className="h-12 w-full bg-gray-100 rounded"></div>
+              </div>
+            ))}
+          </div>
+        ) : reviews.length > 0 ? (
+          <div className="space-y-4">
+            {reviews.map((rev) => (
+              <Card key={rev._id} className="p-4 sm:p-5 rounded-xl border border-gray-100">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <StarRating rating={rev.rating} size={14} />
+                    {rev.title && <span className="font-bold text-gray-900 text-sm">{rev.title}</span>}
+                  </div>
+                  <span className="text-xs text-gray-400">{formatDate(rev.createdAt)}</span>
+                </div>
+                <p className="text-sm text-gray-700 leading-relaxed mb-3">{rev.comment}</p>
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <span className="font-medium text-gray-800">{rev.userName || 'Verified Customer'}</span>
+                  {rev.verified && (
+                    <span className="inline-flex items-center gap-1 text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full font-medium text-[11px]">
+                      <CheckCircle2 size={12} aria-hidden="true" /> Verified Purchase
+                    </span>
+                  )}
+                </div>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="p-8 text-center rounded-2xl border border-dashed border-gray-200 bg-gray-50/50">
+            <MessageSquare size={32} className="mx-auto text-gray-400 mb-2" aria-hidden="true" />
+            <h3 className="font-bold text-gray-700 mb-1">No reviews yet</h3>
+            <p className="text-sm text-gray-500 max-w-sm mx-auto mb-4">
+              Have you tried this product? Share your experience with other shoppers.
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (!user) {
+                  sessionStorage.setItem('redirectAfterLogin', `/product/${id}`);
+                  navigate('/login');
+                } else {
+                  setShowReviewForm(true);
+                }
+              }}
+              className="px-5 py-2 rounded-xl text-sm font-bold min-h-[40px]"
+            >
+              Be the first to review
+            </Button>
+          </div>
+        )}
+      </section>
 
       {relatedProducts?.length > 0 && (
         <section className="mt-12 sm:mt-14" aria-labelledby="related-heading">

@@ -63,7 +63,7 @@ const CartPage = () => {
 
   // Populated cart state
   return (
-    <div className="max-w-7xl mx-auto p-4 md:p-6 mt-4 lg:pb-0 pb-28">
+    <div className="max-w-7xl mx-auto p-4 md:p-6 mt-4 pb-36 lg:pb-12">
       <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-8">
         Shopping Cart ({totalItems} {totalItems === 1 ? 'item' : 'items'})
       </h1>
@@ -144,9 +144,9 @@ const CartPage = () => {
           ))}
         </div>
 
-        {/* Right Side: Order Summary (Desktop only) */}
-        <div className="hidden lg:block lg:w-1/3">
-          <Card className="p-6 rounded-xl border sticky top-24">
+        {/* Right Side: Order Summary */}
+        <div className="w-full lg:w-1/3 mt-6 lg:mt-0">
+          <Card className="p-6 rounded-xl border lg:sticky lg:top-24">
             <h2 className="text-xl font-bold text-gray-800 mb-4">Order Summary</h2>
 
             <div className="space-y-3 text-gray-600 border-b pb-4 mb-4">
@@ -211,10 +211,9 @@ const CartPage = () => {
 
       </div>
 
-      {/* Mobile Sticky Summary Bar — z-30 sits BELOW the toast z-50 region */}
+      {/* Mobile Sticky Summary Bar — sits above MobileBottomNav on mobile (<md), at bottom on tablet (<lg) */}
       <div
-        className="fixed bottom-0 left-0 right-0 lg:hidden bg-white border-t border-gray-200 shadow-[0_-2px_10px_rgba(0,0,0,0.08)] z-30 px-4 py-3 flex items-center gap-3"
-        style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
+        className="fixed bottom-[calc(53px+env(safe-area-inset-bottom,0px))] md:bottom-0 left-0 right-0 lg:hidden bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-[0_-4px_16px_rgba(0,0,0,0.1)] z-30 px-4 py-3 flex items-center justify-between gap-3"
       >
         <div className="flex-1 min-w-0">
           <p className="text-xs text-gray-500 font-medium">{totalItems} {totalItems === 1 ? 'item' : 'items'}</p>
@@ -223,10 +222,11 @@ const CartPage = () => {
 
         <Link
           to="/checkout"
-          className="flex-shrink-0 bg-gray-900 text-white px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-teal-600 transition-colors shadow-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 min-h-[44px] inline-flex items-center"
+          className="flex-shrink-0 bg-gray-900 text-white px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-teal-600 transition-colors shadow-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 min-h-[44px] inline-flex items-center gap-1.5"
           aria-label="Proceed to checkout"
         >
-          Checkout
+          <Lock size={15} aria-hidden="true" />
+          <span>Checkout</span>
         </Link>
       </div>
     </div>

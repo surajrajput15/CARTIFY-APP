@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
   ArrowLeft,
@@ -24,6 +25,7 @@ import { HeroIllustration } from './illustrations/EmptyStateIllustrations';
 const SLIDES = [
   {
     id: 'tech',
+    link: '/?category=electronics',
     badge: 'New Arrivals',
     badgeClass: 'text-orange-100 border-orange-300/30 bg-orange-500/10',
     pingClass: 'bg-orange-400',
@@ -44,6 +46,7 @@ const SLIDES = [
   },
   {
     id: 'sale',
+    link: '/?category=all&sort=rating',
     badge: 'Mega Season Sale',
     badgeClass: 'text-red-200 border-red-300/30 bg-red-500/10',
     pingClass: 'bg-red-400',
@@ -63,6 +66,7 @@ const SLIDES = [
   },
   {
     id: 'shipping',
+    link: '/?category=all',
     badge: 'Free Fast Delivery',
     badgeClass: 'text-sky-200 border-sky-300/30 bg-sky-500/10',
     pingClass: 'bg-sky-400',
@@ -114,11 +118,11 @@ const SlidePanel = ({ slide, animate, productCountText, onShopNow }) => (
       })}
     </div>
 
-    <div className="relative flex flex-col md:flex-row items-center justify-between px-5 sm:px-8 md:px-14 pt-5 sm:pt-8 md:pt-14 pb-20 md:pb-20 gap-4 md:gap-8">
+    <div className="relative flex flex-col md:flex-row items-center justify-between px-4 sm:px-8 md:px-12 pt-4 sm:pt-6 md:pt-10 pb-12 sm:pb-16 md:pb-16 gap-3 md:gap-6">
       {/* Left Side: Text and Button */}
       <div className="text-white z-10 md:w-3/5 text-center md:text-left">
         <div
-          className={`inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-full border ${slide.badgeClass} ${animate ? 'hero-rise' : ''}`}
+          className={`inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-3 py-1 rounded-full border ${slide.badgeClass} ${animate ? 'hero-rise' : ''}`}
         >
           <span className="relative flex h-2 w-2">
             <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${slide.pingClass} opacity-75`}></span>
@@ -130,7 +134,7 @@ const SlidePanel = ({ slide, animate, productCountText, onShopNow }) => (
         </div>
 
         {/* Word-by-word headline with springy entrance */}
-        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black leading-tight tracking-tight drop-shadow-sm mt-4">
+        <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-black leading-tight tracking-tight drop-shadow-sm mt-2 sm:mt-3">
           {slide.words.map((word, index) => (
             <span
               key={index}
@@ -143,7 +147,7 @@ const SlidePanel = ({ slide, animate, productCountText, onShopNow }) => (
         </h1>
 
         <p
-          className={`text-white text-sm sm:text-base md:text-lg max-w-xl font-medium leading-relaxed ${animate ? 'hero-rise' : ''}`}
+          className={`text-white text-xs sm:text-sm md:text-base max-w-xl font-medium leading-relaxed mt-1 sm:mt-2 ${animate ? 'hero-rise' : ''}`}
           style={{ animationDelay: '0.55s' }}
         >
           {slide.id === 'tech' ? (
@@ -159,22 +163,22 @@ const SlidePanel = ({ slide, animate, productCountText, onShopNow }) => (
         </p>
 
         <button
-          onClick={onShopNow}
-          className={`mt-4 md:mt-6 inline-flex items-center gap-2 bg-white text-teal-700 font-extrabold py-3 px-8 sm:px-10 rounded-xl shadow-lg hover:bg-teal-50 hover:text-teal-800 hover:-translate-y-0.5 hover:shadow-xl transition-all duration-300 active:translate-y-0 cursor-pointer min-h-[44px] ${animate ? 'hero-bounce-in' : ''}`}
+          onClick={() => onShopNow(slide)}
+          className={`mt-3 sm:mt-4 md:mt-5 inline-flex items-center gap-2 bg-white text-teal-700 font-extrabold py-2.5 px-6 sm:py-3 sm:px-8 rounded-xl shadow-lg hover:bg-teal-50 hover:text-teal-800 hover:-translate-y-0.5 hover:shadow-xl transition-all duration-300 active:translate-y-0 cursor-pointer min-h-[44px] text-sm sm:text-base ${animate ? 'hero-bounce-in' : ''}`}
           style={{ animationDelay: '0.6s' }}
           aria-label="Shop now and browse products"
         >
           {slide.id === 'sale' ? 'Grab The Deal' : 'Shop Now'}
-          <ArrowRight size={20} aria-hidden="true" />
+          <ArrowRight size={18} aria-hidden="true" />
         </button>
       </div>
 
       {/* Right Side: Inline SVG Illustration with spring entrance */}
       <div
-        className={`mt-2 md:mt-0 md:w-2/5 flex justify-center z-10 w-full ${animate ? 'hero-bounce-in' : ''}`}
+        className={`mt-1 md:mt-0 md:w-2/5 flex justify-center z-10 w-full ${animate ? 'hero-bounce-in' : ''}`}
         style={{ animationDelay: '0.4s' }}
       >
-        <HeroIllustration className="w-full max-w-[240px] sm:max-w-sm h-48 sm:h-56 md:h-72" />
+        <HeroIllustration className="w-full max-w-[160px] sm:max-w-xs md:max-w-sm h-32 sm:h-44 md:h-60" />
       </div>
     </div>
   </div>
@@ -240,8 +244,17 @@ const HeroBanner = ({ productCount = null }) => {
     touchStartX.current = null;
   };
 
-  const handleShopNow = () => {
-    document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' });
+  const navigate = useNavigate();
+
+  const handleShopNow = (slide) => {
+    if (slide?.link) {
+      navigate(slide.link);
+      setTimeout(() => {
+        document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' });
+      }, 120);
+    } else {
+      document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   /* Only ever shown when it came from the real API (a number was passed

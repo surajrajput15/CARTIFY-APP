@@ -1,19 +1,16 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  Home, ShoppingCart, Heart, User, LayoutGrid,
-  Shield, Truck, Package, Warehouse
+  Home, ShoppingCart, User, LayoutGrid,
+  Shield, Truck, Warehouse
 } from 'lucide-react';
 import { useAuth } from '../context/authContext';
 import { useCart } from '../context/cartContext';
-import { useWishlist } from '../context/WishlistContext';
 
 const MobileBottomNav = () => {
   const { user } = useAuth();
   const { cart } = useCart();
-  const { wishlist } = useWishlist();
 
   const cartCount = (cart || []).reduce((s, it) => s + (Number(it.quantity) || 1), 0);
-  const wishCount = (wishlist || []).length;
 
   const isDelivery = user?.role === 'delivery' || user?.role === 'driver';
   const isAdmin = user?.isAdmin || user?.role === 'admin';
@@ -59,27 +56,8 @@ const MobileBottomNav = () => {
         <span>Admin</span>
       </NavLink>
     );
-  } else {
-    items.push(
-      <NavLink key="wishlist" to="/wishlist" className={({ isActive }) => `${base} ${isActive ? active : inactive}`} aria-label={`Wishlist, ${wishCount} item${wishCount === 1 ? '' : 's'}`}>
-        <span className="relative inline-flex items-center justify-center">
-          <Heart size={20} aria-hidden="true" />
-          {wishCount > 0 && (
-            <span className="absolute -top-1 -right-2 min-w-[16px] h-[16px] rounded-full bg-teal-600 text-white text-[9px] font-bold flex items-center justify-center px-1 leading-none" aria-hidden="true">
-              {wishCount > 99 ? '99+' : wishCount}
-            </span>
-          )}
-        </span>
-        <span>Wishlist</span>
-      </NavLink>
-    );
-    items.push(
-      <NavLink key="orders" to="/profile?tab=orders" className={({ isActive }) => `${base} ${isActive ? active : inactive}`} aria-label="My orders">
-        <Package size={20} aria-hidden="true" />
-        <span>Orders</span>
-      </NavLink>
-    );
   }
+
 
   items.push(
     <NavLink key="cart" to="/cart" className={({ isActive }) => `${base} ${isActive ? active : inactive}`} aria-label={`Cart, ${cartCount} item${cartCount === 1 ? '' : 's'}`}>

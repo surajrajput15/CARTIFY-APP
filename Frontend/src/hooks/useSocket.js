@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io } from 'socket.io-client';
+import { API_ORIGIN } from '../config';
 
 /**
  * Socket.IO Hook — manages Socket.IO connection with auth, rooms, and events.
@@ -30,25 +31,20 @@ import { io } from 'socket.io-client';
 export function useSocket() {
   const [connected, setConnected] = useState(false);
   const [socket, setSocket] = useState(null);
+  const socketRef = useRef(null);
   const reconnectAttemptsRef = useRef(0);
-  const maxReconnectAttempts = 10;
-  const reconnectDelayRef = useRef(1000);
-
   const handlersRef = useRef(new Map());
 
-  const getSocket = useCallback(() => {
-    if (socket) return socket;
+  useEffect(() => {
+    // API_ORIGIN points to the backend (e.g. http://localhost:5000), falling back to window.location.origin
+    const socketUrl = API_ORIGIN || window.location.origin;
 
-    const newSocket = io(window.location.origin, {
+    const s = io(socketUrl, {
       path: '/socket.io',
       withCredentials: true, // sends HttpOnly cookies
-      auth: {
-        // fallback for cross-origin if cookie not sent
-        token: undefined,
-      },
       transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionAttempts: maxReconnectAttempts,
+      reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       randomizationFactor: 0.5,
@@ -56,70 +52,80 @@ export function useSocket() {
       autoConnect: true,
     });
 
-    newSocket.on('connect', () => {
+    socketRef.current = s;
+    setSocket(s);
+
+    s.on('connect', () => {
       setConnected(true);
       reconnectAttemptsRef.current = 0;
-      reconnectDelayRef.current = 1000;
     });
 
-    newSocket.on('disconnect', () => {
+    s.on('disconnect', () => {
       setConnected(false);
     });
 
-    newSocket.on('connect_error', (err) => {
-      console.error('Socket connection error:', err.message);
+    s.on('connect_error', (err) => {
+      const msg = err?.message || '';
+      // If unauthorized (guest or expired token), stop reconnection spam cleanly
+      if (
+        msg.toLowerCase().includes('not authorized') ||
+        msg.toLowerCase().includes('token') ||
+        msg.toLowerCase().includes('jwt') ||
+        msg.toLowerCase().includes('suspended')
+      ) {
+        s.disconnect();
+        return;
+      }
+      if (reconnectAttemptsRef.current === 0) {
+        console.warn('Socket connection retry:', msg);
+      }
     });
 
-    newSocket.on('reconnect_attempt', (attempt) => {
+    s.on('reconnect_attempt', (attempt) => {
       reconnectAttemptsRef.current = attempt;
     });
 
-    newSocket.on('reconnect', () => {
+    s.on('reconnect', () => {
       reconnectAttemptsRef.current = 0;
     });
 
-    setSocket(newSocket);
-    return newSocket;
-  }, [socket]);
-
-  // Initialize socket on mount
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- getSocket() creates the instance and registers its listeners
-    const s = getSocket();
     return () => {
-      if (s.connected) s.disconnect();
+      s.disconnect();
+      socketRef.current = null;
+      setSocket(null);
+      setConnected(false);
     };
-  }, [getSocket]);
+  }, []);
 
   // Subscribe to order room for live tracking
   const subscribe = useCallback(async (orderId) => {
-    const s = getSocket();
+    const s = socketRef.current;
     if (!s || !s.connected) {
       throw new Error('Socket not connected');
     }
     if (!orderId) throw new Error('orderId required');
     s.emit('order:subscribe', { orderId });
-  }, [getSocket]);
+  }, []);
 
   const unsubscribe = useCallback((orderId) => {
-    const s = getSocket();
+    const s = socketRef.current;
     if (s && orderId) {
       s.emit('order:unsubscribe', { orderId });
     }
-  }, [getSocket]);
+  }, []);
 
   // Event listener management
   const on = useCallback((event, handler) => {
-    const s = getSocket();
+    const s = socketRef.current;
     if (!s) return;
     s.on(event, handler);
     const handlers = handlersRef.current.get(event) || [];
     handlers.push(handler);
     handlersRef.current.set(event, handlers);
-  }, [getSocket]);
+  }, []);
 
   const off = useCallback((event, handler) => {
-    const s = getSocket();
+    const s = socketRef.current;
     if (!s) return;
     if (handler) {
       s.off(event, handler);
@@ -129,33 +135,21 @@ export function useSocket() {
       s.off(event);
       handlersRef.current.delete(event);
     }
-  }, [getSocket]);
+  }, []);
 
   // Cleanup all handlers on unmount
   useEffect(() => {
     const handlersMap = handlersRef.current;
     return () => {
       handlersMap.forEach((handlers, event) => {
-        handlers.forEach((h) => off(event, h));
+        const s = socketRef.current;
+        if (s) {
+          handlers.forEach((h) => s.off(event, h));
+        }
       });
       handlersMap.clear();
     };
-  }, [off]);
-
-  // Expose connection status
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- getSocket() creates the instance and registers its listeners
-    const s = getSocket();
-    if (!s) return;
-    const onConnect = () => setConnected(true);
-    const onDisconnect = () => setConnected(false);
-    s.on('connect', onConnect);
-    s.on('disconnect', onDisconnect);
-    return () => {
-      s.off('connect', onConnect);
-      s.off('disconnect', onDisconnect);
-    };
-  }, [getSocket]);
+  }, []);
 
   return {
     socket,
