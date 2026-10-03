@@ -212,11 +212,11 @@ export const GoogleIdentityProvider = ({ children }) => {
   }, [login, navigate]);
 
   const renderButton = useCallback((container) => {
+    if (!container || !window.google?.accounts?.id?.renderButton) return;
     // Clamp the button to the available width so it never overflows the card
     // and becomes unreachable on narrow phone screens.
-    const width = container.clientWidth
-      ? Math.min(288, container.clientWidth)
-      : 288;
+    const clientWidth = container.clientWidth || 288;
+    const width = Math.max(200, Math.min(288, clientWidth));
     window.google.accounts.id.renderButton(container, {
       theme: 'outline',
       size: 'large',
@@ -238,16 +238,6 @@ export const GoogleIdentityProvider = ({ children }) => {
 
     if (!GOOGLE_CLIENT_ID) {
       toast.error('Google Sign-In is not configured.');
-      return;
-    }
-    if (window.google?.accounts?.id?.prompt) {
-      window.google.accounts.id.prompt((notification) => {
-        if (notification.isNotDisplayed()) {
-          toast.error('Google Sign-In prompt could not be displayed.');
-        }
-      });
-    } else {
-      toast.error('Google Sign-In service is initializing. Please try again in a moment.');
     }
   }, [handleCredential]);
 
