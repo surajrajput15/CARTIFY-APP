@@ -31,6 +31,10 @@ const CartPage = () => {
     return { totalAmount: amount, totalItems: items };
   }, [cart]);
 
+  const hasOutOfStockItems = useMemo(() => {
+    return cart.some(item => Number.isInteger(Number(item.countInStock)) && Number(item.countInStock) <= 0);
+  }, [cart]);
+
   // F-33: one shared coupon instance (CartProvider tree) instead of a per-page hook
   const { code, setCode, applied, loading: couponLoading, error: couponError, applyCoupon, applyBestCoupon, bestLoading, clearCoupon } = useSharedCoupon();
   const discount = Math.min(Math.max(0, Number(applied?.discount) || 0), Math.max(0, totalAmount));
@@ -132,13 +136,17 @@ const CartPage = () => {
                 </button>
                 </div>
 
-                {/* F-35: visible stock cap (title tooltip alone was hover-only) */}
-                {Number.isInteger(Number(item.countInStock)) &&
-                  (item.quantity || 1) >= Number(item.countInStock) && (
+                {/* Visible stock status indicators */}
+                {Number.isInteger(Number(item.countInStock)) && Number(item.countInStock) <= 0 ? (
+                  <p className="text-xs font-bold text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5 text-center">
+                    Out of stock — remove to proceed
+                  </p>
+                ) : Number.isInteger(Number(item.countInStock)) &&
+                  (item.quantity || 1) >= Number(item.countInStock) ? (
                   <p className="text-xs font-semibold text-orange-700 bg-orange-50 border border-orange-200 rounded-lg px-3 py-1.5 text-center">
                     Only {item.countInStock} left in stock
                   </p>
-                )}
+                ) : null}
               </div>
             </Card>
           ))}
@@ -195,13 +203,29 @@ const CartPage = () => {
               Final price confirmed at checkout.
             </p>
 
-            <Link
-              to="/checkout"
-              className="w-full flex justify-center items-center gap-2 bg-gray-900 text-white py-3 rounded-lg font-bold hover:bg-teal-600 transition-colors shadow-md min-h-[44px]"
-            >
-              <Lock size={18} aria-hidden="true" />
-              Proceed to Checkout
-            </Link>
+            {hasOutOfStockItems ? (
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  disabled
+                  className="w-full flex justify-center items-center gap-2 bg-gray-300 text-gray-600 py-3 rounded-lg font-bold cursor-not-allowed min-h-[44px]"
+                >
+                  <Lock size={18} aria-hidden="true" />
+                  Cannot Checkout
+                </button>
+                <p className="text-xs text-red-600 font-semibold text-center">
+                  Please remove out-of-stock items to continue
+                </p>
+              </div>
+            ) : (
+              <Link
+                to="/checkout"
+                className="w-full flex justify-center items-center gap-2 bg-gray-900 text-white py-3 rounded-lg font-bold hover:bg-teal-600 transition-colors shadow-md min-h-[44px]"
+              >
+                <Lock size={18} aria-hidden="true" />
+                Proceed to Checkout
+              </Link>
+            )}
 
             <p className="text-xs text-center text-gray-500 mt-3">
               Estimated delivery: {SHIPPING_CONFIG.ESTIMATED_DELIVERY_DAYS} business days
@@ -220,14 +244,24 @@ const CartPage = () => {
           <p className="text-lg font-bold text-teal-600 truncate" aria-live="polite" aria-atomic="true">{formatPrice(finalTotal)}</p>
         </div>
 
-        <Link
-          to="/checkout"
-          className="flex-shrink-0 bg-gray-900 text-white px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-teal-600 transition-colors shadow-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 min-h-[44px] inline-flex items-center gap-1.5"
-          aria-label="Proceed to checkout"
-        >
-          <Lock size={15} aria-hidden="true" />
-          <span>Checkout</span>
-        </Link>
+        {hasOutOfStockItems ? (
+          <button
+            type="button"
+            disabled
+            className="flex-shrink-0 bg-gray-300 text-gray-600 px-4 py-2.5 rounded-lg font-bold text-sm cursor-not-allowed min-h-[44px] inline-flex items-center gap-1.5"
+          >
+            <span>Resolve Stock</span>
+          </button>
+        ) : (
+          <Link
+            to="/checkout"
+            className="flex-shrink-0 bg-gray-900 text-white px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-teal-600 transition-colors shadow-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 min-h-[44px] inline-flex items-center gap-1.5"
+            aria-label="Proceed to checkout"
+          >
+            <Lock size={15} aria-hidden="true" />
+            <span>Checkout</span>
+          </Link>
+        )}
       </div>
     </div>
   );

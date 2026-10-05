@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { 
   CheckCircle2, 
   Package, 
@@ -16,13 +16,12 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { fetchOrderById } from '../services/ordersApi';
-import { formatPrice, formatDate } from '../utils/format';
+import { formatPrice } from '../utils/format';
 import { usePageTitle } from '../hooks/usePageTitle';
 import Card from '../components/ui/Card';
 
 const OrderConfirmationPage = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
   usePageTitle('Order Confirmed - Cartify');
 
   const [order, setOrder] = useState(null);

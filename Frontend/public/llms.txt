@@ -1,0 +1,29 @@
+# Cartify
+
+> Cartify is a modern, full-stack e-commerce web platform engineered with React 19, Vite 8, Node.js 18, Express, MongoDB Atlas, and Razorpay payment gateway integration. It features secure triple-method authentication (Passwords, Google OAuth 2.0, OTP), server-verified payments with HMAC SHA256 validation, real-time live order tracking via Leaflet maps & WebSockets, role-based access control, and an accessible, responsive design.
+
+Created and engineered by **Suraj Bhan Pratap Singh**, Full Stack Software Engineer & MERN Specialist.
+
+## Key Information
+- Website: https://cartify-hub.vercel.app
+- Backend API: https://cartify-api-10g3.onrender.com
+- Author: Suraj Bhan Pratap Singh
+- Author Job Title: Full Stack Software Engineer & MERN Specialist
+- GitHub Profile: https://github.com/surajrajput15
+- Source Code Repository: https://github.com/surajrajput15/CARTIFY-APP
+- LinkedIn: https://www.linkedin.com/in/suraj-bhan-pratap-singh-891727293/
+- Contact: surajdona2005@gmail.com
+- Customer Support: support@cartify.com
+
+## Main Navigation & Public Resources
+- [Home Page](https://cartify-hub.vercel.app/): Main product storefront, category filters (Electronics, Clothing, Footwear, Accessories, Furniture, Beauty), search, and promotional campaigns.
+- [About the Creator & Engineering Architecture](https://cartify-hub.vercel.app/about): Full background on Suraj Bhan Pratap Singh, engineering philosophy, E-E-A-T credentials, technology stack, and architecture decisions.
+- [Help & FAQs](https://cartify-hub.vercel.app/faq): Frequently asked questions on ordering, shipping timelines (3-5 business days), free shipping, payment security, and order tracking.
+- [Cart & Checkout](https://cartify-hub.vercel.app/cart): Interactive cart management, coupon codes, and Razorpay checkout flow.
+- [Wishlist](https://cartify-hub.vercel.app/wishlist): Client-side and authenticated customer wishlist management.
+
+## Technical Capabilities
+- **Authentication**: JWT token storage in HTTP-only cookies and headers, Google OAuth 2.0 Identity Services, 6-digit OTP verification with rate limiting.
+- **Payments**: Razorpay checkout with server-side price re-computation and cryptographic HMAC-SHA256 signature verification.
+- **Portals**: Customer Storefront, Role-protected Admin Control Panel, Warehouse Dispatch Portal, and Delivery Partner Map Interface.
+- **Compliance & Optimization**: WCAG 2.1 AA accessibility (Axe-core tested), Core Web Vitals optimization, JSON-LD Schema.org graph markup, and responsive mobile-first UI.

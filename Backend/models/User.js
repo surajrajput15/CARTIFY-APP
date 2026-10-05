@@ -28,7 +28,19 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ['customer', 'admin', 'delivery', 'warehouse'],
+        enum: [
+            'customer',
+            'super_admin',
+            'admin',
+            'staff',
+            'inventory_manager',
+            'order_manager',
+            'delivery_manager',
+            'customer_support',
+            'analyst',
+            'delivery',
+            'warehouse'
+        ],
         default: 'customer'
     },
     // Optional personal-information field, editable from the profile page.

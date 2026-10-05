@@ -20,9 +20,13 @@ const ProductCard = memo(({ product }) => {
   const productId = String(product?._id || product?.id || '');
   const wishlisted = isWishlisted(productId);
   const productHasVariants = hasVariants(product);
-  const stock = getStockStatus(productHasVariants ? effectiveStock(product) : product.countInStock);
+  const hasSale = product?.salePrice != null && Number(product.salePrice) > 0 && Number(product.salePrice) < Number(product.price);
+  const basePrice = hasSale ? Number(product.salePrice) : Number(product.price);
   const campaign = bestForProduct(product);
-  const displayPrice = campaign ? Number(product.price) - campaign.discount : Number(product.price);
+  const displayPrice = campaign ? basePrice - campaign.discount : basePrice;
+  const originalPrice = hasSale ? Number(product.price) : (campaign ? Number(product.price) : null);
+  const discountPercent = hasSale ? Math.round(((Number(product.price) - Number(product.salePrice)) / Number(product.price)) * 100) : null;
+  const stock = getStockStatus(productHasVariants ? effectiveStock(product) : product.countInStock, product?.lowStockThreshold);
 
   // F-06: "Added" confirmation — the button flips to a check + the aria-live
   // status span announces it; state auto-clears so the card returns to normal.
@@ -63,13 +67,18 @@ const ProductCard = memo(({ product }) => {
         className="h-44 sm:h-56 overflow-hidden bg-gray-50 block cursor-pointer relative flex items-center justify-center border-b border-gray-100 group"
         aria-label={`View ${product.title}`}
       >
-        {(stock || product.category) && (
+        {(stock || product.category || hasSale || campaign) && (
           <span className="absolute top-3 left-3 z-20 flex flex-col items-start gap-1.5 pointer-events-none">
             {stock ? (
               <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm whitespace-nowrap ${stock.bgColor} ${stock.textColor}`}>
                 {stock.label}
               </span>
             ) : <span />}
+            {hasSale && (
+              <span className="bg-rose-500 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm whitespace-nowrap">
+                {discountPercent}% OFF
+              </span>
+            )}
             {product.category && (
               <span className="bg-teal-50 text-teal-700 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm max-w-[160px] truncate">
                 {product.category}
@@ -108,6 +117,11 @@ const ProductCard = memo(({ product }) => {
       </Link>
 
       <div className="p-3 sm:p-5 flex flex-col flex-grow">
+        {product.brand && (
+          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider block mb-1">
+            {product.brand}
+          </span>
+        )}
         <Link to={`/product/${product._id}`}>
           <h3 className="text-sm sm:text-base font-semibold text-gray-800 line-clamp-2 mb-2 hover:text-teal-600 transition-colors leading-snug min-h-[2.5rem] sm:min-h-[3rem]">
             {product.title}
@@ -129,8 +143,8 @@ const ProductCard = memo(({ product }) => {
 
         <div className="mt-auto flex items-center justify-between gap-2 pt-2">
           <div className="min-w-0">
-            {campaign && (
-              <span className="block text-xs text-gray-500 line-through truncate" aria-hidden="true">{formatPrice(product.price)}</span>
+            {originalPrice && originalPrice > displayPrice && (
+              <span className="block text-xs text-gray-400 line-through truncate" aria-hidden="true">{formatPrice(originalPrice)}</span>
             )}
             <span className="text-lg sm:text-xl font-black text-gray-900 whitespace-nowrap">
               {formatPrice(displayPrice)}

@@ -22,7 +22,7 @@ Thank you for your interest in contributing to Cartify! This document provides g
 
 ```bash
 # Clone the repository
-git clone https://github.com/surajrajput999/CARTIFY-APP.git
+git clone https://github.com/surajrajput15/CARTIFY-APP.git
 cd CARTIFY-APP
 
 # Install dependencies

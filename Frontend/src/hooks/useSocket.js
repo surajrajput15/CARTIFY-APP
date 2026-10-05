@@ -42,7 +42,7 @@ export function useSocket() {
     const s = io(socketUrl, {
       path: '/socket.io',
       withCredentials: true, // sends HttpOnly cookies
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
@@ -53,6 +53,7 @@ export function useSocket() {
     });
 
     socketRef.current = s;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- store socket instance on mount
     setSocket(s);
 
     s.on('connect', () => {

@@ -79,4 +79,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stock reservation with rollback on payment failure
 - TTL-based pending order cleanup
 
-[1.0.0]: https://github.com/surajrajput999/CARTIFY-APP/releases/tag/v1.0.0
+[1.0.0]: https://github.com/surajrajput15/CARTIFY-APP/releases/tag/v1.0.0

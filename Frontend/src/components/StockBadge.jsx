@@ -6,8 +6,8 @@ const SIZE_CLASSES = {
   md: 'inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full',
 };
 
-const StockBadge = memo(({ countInStock, size = 'md', className = '' }) => {
-  const status = getStockStatus(countInStock);
+const StockBadge = memo(({ countInStock, threshold = 10, size = 'md', className = '' }) => {
+  const status = getStockStatus(countInStock, threshold);
   if (!status) return null;
 
   return (

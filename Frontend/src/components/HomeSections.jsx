@@ -11,7 +11,7 @@ import { useWishlist } from '../context/WishlistContext';
 import { useAuth } from '../context/authContext';
 import { getRecentViewed } from '../utils/recentlyViewed';
 import { formatPrice } from '../utils/format';
-import { fetchProducts, fetchProductById } from '../services/productsApi';
+import { fetchProducts } from '../services/productsApi';
 import { fetchActiveCampaigns } from '../services/campaignsApi';
 import { isNetworkError } from '../utils/apiError';
 import { logError } from '../utils/logger';

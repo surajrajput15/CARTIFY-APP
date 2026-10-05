@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2, RefreshCw, ShoppingCart, Users, Package, Truck, AlertTriangle, DollarSign } from 'lucide-react';
+import { RefreshCw, ShoppingCart, Users, Package, Truck, AlertTriangle, DollarSign } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { loadControlSnapshot } from '../../services/controlApi';
 import { isNetworkError } from '../../utils/apiError';

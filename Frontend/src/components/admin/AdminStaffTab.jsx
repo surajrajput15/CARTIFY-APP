@@ -163,10 +163,16 @@ function AdminStaffTab() {
             <input id="sf-password" type="text" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="min 8 characters" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" required />
           </div>
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1" htmlFor="sf-role">Role</label>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-1" htmlFor="sf-role">Role & Permission Level</label>
             <select id="sf-role" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white">
-              <option value="delivery">Delivery Partner</option>
-              <option value="warehouse">Warehouse Staff</option>
+              <option value="delivery">Delivery Partner (Courier App)</option>
+              <option value="warehouse">Warehouse Keeper (Inventory Portal)</option>
+              <option value="inventory_manager">Inventory Manager (Stock & Catalog)</option>
+              <option value="order_manager">Order Manager (Sales & Fulfillment)</option>
+              <option value="delivery_manager">Delivery Manager (Dispatch & Logistics)</option>
+              <option value="customer_support">Customer Support (Orders, Users, Reviews)</option>
+              <option value="analyst">Data Analyst (Analytics & Reports)</option>
+              <option value="admin">Operations Administrator (Full Ops Access)</option>
             </select>
           </div>
           <div>

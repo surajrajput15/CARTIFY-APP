@@ -6,22 +6,142 @@
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Title & Primary Meta Description -->
     <title>Cartify — Your Premium Shopping Destination</title>
-    <meta name="description" content="Cartify is your premium destination for top-quality electronics, fashion, accessories, furniture, beauty products, and more. Shop now with secure checkout." />
+    <meta name="description" content="Cartify is your premium destination for top-quality electronics, fashion, accessories, furniture, beauty products, and more. Shop now with secure Razorpay checkout." />
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://cartify-hub.vercel.app/" />
+    
+    <!-- Search Engine & Bot Directives -->
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    
+    <!-- Search Console & Bing Webmaster Verification Tags (Replace placeholder with your verification code) -->
+    <meta name="google-site-verification" content="GOOGLE_SEARCH_CONSOLE_VERIFICATION_KEY" />
+    <meta name="msvalidate.01" content="BING_WEBMASTER_VERIFICATION_KEY" />
+
+    <!-- Author, Creator & Entity Identity (E-E-A-T) -->
+    <meta name="author" content="Suraj Bhan Pratap Singh" />
+    <meta name="creator" content="Suraj Bhan Pratap Singh" />
+    <meta name="publisher" content="Suraj Bhan Pratap Singh" />
+    <meta name="developer" content="Suraj Bhan Pratap Singh" />
+    <meta name="job-title" content="Full Stack Software Engineer &amp; MERN Specialist" />
+    <meta name="application-name" content="Cartify" />
+    
+    <!-- LLM Context & Agent Discovery Link -->
+    <link rel="alternate" type="text/plain" href="/llms.txt" title="LLM Context for AI Engines" />
+
+    <!-- Performance & Core Web Vitals Optimization: Preconnect & DNS Prefetch -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://res.cloudinary.com" />
+    <link rel="preconnect" href="https://res.cloudinary.com" />
+    <link rel="dns-prefetch" href="https://cartify-api-10g3.onrender.com" />
+    <link rel="preconnect" href="https://cartify-api-10g3.onrender.com" />
+    <link rel="dns-prefetch" href="https://checkout.razorpay.com" />
+
+    <!-- PWA & Mobile Viewport Styling -->
     <meta name="theme-color" content="#0d9488" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Cartify" />
+
+    <!-- Open Graph Protocol (Facebook, LinkedIn, Discord, Telegram) -->
+    <meta property="og:site_name" content="Cartify" />
     <meta property="og:title" content="Cartify — Your Premium Shopping Destination" />
-    <meta property="og:description" content="Cartify is your premium destination for top-quality electronics, fashion, accessories, furniture, beauty products, and more." />
+    <meta property="og:description" content="Cartify is your premium destination for top-quality electronics, fashion, accessories, furniture, beauty products, and more. Built by Suraj Bhan Pratap Singh." />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://cartify-hub.vercel.app" />
-    <meta property="og:image" content="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?q=80&w=2070&auto=format&fit=crop" />
+    <meta property="og:url" content="https://cartify-hub.vercel.app/" />
+    <meta property="og:image" content="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?q=80&amp;w=2070&amp;auto=format&amp;fit=crop" />
+    <meta property="og:image:alt" content="Cartify Shopping Destination Catalog" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter / X Card Meta Tags -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Cartify — Your Premium Shopping Destination" />
     <meta name="twitter:description" content="Cartify is your premium destination for top-quality electronics, fashion, accessories, furniture, beauty products, and more." />
-    <meta name="twitter:image" content="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?q=80&w=2070&auto=format&fit=crop" />
+    <meta name="twitter:image" content="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?q=80&amp;w=2070&amp;auto=format&amp;fit=crop" />
+    <meta name="twitter:creator" content="@surajrajput15" />
+
+    <!-- Schema.org Comprehensive Linked Data Graph (AISEO, GEO & E-E-A-T) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://cartify-hub.vercel.app/#website",
+          "url": "https://cartify-hub.vercel.app/",
+          "name": "Cartify",
+          "description": "Cartify is an enterprise-grade full-stack e-commerce destination with real-time order tracking and secure checkout.",
+          "publisher": {
+            "@id": "https://cartify-hub.vercel.app/#organization"
+          },
+          "potentialAction": [
+            {
+              "@type": "SearchAction",
+              "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": "https://cartify-hub.vercel.app/?search={search_term_string}"
+              },
+              "query-input": "required name=search_term_string"
+            }
+          ]
+        },
+        {
+          "@type": "Organization",
+          "@id": "https://cartify-hub.vercel.app/#organization",
+          "name": "Cartify",
+          "url": "https://cartify-hub.vercel.app/",
+          "logo": "https://cartify-hub.vercel.app/favicon.svg",
+          "founder": {
+            "@id": "https://cartify-hub.vercel.app/#author"
+          },
+          "sameAs": [
+            "https://github.com/surajrajput15/CARTIFY-APP"
+          ]
+        },
+        {
+          "@type": "Person",
+          "@id": "https://cartify-hub.vercel.app/#author",
+          "name": "Suraj Bhan Pratap Singh",
+          "jobTitle": "Full Stack Software Engineer & MERN Specialist",
+          "url": "https://cartify-hub.vercel.app/about",
+          "email": "surajdona2005@gmail.com",
+          "sameAs": [
+            "https://www.linkedin.com/in/suraj-bhan-pratap-singh-891727293/",
+            "https://github.com/surajrajput15"
+          ],
+          "knowsAbout": [
+            "Full Stack Web Development",
+            "MERN Stack",
+            "React 19",
+            "Node.js",
+            "Express",
+            "MongoDB Atlas",
+            "Razorpay Payment Integration",
+            "Generative Engine Optimization",
+            "Answer Engine Optimization",
+            "Search Engine Optimization"
+          ]
+        },
+        {
+          "@type": "OnlineStore",
+          "@id": "https://cartify-hub.vercel.app/#store",
+          "name": "Cartify Online Store",
+          "url": "https://cartify-hub.vercel.app/",
+          "priceRange": "₹₹",
+          "currenciesAccepted": "INR",
+          "paymentAccepted": "Credit Card, Debit Card, UPI, Net Banking, Razorpay",
+          "parentOrganization": {
+            "@id": "https://cartify-hub.vercel.app/#organization"
+          }
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>

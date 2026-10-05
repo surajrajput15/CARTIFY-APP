@@ -123,14 +123,24 @@ router.patch('/:id', protect, admin, adminMutateGuard, auditLogMiddleware('UPDAT
   }
 });
 
-// ADMIN: delete category (products are NOT touched — taxonomy only)
+// ADMIN: delete category (guarded against breaking dependent products)
 router.delete('/:id', protect, admin, adminMutateGuard, auditLogMiddleware('DELETE_CATEGORY', 'Category'), async (req, res, next) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ message: 'Invalid category ID format' });
     }
-    const deleted = await Category.findByIdAndDelete(req.params.id);
-    if (!deleted) return res.status(404).json({ message: 'Category not found' });
+    const category = await Category.findById(req.params.id);
+    if (!category) return res.status(404).json({ message: 'Category not found' });
+
+    // Safety guard: prevent deletion if active products reference this category
+    const productCount = await Product.countDocuments({ category: category.name });
+    if (productCount > 0) {
+      return res.status(409).json({
+        message: `Cannot delete category "${category.name}" because ${productCount} product(s) are assigned to it. Please reassign them first.`
+      });
+    }
+
+    await Category.findByIdAndDelete(req.params.id);
     res.status(200).json({ message: 'Category deleted' });
   } catch (error) {
     logger.error({ err: error }, 'Category delete error');

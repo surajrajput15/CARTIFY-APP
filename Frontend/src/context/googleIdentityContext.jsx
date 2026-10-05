@@ -68,11 +68,13 @@ let credentialConsumed = false;
 export const GoogleIdentityProvider = ({ children }) => {
   const { login } = useAuth();
   const navigate = useNavigate();
-  // Pre-derive initial state — when no client ID is set we are permanently
-  // disabled (no script load, no init), and we know that synchronously.
-  const [status, setStatus] = useState(() =>
-    GOOGLE_CLIENT_ID ? 'loading' : 'disabled',
-  );
+  const [status, setStatus] = useState(() => {
+    if (!GOOGLE_CLIENT_ID) return 'disabled';
+    if (import.meta.env.DEV && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+      return 'ready';
+    }
+    return 'loading';
+  });
   // Track whether the GIS library has actually been initialized for this
   // provider instance — prevents StrictMode's double effect from calling
   // google.accounts.id.initialize() twice.
@@ -120,7 +122,6 @@ export const GoogleIdentityProvider = ({ children }) => {
     // In local dev, skip GSI script injection to prevent 403 Forbidden origin errors
     // from accounts.google.com/gsi/status when localhost is not whitelisted in Google Cloud.
     if (import.meta.env.DEV && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-      setStatus('ready');
       return;
     }
 
@@ -209,7 +210,7 @@ export const GoogleIdentityProvider = ({ children }) => {
       console.warn = originalConsoleWarn;
       cancelled = true;
     };
-  }, [login, navigate]);
+  }, [handleCredential]);
 
   const renderButton = useCallback((container) => {
     if (!container || !window.google?.accounts?.id?.renderButton) return;

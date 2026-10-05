@@ -5,7 +5,7 @@ const { logger } = require('../utils/logger');
 const router = express.Router();
 const User = require('../models/User');
 const Warehouse = require('../models/Warehouse');
-const { protect, admin } = require('../middleware/auth');
+const { protect, admin, requirePermission } = require('../middleware/auth');
 const { isOwnerEmail } = require('../utils/ownerValidator');
 const { auditLogMiddleware } = require('../middleware/auditLog');
 const { adminMutateGuard } = require('../utils/routeLimiters');
@@ -15,13 +15,24 @@ const { adminMutateGuard } = require('../utils/routeLimiters');
 // up via /auth/register (customer-only), so this is the ONLY way a non-customer
 // role legitimately appears in the system.
 
-const STAFF_ROLES = ['delivery', 'warehouse'];
+const STAFF_ROLES = [
+  'super_admin',
+  'admin',
+  'staff',
+  'inventory_manager',
+  'order_manager',
+  'delivery_manager',
+  'customer_support',
+  'analyst',
+  'delivery',
+  'warehouse'
+];
 const SAFE_SELECT = 'name email phone role isAdmin assignedWarehouseId createdAt';
 
 const isValidEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e || ''));
 
-// GET /admin/staff?role=delivery|warehouse|all — list all staff accounts.
-router.get('/', protect, admin, async (req, res, next) => {
+// GET /admin/staff?role=... — list all staff accounts.
+router.get('/', protect, admin, requirePermission('staff.view'), async (req, res, next) => {
   try {
     const filter = { role: { $in: STAFF_ROLES } };
     if (req.query.role && STAFF_ROLES.includes(req.query.role)) {
@@ -39,9 +50,9 @@ router.get('/', protect, admin, async (req, res, next) => {
   }
 });
 
-// POST /admin/staff — create a new staff account (delivery or warehouse).
-//   { name, email, password, role, phone?, warehouseId? (warehouse role) }
-router.post('/', protect, admin, adminMutateGuard, auditLogMiddleware('CREATE_STAFF', 'User'), async (req, res, next) => {
+// POST /admin/staff — create a new staff account.
+//   { name, email, password, role, phone?, warehouseId? }
+router.post('/', protect, admin, requirePermission('staff.manage'), adminMutateGuard, auditLogMiddleware('CREATE_STAFF', 'User'), async (req, res, next) => {
   try {
     const { name, email, password, role, phone, warehouseId } = req.body;
 
@@ -55,7 +66,7 @@ router.post('/', protect, admin, adminMutateGuard, auditLogMiddleware('CREATE_ST
       return res.status(400).json({ message: 'password must be at least 8 characters' });
     }
     if (!role || !STAFF_ROLES.includes(role)) {
-      return res.status(400).json({ message: 'role must be delivery or warehouse' });
+      return res.status(400).json({ message: `role must be one of: ${STAFF_ROLES.join(', ')}` });
     }
     if (role === 'warehouse' && !mongoose.Types.ObjectId.isValid(warehouseId)) {
       return res.status(400).json({ message: 'warehouseId is required for warehouse staff' });
@@ -74,6 +85,7 @@ router.post('/', protect, admin, adminMutateGuard, auditLogMiddleware('CREATE_ST
       email: String(email).trim().toLowerCase(),
       password: hashed,
       role,
+      isAdmin: role === 'admin' || role === 'super_admin',
       phone: phone || null,
       assignedWarehouseId: role === 'warehouse' ? warehouseId : null,
     });
@@ -95,7 +107,7 @@ router.post('/', protect, admin, adminMutateGuard, auditLogMiddleware('CREATE_ST
 
 // PATCH /admin/staff/:id — update role and/or warehouse assignment.
 //   { role?, warehouseId? }
-router.patch('/:id', protect, admin, adminMutateGuard, auditLogMiddleware('UPDATE_STAFF', 'User'), async (req, res, next) => {
+router.patch('/:id', protect, admin, requirePermission('staff.manage'), adminMutateGuard, auditLogMiddleware('UPDATE_STAFF', 'User'), async (req, res, next) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -104,12 +116,18 @@ router.patch('/:id', protect, admin, adminMutateGuard, auditLogMiddleware('UPDAT
     const user = await User.findById(id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
+    // Protect super_admin accounts
+    if (user.role === 'super_admin' && req.user.role !== 'super_admin') {
+      return res.status(403).json({ message: 'Forbidden: only a super_admin can modify super_admin accounts' });
+    }
+
     const set = {};
     if (req.body.role !== undefined) {
       if (!STAFF_ROLES.includes(req.body.role) && req.body.role !== 'customer') {
         return res.status(400).json({ message: 'Invalid role' });
       }
       set.role = req.body.role;
+      set.isAdmin = req.body.role === 'admin' || req.body.role === 'super_admin';
       if (req.body.role !== 'warehouse') set.assignedWarehouseId = null;
     }
     if (req.body.warehouseId !== undefined) {
@@ -138,7 +156,7 @@ router.patch('/:id', protect, admin, adminMutateGuard, auditLogMiddleware('UPDAT
 
 // DELETE /admin/staff/:id — demote to customer (never hard-delete an account
 // with history; keeps orders/activity referencable).
-router.delete('/:id', protect, admin, adminMutateGuard, auditLogMiddleware('DELETE_STAFF', 'User'), async (req, res, next) => {
+router.delete('/:id', protect, admin, requirePermission('staff.manage'), adminMutateGuard, auditLogMiddleware('DELETE_STAFF', 'User'), async (req, res, next) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -146,6 +164,10 @@ router.delete('/:id', protect, admin, adminMutateGuard, auditLogMiddleware('DELE
     }
     const user = await User.findById(id);
     if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (user.role === 'super_admin' || isOwnerEmail(user.email)) {
+      return res.status(403).json({ message: 'Cannot demote or delete a super_admin account' });
+    }
 
     await User.findByIdAndUpdate(id, { $set: { role: 'customer', assignedWarehouseId: null } });
     res.status(200).json({ message: 'Staff account demoted to customer' });

@@ -32,6 +32,7 @@ const WarehousePortal = lazy(() => import('./pages/WarehousePortal'));
 const OrderTrackingPage = lazy(() => import('./pages/OrderTrackingPage'));
 const OrderConfirmationPage = lazy(() => import('./pages/OrderConfirmationPage'));
 const FaqPage = lazy(() => import('./pages/FaqPage'));
+const AboutPage = lazy(() => import('./pages/AboutPage'));
 
 // F-49: per-route Suspense — a lazy chunk only swaps its own route element;
 // the navbar/footer shell never flashes away behind a whole-app spinner.
@@ -61,6 +62,7 @@ const OrderTrackingPageWithError = withErrorBoundary(OrderTrackingPage);
 const OrderConfirmationPageWithError = withErrorBoundary(OrderConfirmationPage);
 const AccessDeniedWithError = withErrorBoundary(AccessDenied);
 const FaqPageWithError = withErrorBoundary(FaqPage);
+const AboutPageWithError = withErrorBoundary(AboutPage);
 
 function NavigationBridge() {
   const navigate = useNavigate();
@@ -168,6 +170,7 @@ function App() {
                   }
                 />
                 <Route path="/faq" element={<FaqPageWithError />} />
+                <Route path="/about" element={<AboutPageWithError />} />
                 
                 {/* Access denied page - also reachable directly */}
                 <Route path="/access-denied" element={<AccessDeniedWithError />} />

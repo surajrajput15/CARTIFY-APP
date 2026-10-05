@@ -1,45 +1,42 @@
-import { ArrowLeft, Package, Database, Trash2, Lock } from 'lucide-react';
+import { ArrowLeft, Package, Database, Trash2 } from 'lucide-react';
 
 const AdminHeader = ({ onBack, onSeed, onClearAll, showDevActions = false }) => {
     const isProd = import.meta.env.PROD || import.meta.env.MODE === 'production';
 
     return (
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <div>
                 <button
                     onClick={onBack}
-                    className="flex items-center text-sm font-bold text-teal-600 hover:text-teal-700 mb-2 min-h-[44px] px-2 -ml-2 rounded-lg hover:bg-teal-50 transition-colors"
+                    className="flex items-center text-xs font-bold text-teal-600 hover:text-teal-700 mb-1 min-h-[36px] px-2 -ml-2 rounded-lg hover:bg-teal-50 transition-colors"
                 >
-                    <ArrowLeft size={16} className="mr-1" aria-hidden="true" /> Back to Store
+                    <ArrowLeft size={14} className="mr-1" aria-hidden="true" /> Back to Store
                 </button>
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 flex items-center gap-3">
-                    <Package className="text-teal-600 flex-shrink-0" size={28} aria-hidden="true" /> Admin Dashboard
+                <h1 className="text-xl sm:text-2xl font-black text-gray-900 flex items-center gap-2.5">
+                    <Package className="text-teal-600 flex-shrink-0" size={24} aria-hidden="true" /> Product Catalog Manager
                 </h1>
+                <p className="text-xs text-gray-500 mt-0.5">Manage SKU master data, pricing, inventory thresholds, and catalog visibility</p>
             </div>
-            <div className="flex flex-wrap gap-2 sm:gap-3">
-                {!isProd && showDevActions && onSeed && (
-                    <button
-                        onClick={onSeed}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 transition-colors min-h-[44px]"
-                    >
-                        <Database size={16} aria-hidden="true" /> Seed Demo Data
-                    </button>
-                )}
-                {!isProd && showDevActions && onClearAll && (
-                    <button
-                        onClick={onClearAll}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-lg font-bold text-sm hover:bg-red-700 transition-colors min-h-[44px]"
-                    >
-                        <Trash2 size={16} aria-hidden="true" /> Clear All
-                    </button>
-                )}
-                {isProd && (
-                    <span className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-500 bg-gray-50 rounded-lg">
-                        <Lock size={14} className="text-gray-500" aria-hidden="true" />
-                        Dev actions hidden in production
-                    </span>
-                )}
-            </div>
+            {!isProd && showDevActions && (
+                <div className="flex flex-wrap gap-2">
+                    {onSeed && (
+                        <button
+                            onClick={onSeed}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-lg font-bold text-xs transition-colors min-h-[38px]"
+                        >
+                            <Database size={14} aria-hidden="true" /> Seed Products
+                        </button>
+                    )}
+                    {onClearAll && (
+                        <button
+                            onClick={onClearAll}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 rounded-lg font-bold text-xs transition-colors min-h-[38px]"
+                        >
+                            <Trash2 size={14} aria-hidden="true" /> Clear DB
+                        </button>
+                    )}
+                </div>
+            )}
         </div>
     );
 };

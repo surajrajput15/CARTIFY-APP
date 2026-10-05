@@ -23,11 +23,13 @@ const cents = (n) => Math.max(0, Math.round(Number(n) || 0));
 
 // Record a ledger row. Pure append — never update, never delete.
 async function recordTransaction({
-  type, productId, warehouseId, variantKey = null, quantityDelta,
+  type, productId, warehouseId, variantKey = null, previousBalance = 0, quantityDelta,
   balanceAfter, transferId = null, oppositeWarehouseId = null, note = '', performedBy = null,
 }) {
   await StockTransaction.create({
-    type, productId, warehouseId, variantKey, quantityDelta,
+    type, productId, warehouseId, variantKey,
+    previousBalance: previousBalance !== undefined ? Math.max(0, previousBalance) : Math.max(0, balanceAfter - quantityDelta),
+    quantityDelta,
     balanceAfter,
     transferId,
     oppositeWarehouseId,
@@ -98,6 +100,7 @@ async function setWarehouseQuantity({ productId, warehouseId, variantKey = null,
       productId,
       warehouseId,
       variantKey: key,
+      previousBalance: before,
       quantityDelta: delta,
       balanceAfter: qty,
       note: note || '',
@@ -132,6 +135,7 @@ async function transferStock({
   }
 
   const dest = await InventoryItem.findOne({ productId, warehouseId: to, variantKey: key });
+  const destBefore = dest ? dest.quantity : 0;
 
   // Destination upsert
   if (dest) {
@@ -153,6 +157,7 @@ async function transferStock({
   await recordTransaction({
     type: 'transfer_out',
     productId, warehouseId: from, variantKey: key,
+    previousBalance: available,
     quantityDelta: -qty,
     balanceAfter: source.quantity,
     transferId, oppositeWarehouseId: to,
@@ -161,8 +166,9 @@ async function transferStock({
   await recordTransaction({
     type: 'transfer_in',
     productId, warehouseId: to, variantKey: key,
+    previousBalance: destBefore,
     quantityDelta: qty,
-    balanceAfter: dest ? dest.quantity + qty : qty,
+    balanceAfter: destBefore + qty,
     transferId, oppositeWarehouseId: from,
     note: note || '', performedBy,
   });

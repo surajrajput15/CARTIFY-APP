@@ -4,7 +4,7 @@ import { useAuth } from '../context/authContext';
 import {
   LayoutDashboard, Package, Tag, Warehouse, ShoppingBag, Ticket,
   Zap, Users, MessageSquare, Truck, BarChart3, ShieldCheck,
-  Bell, Activity, FileText, Settings, Menu, X, ChevronDown
+  Bell, Activity, FileText, Settings, Menu, X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { uploadImage } from '../services/productsApi';
@@ -93,6 +93,34 @@ const ADMIN_NAV_GROUPS = [
   },
 ];
 
+const TAB_PERMISSIONS = {
+  control: null, // Command center open to all operational staff/admins
+  products: 'products.view',
+  categories: 'products.view',
+  warehouses: 'inventory.view',
+  orders: 'orders.view',
+  coupons: 'coupons.view',
+  campaigns: 'coupons.view',
+  users: 'customers.view',
+  reviews: 'reviews.view',
+  deliveries: 'delivery.view',
+  analytics: 'analytics.view',
+  staff: 'staff.view',
+  notifications: null,
+  activity: 'audit_logs.view',
+  audit: 'audit_logs.view',
+  settings: 'settings.view',
+};
+
+const canAccessTab = (currentUser, tabId) => {
+  if (!currentUser) return false;
+  if (currentUser.isAdmin || currentUser.role === 'admin' || currentUser.role === 'super_admin') return true;
+  const required = TAB_PERMISSIONS[tabId];
+  if (!required) return true;
+  const userPerms = Array.isArray(currentUser.permissions) ? currentUser.permissions : [];
+  return userPerms.includes(required) || userPerms.includes('*');
+};
+
 const ADMIN_TABS = ADMIN_NAV_GROUPS.flatMap((g) => g.items.map((it) => it.id));
 
 const AdminPage = () => {
@@ -101,7 +129,16 @@ const AdminPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const { products, loading, fetchProducts, saveProduct, deleteProduct, seedProducts, clearAllProducts } = useAdminProducts();
+  const isPrivileged = Boolean(
+    user && (
+      user.isAdmin ||
+      user.role === 'admin' ||
+      user.role === 'super_admin' ||
+      ['inventory_manager', 'order_manager', 'delivery_manager', 'customer_support', 'analyst'].includes(user.role)
+    )
+  );
+
+  const { products, loading, fetchProducts, saveProduct, deleteProduct, toggleArchiveProduct, seedProducts, clearAllProducts } = useAdminProducts();
 
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -111,19 +148,19 @@ const AdminPage = () => {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const initialTab = searchParams.get('tab');
   const [adminTab, setAdminTab] = useState(
-    initialTab && ADMIN_TABS.includes(initialTab) ? initialTab : 'products'
+    initialTab && ADMIN_TABS.includes(initialTab) ? initialTab : 'control'
   );
 
   // URL-driven tab (?tab=users from the navbar admin menu).
   useEffect(() => {
     const tab = searchParams.get('tab');
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot URL sync
-    if (tab && tab !== adminTab) setAdminTab(ADMIN_TABS.includes(tab) ? tab : 'products');
+    if (tab && tab !== adminTab) setAdminTab(ADMIN_TABS.includes(tab) ? tab : 'control');
   }, [searchParams, adminTab]);
 
-  const handleAdminTabChange = (tab) => {
+  const handleAdminTabChange = (tab, extraParams = {}) => {
     setAdminTab(tab);
-    setSearchParams({ tab });
+    setSearchParams({ tab, ...extraParams });
     setMobileNavOpen(false);
   };
 
@@ -131,7 +168,7 @@ const AdminPage = () => {
   const [filterCategory, setFilterCategory] = useState('');
 
   useEffect(() => {
-    if (!user || !user.isAdmin) {
+    if (!user || !isPrivileged) {
       navigate('/');
       return;
     }
@@ -141,7 +178,7 @@ const AdminPage = () => {
           toast.error('Failed to load products');
         }
       });
-  }, [user, navigate, fetchProducts]);
+  }, [user, isPrivileged, navigate, fetchProducts]);
 
   const filteredProducts = useMemo(
     () => filterProducts(products, { searchTerm, filterCategory }),
@@ -271,6 +308,15 @@ const AdminPage = () => {
     setShowForm(true);
   };
 
+  const handleToggleArchive = async (product) => {
+    try {
+      await toggleArchiveProduct(product);
+      toast.success(product.status === 'archived' ? 'Product reactivated' : 'Product archived safely');
+    } catch {
+      toast.error('Failed to change product status');
+    }
+  };
+
   const handleDelete = (id) => {
     setConfirmModal({
       show: true,
@@ -343,7 +389,7 @@ const AdminPage = () => {
     });
   };
 
-  if (!user || !user.isAdmin) return null;
+  if (!user || !isPrivileged) return null;
 
   const currentTabMeta = ADMIN_NAV_GROUPS.flatMap((g) => g.items.map((it) => ({ ...it, group: g.group })))
     .find((it) => it.id === adminTab) || { id: adminTab, label: adminTab, group: 'System' };
@@ -403,34 +449,38 @@ const AdminPage = () => {
             </div>
 
             <div className="space-y-4">
-              {ADMIN_NAV_GROUPS.map((g) => (
-                <div key={g.group}>
-                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500 px-2 mb-1.5">
-                    {g.group}
-                  </p>
-                  <div className="space-y-1">
-                    {g.items.map((it) => {
-                      const Icon = it.icon;
-                      const active = adminTab === it.id;
-                      return (
-                        <button
-                          key={it.id}
-                          type="button"
-                          onClick={() => handleAdminTabChange(it.id)}
-                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all min-h-[44px] ${
-                            active
-                              ? 'bg-teal-600 text-white font-bold shadow-md'
-                              : 'text-gray-700 hover:bg-teal-50 hover:text-teal-700'
-                          }`}
-                        >
-                          <Icon size={18} className={active ? 'text-white' : 'text-gray-500'} />
-                          <span className="truncate">{it.label}</span>
-                        </button>
-                      );
-                    })}
+              {ADMIN_NAV_GROUPS.map((g) => {
+                const accessibleItems = g.items.filter((it) => canAccessTab(user, it.id));
+                if (accessibleItems.length === 0) return null;
+                return (
+                  <div key={g.group}>
+                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500 px-2 mb-1.5">
+                      {g.group}
+                    </p>
+                    <div className="space-y-1">
+                      {accessibleItems.map((it) => {
+                        const Icon = it.icon;
+                        const active = adminTab === it.id;
+                        return (
+                          <button
+                            key={it.id}
+                            type="button"
+                            onClick={() => handleAdminTabChange(it.id)}
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all min-h-[44px] ${
+                              active
+                                ? 'bg-teal-600 text-white font-bold shadow-md'
+                                : 'text-gray-700 hover:bg-teal-50 hover:text-teal-700'
+                            }`}
+                          >
+                            <Icon size={18} className={active ? 'text-white' : 'text-gray-500'} />
+                            <span className="truncate">{it.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -449,35 +499,39 @@ const AdminPage = () => {
           </div>
 
           <nav className="space-y-4">
-            {ADMIN_NAV_GROUPS.map((g) => (
-              <div key={g.group}>
-                <p className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500 px-3 mb-1">
-                  {g.group}
-                </p>
-                <div className="space-y-0.5">
-                  {g.items.map((it) => {
-                    const Icon = it.icon;
-                    const active = adminTab === it.id;
-                    return (
-                      <button
-                        key={it.id}
-                        type="button"
-                        onClick={() => handleAdminTabChange(it.id)}
-                        aria-current={active ? 'page' : undefined}
-                        className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors min-h-[38px] ${
-                          active
-                            ? 'bg-teal-600 text-white font-bold shadow-xs'
-                            : 'text-gray-600 hover:bg-teal-50/70 hover:text-teal-700'
-                        }`}
-                      >
-                        <Icon size={15} className={active ? 'text-white shrink-0' : 'text-gray-500 shrink-0'} />
-                        <span className="truncate">{it.label}</span>
-                      </button>
-                    );
-                  })}
+            {ADMIN_NAV_GROUPS.map((g) => {
+              const accessibleItems = g.items.filter((it) => canAccessTab(user, it.id));
+              if (accessibleItems.length === 0) return null;
+              return (
+                <div key={g.group}>
+                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500 px-3 mb-1">
+                    {g.group}
+                  </p>
+                  <div className="space-y-0.5">
+                    {accessibleItems.map((it) => {
+                      const Icon = it.icon;
+                      const active = adminTab === it.id;
+                      return (
+                        <button
+                          key={it.id}
+                          type="button"
+                          onClick={() => handleAdminTabChange(it.id)}
+                          aria-current={active ? 'page' : undefined}
+                          className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors min-h-[38px] ${
+                            active
+                              ? 'bg-teal-600 text-white font-bold shadow-xs'
+                              : 'text-gray-600 hover:bg-teal-50/70 hover:text-teal-700'
+                          }`}
+                        >
+                          <Icon size={15} className={active ? 'text-white shrink-0' : 'text-gray-500 shrink-0'} />
+                          <span className="truncate">{it.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </nav>
         </aside>
 
@@ -485,7 +539,7 @@ const AdminPage = () => {
         <main className="flex-1 min-w-0 w-full">
           {adminTab === 'products' ? (
             <>
-              <AdminHeader onBack={() => navigate('/')} onSeed={handleSeed} onClearAll={handleClearAll} showDevActions={true} />
+              <AdminHeader onBack={() => navigate('/')} onSeed={handleSeed} onClearAll={handleClearAll} showDevActions={false} />
 
               <AdminFilterBar
                 searchTerm={searchTerm}
@@ -534,7 +588,7 @@ const AdminPage = () => {
                   onClearFilters={() => { setSearchTerm(''); setFilterCategory(''); }}
                 />
               ) : (
-                <ProductTable products={filteredProducts} onEdit={handleEdit} onDelete={handleDelete} />
+                <ProductTable products={filteredProducts} onEdit={handleEdit} onDelete={handleDelete} onToggleArchive={handleToggleArchive} />
               )}
             </>
           ) : (

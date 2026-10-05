@@ -4,7 +4,8 @@ const router = express.Router();
 const Order = require('../models/Order');
 const User = require('../models/User');
 const mongoose = require('mongoose');
-const { protect, admin, delivery } = require('../middleware/auth');
+const { protect, admin, delivery, requirePermission } = require('../middleware/auth');
+const { hasPermission } = require('../utils/permissions');
 const { auditLogMiddleware } = require('../middleware/auditLog');
 const { adminMutateGuard, staffActionGuard } = require('../utils/routeLimiters');
 const { orderStatusWorkflow, isValidOrderTransition, isValidDeliveryTransition, canCancelOrder, canFailDelivery } = require('../utils/orderStatus');
@@ -48,13 +49,62 @@ router.get('/myorders/:userId', protect, async (req, res, next) => {
 
 const ORDER_STATUSES = Object.keys(orderStatusWorkflow);
 
-// GET ALL ORDERS (Admin) - paginated, optional status filter, with customer info
-router.get('/admin', protect, admin, async (req, res, next) => {
+// GET ALL ORDERS (Admin) - paginated, rich search & operational filters, with customer & courier info
+router.get('/admin', protect, admin, requirePermission('orders.view'), async (req, res, next) => {
     try {
-        const { status, page, limit } = req.query;
+        const { status, paymentStatus, deliveryStatus, stockShortfall, search, dateFrom, dateTo, page, limit } = req.query;
         const query = {};
+
         if (status && status !== 'all' && ORDER_STATUSES.includes(status)) {
             query.status = status;
+        }
+
+        if (paymentStatus && ['Pending', 'Paid', 'Refunded'].includes(paymentStatus)) {
+            query.paymentStatus = paymentStatus;
+        }
+
+        if (deliveryStatus && deliveryStatus !== 'all') {
+            query.deliveryStatus = deliveryStatus;
+        }
+
+        if (stockShortfall === 'true') {
+            query.stockShortfall = true;
+        }
+
+        if (dateFrom || dateTo) {
+            query.createdAt = {};
+            if (dateFrom) query.createdAt.$gte = new Date(dateFrom);
+            if (dateTo) {
+                const end = new Date(dateTo);
+                end.setHours(23, 59, 59, 999);
+                query.createdAt.$lte = end;
+            }
+        }
+
+        const trimmedSearch = (search || '').toString().trim();
+        if (trimmedSearch) {
+            const escaped = trimmedSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const rx = new RegExp(escaped, 'i');
+            const orConditions = [
+                { 'shippingAddress.fullName': rx },
+                { 'shippingAddress.phone': rx },
+                { razorpayPaymentId: rx },
+                { razorpayOrderId: rx }
+            ];
+
+            if (mongoose.Types.ObjectId.isValid(trimmedSearch)) {
+                orConditions.push({ _id: new mongoose.Types.ObjectId(trimmedSearch) });
+            }
+
+            const matchedUsers = await User.find({
+                $or: [{ name: rx }, { email: rx }]
+            }).select('_id').limit(50).lean();
+
+            if (matchedUsers.length > 0) {
+                orConditions.push({ userId: { $in: matchedUsers.map(u => u._id) } });
+            }
+
+            query.$or = orConditions;
         }
 
         const pageNum = Math.max(1, parseInt(page) || 1);
@@ -63,7 +113,8 @@ router.get('/admin', protect, admin, async (req, res, next) => {
 
         const [orders, total] = await Promise.all([
             Order.find(query)
-                .populate('userId', 'name email')
+                .populate('userId', 'name email phone')
+                .populate('deliveryPartnerId', 'name phone email role')
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limitNum)
@@ -87,7 +138,7 @@ router.get('/admin', protect, admin, async (req, res, next) => {
 });
 
 // UPDATE ORDER STATUS (Admin) - enforced lifecycle transitions + audit.
-router.patch('/:id/status', protect, admin, auditLogMiddleware('UPDATE_ORDER_STATUS', 'Order'), async (req, res) => {
+router.patch('/:id/status', protect, admin, requirePermission('orders.update'), auditLogMiddleware('UPDATE_ORDER_STATUS', 'Order'), async (req, res) => {
     try {
         const { status } = req.body;
         if (!ORDER_STATUSES.includes(status)) {
@@ -131,7 +182,7 @@ router.patch('/:id/status', protect, admin, auditLogMiddleware('UPDATE_ORDER_STA
  * POST /api/orders/:id/assign-delivery
  * Admin only - Assign delivery partner to order
  */
-router.post('/:id/assign-delivery', protect, admin, adminMutateGuard, auditLogMiddleware('ASSIGN_DELIVERY', 'Order'), async (req, res, next) => {
+router.post('/:id/assign-delivery', protect, admin, requirePermission('delivery.assign'), adminMutateGuard, auditLogMiddleware('ASSIGN_DELIVERY', 'Order'), async (req, res, next) => {
     try {
         const { deliveryPartnerId } = req.body;
 
@@ -809,11 +860,11 @@ router.get('/:id', protect, async (req, res, next) => {
 
         const orderUserId = order.userId?._id ? order.userId._id.toString() : order.userId?.toString();
         const isOwner = orderUserId === req.user._id.toString();
-        const isAdmin = Boolean(req.user.isAdmin);
+        const hasOrderPerm = Boolean(req.user.isAdmin) || hasPermission(req.user, 'orders.view');
         const deliveryPartnerId = order.deliveryPartnerId?._id ? order.deliveryPartnerId._id.toString() : order.deliveryPartnerId?.toString();
         const isAssignedDelivery = deliveryPartnerId === req.user._id.toString();
 
-        if (!isOwner && !isAdmin && !isAssignedDelivery) {
+        if (!isOwner && !hasOrderPerm && !isAssignedDelivery) {
             return res.status(403).json({ message: "Not authorized to view this order" });
         }
 

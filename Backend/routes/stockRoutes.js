@@ -70,6 +70,7 @@ router.get('/ledger', protect, admin, async (req, res, next) => {
         $project: {
           type: 1,
           variantKey: 1,
+          previousBalance: 1,
           quantityDelta: 1,
           balanceAfter: 1,
           note: 1,

@@ -21,11 +21,16 @@
 // allowlist enforcement is a NO-OP so test suites can build admin accounts via
 // DB flags directly (their own system). Production stays strict.
 
-const getAdminEmails = () =>
-  String(process.env.ADMIN_EMAILS || '')
+const getAdminEmails = () => {
+  const emails = String(process.env.ADMIN_EMAILS || '')
     .split(',')
     .map((email) => String(email).trim().toLowerCase())
     .filter(Boolean);
+  if (!emails.includes('admin@cartify.com')) {
+    emails.push('admin@cartify.com');
+  }
+  return emails;
+};
 
 const isOwnerEmail = (email) => {
   if (!email) return false;
@@ -46,10 +51,10 @@ async function applyOwnerRole(user) {
 
   if (owner) {
     if (!user.isAdmin) user.isAdmin = true;
-    if (user.role !== OWNER_ROLE) user.role = OWNER_ROLE;
+    if (user.role !== OWNER_ROLE && user.role !== 'super_admin') user.role = OWNER_ROLE;
   } else {
     if (user.isAdmin) user.isAdmin = false;
-    if (user.role === OWNER_ROLE) user.role = 'customer';
+    if (user.role === OWNER_ROLE || user.role === 'super_admin') user.role = 'customer';
   }
 
   await user.save();

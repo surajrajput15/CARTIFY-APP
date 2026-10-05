@@ -20,6 +20,17 @@ export const ORDER_STATUSES = [
 
 export const SUPPORT_EMAIL = 'support@cartify.com';
 
+// Author & creator canonical identity (E-E-A-T & indexing consistency)
+export const AUTHOR_INFO = {
+  name: 'Suraj Bhan Pratap Singh',
+  jobTitle: 'Full Stack Software Engineer & MERN Specialist',
+  email: 'surajdona2005@gmail.com',
+  github: 'https://github.com/surajrajput15',
+  repo: 'https://github.com/surajrajput15/CARTIFY-APP',
+  linkedin: 'https://www.linkedin.com/in/suraj-bhan-pratap-singh-891727293/',
+  website: 'https://cartify-hub.vercel.app',
+};
+
 // Razorpay checkout display details (business identity shown in the modal)
 export const RAZORPAY_DISPLAY = {
   name: 'Cartify',

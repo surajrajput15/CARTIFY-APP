@@ -14,7 +14,7 @@
 [![Vercel](https://img.shields.io/badge/Frontend-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://cartify-hub.vercel.app/)
 [![Render](https://img.shields.io/badge/Backend-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://cartify-api-10g3.onrender.com/)
 
-🌐 **[Live App](https://cartify-hub.vercel.app/)** · 📘 **[API Docs](#-api-endpoints)** · 🐛 **[Report Bug](https://github.com/surajrajput999/CARTIFY-APP/issues)** · ⭐ **[Star on GitHub](https://github.com/surajrajput999/CARTIFY-APP)**
+🌐 **[Live App](https://cartify-hub.vercel.app/)** · 📘 **[API Docs](#-api-endpoints)** · 🐛 **[Report Bug](https://github.com/surajrajput15/CARTIFY-APP/issues)** · ⭐ **[Star on GitHub](https://github.com/surajrajput15/CARTIFY-APP)**
 
 ---
 
@@ -52,10 +52,10 @@
 - **Role-based Authorization** — Admin and user route separation with JWT-protected middleware
 - **Performance Optimization** — Lazy-loaded pages and images, responsive layout, and reduced motion support
 - **Accessibility** — ARIA labels, keyboard navigation, screen reader support, and accessible forms
-- **SEO** — Meta tags, semantic HTML structure, and optimized page load
+- **Modern Search & AI Discovery** — Complete AEO, GEO, LLMO (`llms.txt`), AISEO (Schema.org JSON-LD graph), Google E-E-A-T framework compliance, and technical SEO (`sitemap.xml`, `robots.txt`)
 - **Production Deployment** — Frontend on Vercel, backend on Render, database on MongoDB Atlas
 
-> 🧑‍💻 Built by **Suraj Bhan Pratap Singh** as a portfolio project to demonstrate full-stack development, authentication flows, payment gateway integration, and production deployment on Vercel + Render.
+> 🧑‍💻 Designed and engineered by **Suraj Bhan Pratap Singh** (Full Stack Software Engineer & MERN Specialist) as a production-grade portfolio platform demonstrating scalable full-stack development, cryptographic payment gateway verification, and AI-era internet indexing.
 
 ---
 
@@ -65,6 +65,7 @@ Cartify follows a sprint-based engineering process focused on building productio
 
 | Document | Description |
 |----------|-------------|
+| [Search Console & Indexing Guide](Docs/SEARCH-CONSOLE-GUIDE.md) | Step-by-step submission for Google Search Console, Bing Webmaster, AEO & AI crawlers |
 | [Phase 3 — Engineering for Production](Docs/PHASE-03-ENGINEERING-FOR-PRODUCTION.md) | Engineering approach, architecture decisions, and production standards |
 | [Phase 3 Audit](Docs/PHASE-03-AUDIT.md) | Security, performance, and accessibility audit results |
 | [Phase 4 — QA & Reliability](Docs/PHASE-04-RELIABILITY.md) | Automated tests, cart sync, Cloudinary storage & a11y hardening |
@@ -353,7 +354,7 @@ graph TD
 ### 1️⃣ Clone & Install
 
 ```bash
-git clone https://github.com/surajrajput999/CARTIFY-APP.git
+git clone https://github.com/surajrajput15/CARTIFY-APP.git
 cd CARTIFY-APP
 
 # Install frontend dependencies
@@ -545,10 +546,11 @@ curl http://localhost:5000/health
 
 ## 📬 Contact
 
-**Suraj Bhan Pratap Singh**
+**Suraj Bhan Pratap Singh**  
+*Full Stack Software Engineer & MERN Specialist*
 
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/suraj-bhan-pratap-singh-891727293/)
-[![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/surajrajput999)
+[![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/surajrajput15)
 [![Email](https://img.shields.io/badge/Email-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:surajdona2005@gmail.com)
 
 ---

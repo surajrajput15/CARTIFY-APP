@@ -1,5 +1,21 @@
+# ==============================================================================
+# Cartify (cartify-hub.vercel.app) Robots Policy
+# Optimized for Web Search Engines, Answer Engines & LLM Web Agents
+# ==============================================================================
+
 User-agent: *
 Allow: /
+Allow: /about
+Allow: /faq
+Allow: /cart
+Allow: /wishlist
+Allow: /login
+Allow: /product/
+Allow: /llms.txt
+Allow: /llms-full.txt
+Allow: /sitemap.xml
+
+# Protected administrative and authenticated customer routes
 Disallow: /admin
 Disallow: /admin/
 Disallow: /delivery
@@ -11,4 +27,56 @@ Disallow: /profile/
 Disallow: /checkout
 Disallow: /checkout/
 Disallow: /order-confirmation
+Disallow: /order-confirmation/
 Disallow: /reset-password
+Disallow: /access-denied
+
+# ------------------------------------------------------------------------------
+# Explicit Directives for AI, LLM & Answer Engine Crawlers
+# (AEO, GEO, LLMO optimization)
+# ------------------------------------------------------------------------------
+User-agent: GPTBot
+Allow: /
+Disallow: /admin/
+Disallow: /delivery/
+Disallow: /warehouse/
+Disallow: /profile/
+Disallow: /checkout/
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /admin/
+Disallow: /delivery/
+Disallow: /warehouse/
+Disallow: /profile/
+Disallow: /checkout/
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /admin/
+Disallow: /delivery/
+Disallow: /warehouse/
+Disallow: /profile/
+Disallow: /checkout/
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
+# Sitemap Location
+Sitemap: https://cartify-hub.vercel.app/sitemap.xml
+Host: https://cartify-hub.vercel.app

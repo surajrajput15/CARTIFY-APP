@@ -5,7 +5,7 @@ const User = require('../models/User');
 const Order = require('../models/Order');
 const Address = require('../models/Address');
 const UserActivity = require('../models/UserActivity');
-const { protect, admin } = require('../middleware/auth');
+const { protect, admin, requirePermission } = require('../middleware/auth');
 const { isOwnerEmail, applyOwnerRole, ownerOnly } = require('../utils/ownerValidator');
 const { auditLogMiddleware } = require('../middleware/auditLog');
 
@@ -32,7 +32,7 @@ const parseLimit = (v, d = 20, max = 50) => {
 // Only customers are listed (staff/warehouse accounts are managed via their own
 // portals); the OWNER is listed too (role: admin) so the single-admin can see
 // their own row — but the owner can never be blocked (ownerOnly guard below).
-router.get('/', protect, admin, async (req, res, next) => {
+router.get('/', protect, admin, requirePermission('customers.view'), async (req, res, next) => {
     try {
         const page = Math.max(1, parseInt(req.query.page, 10) || 1);
         const limit = parseLimit(req.query.limit);
@@ -72,7 +72,7 @@ router.get('/', protect, admin, async (req, res, next) => {
 // Includes: profile, order stats, addresses, last login, login history.
 // Passwords / OTP / refresh tokens are never returned (SAFE_SELECT + no
 // password field on the login-history query).
-router.get('/:id', protect, admin, async (req, res, next) => {
+router.get('/:id', protect, admin, requirePermission('customers.view'), async (req, res, next) => {
     try {
         const { id } = req.params;
         if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -120,7 +120,7 @@ router.get('/:id', protect, admin, async (req, res, next) => {
 // OWNER-ONLY: only the owner emailmay change customer status. The owner can
 // NEVER be targeted (isOwnerEmail guard), and the requestor can never target
 // themselves (`req.user._id === id` guard).
-router.patch('/:id/status', protect, admin, ownerOnly, auditLogMiddleware('UPDATE_USER_STATUS', 'User'), async (req, res, next) => {
+router.patch('/:id/status', protect, admin, requirePermission('customers.suspend'), ownerOnly, auditLogMiddleware('UPDATE_USER_STATUS', 'User'), async (req, res, next) => {
     try {
         const { id } = req.params;
         const { action } = req.body || {};
@@ -179,7 +179,7 @@ router.patch('/:id/status', protect, admin, ownerOnly, auditLogMiddleware('UPDAT
 });
 
 // GET /api/v1/admin/users/:id/login-history — full AUTH_LOGIN history (paginated)
-router.get('/:id/login-history', protect, admin, async (req, res, next) => {
+router.get('/:id/login-history', protect, admin, requirePermission('customers.view'), async (req, res, next) => {
     try {
         const { id } = req.params;
         const page = Math.max(1, parseInt(req.query.page, 10) || 1);

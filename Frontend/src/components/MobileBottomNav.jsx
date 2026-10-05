@@ -13,7 +13,12 @@ const MobileBottomNav = () => {
   const cartCount = (cart || []).reduce((s, it) => s + (Number(it.quantity) || 1), 0);
 
   const isDelivery = user?.role === 'delivery' || user?.role === 'driver';
-  const isAdmin = user?.isAdmin || user?.role === 'admin';
+  const isAdmin = Boolean(
+    user?.isAdmin ||
+    user?.role === 'admin' ||
+    user?.role === 'super_admin' ||
+    ['inventory_manager', 'order_manager', 'delivery_manager', 'customer_support', 'analyst'].includes(user?.role)
+  );
   // NavLink matches pathname only, so on "/" both Home and Categories would
   // appear active. Use the ?category= query to keep exactly one tab active.
   const hasCategoryQuery = useLocation().search.includes('category');
@@ -51,9 +56,17 @@ const MobileBottomNav = () => {
     );
   } else if (isAdmin) {
     items.push(
-      <NavLink key="admin" to="/admin" className={({ isActive }) => `${base} ${isActive ? active : inactive}`} aria-label="Admin dashboard">
-        <Shield size={20} aria-hidden="true" />
-        <span>Admin</span>
+      <NavLink
+        key="admin"
+        to="/admin"
+        className={({ isActive }) => `${base} ${isActive ? 'text-indigo-700 font-bold shadow-[inset_0_2px_0_0_#4338ca]' : 'text-indigo-600 hover:text-indigo-700'}`}
+        aria-label="Admin command center"
+      >
+        <span className="relative">
+          <Shield size={20} aria-hidden="true" />
+          <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+        </span>
+        <span className="font-semibold">Admin</span>
       </NavLink>
     );
   }

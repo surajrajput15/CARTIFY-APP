@@ -56,7 +56,7 @@ const ProductFormModal = ({ form, setForm, saving, isEditing, onImageUpload, onS
       </h2>
       <form onSubmit={handleSubmit} aria-busy={saving} className="space-y-4">
         <div>
-          <label htmlFor="product-title" className="sr-only">Product title</label>
+          <label htmlFor="product-title" className="block text-xs font-bold text-gray-700 uppercase mb-1">Product Title *</label>
           <Input
             id="product-title"
             type="text"
@@ -68,65 +68,159 @@ const ProductFormModal = ({ form, setForm, saving, isEditing, onImageUpload, onS
             aria-label="Product Title"
           />
         </div>
-        <div>
-          <label htmlFor="product-price" className="sr-only">Price in INR</label>
-          <Input
-            id="product-price"
-            type="number"
-            step="0.01"
-            placeholder="Price (₹)"
-            required
-            value={form.price}
-            onChange={(e) => setForm({ ...form, price: e.target.value })}
-            className="w-full px-4 py-3 rounded-xl border-gray-200 min-h-[44px]"
-            aria-label="Price"
-          />
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="product-brand" className="block text-xs font-bold text-gray-700 uppercase mb-1">Brand</label>
+            <Input
+              id="product-brand"
+              type="text"
+              placeholder="e.g. Nike, Apple"
+              value={form.brand || ''}
+              onChange={(e) => setForm({ ...form, brand: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl border-gray-200 min-h-[44px]"
+              aria-label="Brand"
+            />
+          </div>
+          <div>
+            <label htmlFor="product-sku" className="block text-xs font-bold text-gray-700 uppercase mb-1">Base SKU</label>
+            <Input
+              id="product-sku"
+              type="text"
+              placeholder="e.g. PROD-001"
+              value={form.sku || ''}
+              onChange={(e) => setForm({ ...form, sku: e.target.value.toUpperCase() })}
+              className="w-full px-4 py-3 rounded-xl border-gray-200 min-h-[44px] uppercase font-mono text-xs"
+              aria-label="SKU"
+            />
+          </div>
         </div>
-        <div>
-          <label htmlFor="product-stock" className="sr-only">Stock quantity</label>
-          <Input
-            id="product-stock"
-            type="number"
-            min="0"
-            step="1"
-            placeholder="Stock Quantity"
-            required
-            disabled={hasVariants}
-            value={hasVariants ? sumStock(variants) : form.countInStock}
-            onChange={(e) => setForm({ ...form, countInStock: e.target.value })}
-            className="w-full px-4 py-3 rounded-xl border-gray-200 min-h-[44px] disabled:bg-gray-100 disabled:text-gray-500"
-            aria-label="Stock Quantity"
-          />
-          {hasVariants && (
-            <p className="text-xs text-gray-500 mt-1">Total stock is the sum of variant stock.</p>
-          )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="product-price" className="block text-xs font-bold text-gray-700 uppercase mb-1">Regular Price (₹) *</label>
+            <Input
+              id="product-price"
+              type="number"
+              step="0.01"
+              placeholder="Price (₹)"
+              required
+              value={form.price}
+              onChange={(e) => setForm({ ...form, price: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl border-gray-200 min-h-[44px]"
+              aria-label="Price"
+            />
+          </div>
+          <div>
+            <label htmlFor="product-sale-price" className="block text-xs font-bold text-gray-700 uppercase mb-1">Sale Price (₹)</label>
+            <Input
+              id="product-sale-price"
+              type="number"
+              step="0.01"
+              placeholder="Optional discount price"
+              value={form.salePrice || ''}
+              onChange={(e) => setForm({ ...form, salePrice: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl border-gray-200 min-h-[44px]"
+              aria-label="Sale Price"
+            />
+            {Number(form.salePrice) > 0 && Number(form.price) > 0 && Number(form.salePrice) >= Number(form.price) && (
+              <p className="text-[11px] text-red-500 mt-1">Sale price must be less than regular price.</p>
+            )}
+          </div>
         </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="product-stock" className="block text-xs font-bold text-gray-700 uppercase mb-1">Stock Quantity *</label>
+            <Input
+              id="product-stock"
+              type="number"
+              min="0"
+              step="1"
+              placeholder="Stock Quantity"
+              required
+              disabled={hasVariants}
+              value={hasVariants ? sumStock(variants) : form.countInStock}
+              onChange={(e) => setForm({ ...form, countInStock: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl border-gray-200 min-h-[44px] disabled:bg-gray-100 disabled:text-gray-500"
+              aria-label="Stock Quantity"
+            />
+            {hasVariants && (
+              <p className="text-xs text-gray-500 mt-1">Total stock is the sum of variant stock.</p>
+            )}
+          </div>
+          <div>
+            <label htmlFor="product-threshold" className="block text-xs font-bold text-gray-700 uppercase mb-1">Low-Stock Alert Level</label>
+            <Input
+              id="product-threshold"
+              type="number"
+              min="0"
+              step="1"
+              placeholder="Alert threshold (e.g. 5)"
+              value={form.lowStockThreshold ?? 5}
+              onChange={(e) => setForm({ ...form, lowStockThreshold: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl border-gray-200 min-h-[44px]"
+              aria-label="Low Stock Threshold"
+            />
+          </div>
+        </div>
+
         <div>
-          <label htmlFor="product-description" className="sr-only">Product description</label>
+          <label htmlFor="product-description" className="block text-xs font-bold text-gray-700 uppercase mb-1">Description *</label>
           <textarea
             id="product-description"
-            placeholder="Description"
+            placeholder="Detailed product description"
             required
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             rows={3}
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-teal-500 focus:border-teal-500"
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-teal-500 focus:border-teal-500 text-sm"
             aria-label="Description"
           />
         </div>
-        <div>
-          <label htmlFor="product-category" className="sr-only">Product category</label>
-          <select
-            id="product-category"
-            value={form.category}
-            onChange={(e) => setForm({ ...form, category: e.target.value })}
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-teal-500 focus:border-teal-500 min-h-[44px]"
-            aria-label="Category"
-          >
-            {PRODUCT_CATEGORIES.map((c) => (
-              <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
-            ))}
-          </select>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="product-category" className="block text-xs font-bold text-gray-700 uppercase mb-1">Category *</label>
+            <select
+              id="product-category"
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-teal-500 focus:border-teal-500 min-h-[44px] text-sm bg-white"
+              aria-label="Category"
+            >
+              {PRODUCT_CATEGORIES.map((c) => (
+                <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="product-status" className="block text-xs font-bold text-gray-700 uppercase mb-1">Status</label>
+            <select
+              id="product-status"
+              value={form.status || 'active'}
+              onChange={(e) => setForm({ ...form, status: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-teal-500 focus:border-teal-500 min-h-[44px] text-sm bg-white"
+              aria-label="Status"
+            >
+              <option value="active">Active (Visible)</option>
+              <option value="draft">Draft (Hidden)</option>
+              <option value="archived">Archived</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 pt-1">
+          <input
+            id="product-featured"
+            type="checkbox"
+            checked={Boolean(form.isFeatured)}
+            onChange={(e) => setForm({ ...form, isFeatured: e.target.checked })}
+            className="w-4 h-4 text-teal-600 rounded border-gray-300 focus:ring-teal-500"
+          />
+          <label htmlFor="product-featured" className="text-xs font-bold text-gray-700 cursor-pointer">
+            Mark as Featured Product (Highlights on Homepage)
+          </label>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Product Image</label>

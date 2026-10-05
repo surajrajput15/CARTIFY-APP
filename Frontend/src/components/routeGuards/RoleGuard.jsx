@@ -43,8 +43,13 @@ function RoleGuard({ allowedRoles, children }) {
   }
 
   // Authenticated but wrong role (only enforced when roles are specified)
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <AccessDenied />;
+  if (allowedRoles) {
+    const isAdminRoute = allowedRoles.includes('admin');
+    const isUserAdmin = Boolean(user.isAdmin || user.role === 'admin' || user.role === 'super_admin');
+    const isAllowed = allowedRoles.includes(user.role) || (isAdminRoute && isUserAdmin);
+    if (!isAllowed) {
+      return <AccessDenied />;
+    }
   }
 
   return children;

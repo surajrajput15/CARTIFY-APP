@@ -36,6 +36,12 @@ const stockTransactionSchema = new mongoose.Schema({
         type: Number,
         required: true
     },
+    // Balance at this warehouse BEFORE the movement
+    previousBalance: {
+        type: Number,
+        default: 0,
+        min: 0
+    },
     // Balance at this warehouse AFTER the movement (snapshot, not recomputed)
     // so the ledger stays correct even if a warehouse row is later deleted/merged.
     balanceAfter: {

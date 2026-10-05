@@ -3,7 +3,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   ShoppingCart, User, Search, LogOut, Shield, Truck, Warehouse,
   Heart, Phone, HelpCircle, BadgePercent, ChevronDown,
-  Ticket, Bell, Package
+  Ticket, Bell, Package, Code2
 } from 'lucide-react';
 import { useCart } from '../context/cartContext';
 import { useWishlist } from '../context/WishlistContext';
@@ -158,6 +158,15 @@ const Navbar = () => {
                 <HelpCircle size={13} aria-hidden="true" />
                 <span className="hidden sm:inline font-medium">Help</span>
               </button>
+              <button
+                type="button"
+                className="flex items-center gap-1.5 text-teal-50 hover:text-white transition-colors min-w-[44px] min-h-[44px] -my-4 px-2 justify-center"
+                aria-label="About the creator and architecture"
+                onClick={() => navigate('/about')}
+              >
+                <Code2 size={13} aria-hidden="true" />
+                <span className="hidden sm:inline font-medium">About</span>
+              </button>
               <span className="hidden lg:flex items-center gap-1.5 text-teal-100" aria-hidden="true">
                 <Phone size={13} aria-hidden="true" />
                 <span>+91 98765 43210</span>
@@ -173,7 +182,7 @@ const Navbar = () => {
           <div className="flex justify-between items-center h-14 md:h-16 gap-1.5 sm:gap-3">
 
             <NavLink to="/" className="flex-shrink-0">
-              <span className="text-2xl sm:text-3xl font-extrabold text-teal-600 tracking-tight whitespace-nowrap">
+              <span className="text-xl sm:text-3xl font-extrabold text-teal-600 tracking-tight whitespace-nowrap">
                 Cartify<span className="text-gray-800">.</span>
               </span>
             </NavLink>
@@ -182,20 +191,20 @@ const Navbar = () => {
               <SearchBox onSearch={handleSearch} />
             </div>
 
-            <div className="flex items-center gap-1 sm:gap-3 lg:gap-4 flex-shrink-0">
+            <div className="flex items-center gap-0.5 sm:gap-2 lg:gap-4 flex-shrink-0">
 
               <button
                 type="button"
                 onClick={() => setShowMobileSearch(!showMobileSearch)}
-                className="md:hidden text-gray-600 hover:text-teal-600 p-2 rounded-lg hover:bg-gray-50 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                className="md:hidden text-gray-600 hover:text-teal-600 p-1.5 sm:p-2 rounded-lg hover:bg-gray-50 transition-colors min-h-[38px] flex items-center justify-center"
                 aria-label="Toggle search"
                 aria-expanded={showMobileSearch}
               >
-                <Search size={20} aria-hidden="true" />
+                <Search size={18} aria-hidden="true" />
               </button>
 
               {user ? (
-                <div className="flex items-center gap-1 sm:gap-2 lg:gap-3">
+                <div className="flex items-center gap-0.5 sm:gap-2 lg:gap-3">
                   <div className="relative" ref={dropdownRef}>
                     <button
                       type="button"
@@ -204,11 +213,11 @@ const Navbar = () => {
                       aria-haspopup="true"
                       aria-expanded={dropdownOpen}
                       aria-label="Account menu"
-                      className="flex items-center gap-1 p-2 rounded-lg text-teal-700 hover:text-teal-800 hover:bg-teal-50 transition-colors min-h-[44px] min-w-0 group"
+                      className="flex items-center gap-0.5 p-1.5 sm:p-2 rounded-lg text-teal-700 hover:text-teal-800 hover:bg-teal-50 transition-colors min-h-[38px] min-w-0 group"
                     >
-                      <User size={20} aria-hidden="true" />
-                      <span className="hidden sm:inline truncate max-w-[80px] font-semibold">Hi, {firstName}</span>
-                      <ChevronDown size={16} aria-hidden="true" className={`transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                      <User size={18} aria-hidden="true" />
+                      <span className="hidden sm:inline truncate max-w-[80px] font-semibold text-xs sm:text-sm">Hi, {firstName}</span>
+                      <ChevronDown size={14} aria-hidden="true" className={`transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
                     {dropdownOpen && (
                       <div
@@ -253,11 +262,11 @@ const Navbar = () => {
                         aria-haspopup="true"
                         aria-expanded={adminMenuOpen}
                         aria-label="Admin control menu"
-                        className="flex items-center gap-1 p-2 rounded-lg text-teal-700 hover:text-teal-800 hover:bg-teal-50 transition-colors min-h-[44px]"
+                        className="flex items-center gap-0.5 p-1.5 sm:p-2 rounded-lg text-teal-700 hover:text-teal-800 hover:bg-teal-50 transition-colors min-h-[38px]"
                       >
-                        <Shield size={20} aria-hidden="true" />
-                        <span className="hidden lg:inline font-semibold">Admin</span>
-                        <ChevronDown size={16} aria-hidden="true" className={`transition-transform ${adminMenuOpen ? 'rotate-180' : ''}`} />
+                        <Shield size={18} aria-hidden="true" />
+                        <span className="hidden lg:inline font-semibold text-xs sm:text-sm">Admin</span>
+                        <ChevronDown size={14} aria-hidden="true" className={`transition-transform ${adminMenuOpen ? 'rotate-180' : ''}`} />
                       </button>
                       {adminMenuOpen && (
                         <div

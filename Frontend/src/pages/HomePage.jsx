@@ -12,7 +12,7 @@ import { logError } from '../utils/logger';
 import HomeSections from '../components/HomeSections';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
-import { usePageTitle } from '../hooks/usePageTitle';
+import useSeo from '../hooks/useSeo';
 import { useBackendStatus } from '../context/BackendStatusContext';
 
 // Whitelisted ?sort= values (F-17) — anything else falls back to 'newest'.
@@ -87,14 +87,18 @@ const HomePage = () => {
   const minParam = searchParams.get('min') || '';
   const maxParam = searchParams.get('max') || '';
 
-  // Route title reflects the active view: default, category filter or search.
-  usePageTitle(
-    searchQuery
-      ? `Search: ${searchQuery}`
+  // Route title & dynamic SEO reflect the active view: default, category filter or search.
+  useSeo({
+    title: searchQuery
+      ? `Search: "${searchQuery}"`
       : selectedCategory !== 'all'
-        ? `Products — ${titleCase(selectedCategory)}`
-        : 'Home'
-  );
+        ? `${titleCase(selectedCategory)} Collection`
+        : 'Your Premium Shopping Destination',
+    description: selectedCategory !== 'all'
+      ? `Shop our curated collection of high-quality ${selectedCategory} products with fast free delivery and secure Razorpay payment.`
+      : 'Cartify is your premium destination for top-quality electronics, fashion, accessories, furniture, beauty products, and more. Shop now with secure checkout.',
+    canonical: selectedCategory !== 'all' ? `/?category=${selectedCategory}` : '/',
+  });
 
   // F-13: exactly one effect owns fetching. The old category/page sync
   // effects re-triggered state on every filter change and duplicated fetches.

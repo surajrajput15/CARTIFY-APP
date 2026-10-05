@@ -2,6 +2,7 @@
   "name": "cartify",
   "private": true,
   "version": "2.0.0",
+  "author": "Suraj Bhan Pratap Singh <surajdona2005@gmail.com> (https://github.com/surajrajput15)",
   "type": "module",
   "scripts": {
     "dev": "vite",

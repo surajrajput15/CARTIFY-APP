@@ -22,6 +22,7 @@ import { recordRecentView } from '../utils/recentlyViewed';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import { usePageTitle } from '../hooks/usePageTitle';
+import useSeo from '../hooks/useSeo';
 
 const ProductDetailsPage = () => {
   const { id } = useParams();
@@ -54,7 +55,75 @@ const ProductDetailsPage = () => {
   const relatedLoading = relatedProducts === null;
 
   // Title follows the loaded product; falls back while fetching or on error.
-  usePageTitle(product?.title || 'Product Details');
+  useSeo({
+    title: product?.title || 'Product Details',
+    description: product?.description
+      ? `${product.description.slice(0, 150)}... Buy now on Cartify with free delivery.`
+      : 'Explore product specifications, prices, and reviews on Cartify.',
+    canonical: `/product/${id}`,
+    image: product?.image ? resolveImageUrl(product.image) : undefined,
+    schema: product
+      ? {
+          '@context': 'https://schema.org',
+          '@graph': [
+            {
+              '@type': 'Product',
+              name: product.title,
+              image: resolveImageUrl(product.image),
+              description: product.description,
+              category: product.category,
+              offers: {
+                '@type': 'Offer',
+                price: product.price,
+                priceCurrency: 'INR',
+                availability:
+                  (product.countInStock ?? 1) > 0
+                    ? 'https://schema.org/InStock'
+                    : 'https://schema.org/OutOfStock',
+                seller: {
+                  '@type': 'Organization',
+                  name: 'Cartify',
+                },
+              },
+              ...(product.rating?.rate
+                ? {
+                    aggregateRating: {
+                      '@type': 'AggregateRating',
+                      ratingValue: product.rating.rate,
+                      reviewCount: product.rating.count || 1,
+                    },
+                  }
+                : {}),
+            },
+            {
+              '@type': 'BreadcrumbList',
+              itemListElement: [
+                {
+                  '@type': 'ListItem',
+                  position: 1,
+                  name: 'Home',
+                  item: 'https://cartify-hub.vercel.app/',
+                },
+                {
+                  '@type': 'ListItem',
+                  position: 2,
+                  name: product.category
+                    ? product.category.charAt(0).toUpperCase() + product.category.slice(1)
+                    : 'Products',
+                  item: `https://cartify-hub.vercel.app/?category=${encodeURIComponent(product.category || 'all')}`,
+                },
+                {
+                  '@type': 'ListItem',
+                  position: 3,
+                  name: product.title,
+                  item: `https://cartify-hub.vercel.app/product/${id}`,
+                },
+              ],
+            },
+          ],
+        }
+      : null,
+  });
 
   const fetchProduct = useCallback(() => {
     const myRequest = ++requestIdRef.current;
@@ -223,11 +292,15 @@ const ProductDetailsPage = () => {
   const selectedVariant = productHasVariants ? findVariant(product, selectedSize, selectedColor) : null;
   const selectionComplete = (!requiresSize || selectedSize) && (!requiresColor || selectedColor);
   const needsSelection = productHasVariants && !selectionComplete;
-  const activePrice = selectedVariant ? variantPrice(product, selectedVariant) : product.price;
+  const hasSale = product?.salePrice != null && Number(product.salePrice) > 0 && Number(product.salePrice) < Number(product.price);
+  const basePrice = hasSale ? Number(product.salePrice) : Number(product.price);
+  const activePrice = selectedVariant ? variantPrice(product, selectedVariant) : basePrice;
+  const originalPrice = (hasSale || (selectedVariant && Number(selectedVariant.price) < Number(product.price))) ? Number(product.price) : null;
+  const discountPercent = (originalPrice && originalPrice > activePrice) ? Math.round(((originalPrice - activePrice) / originalPrice) * 100) : 0;
   const activeStock = productHasVariants
     ? (selectedVariant ? (Number(selectedVariant.stock) || 0) : 0)
     : product.countInStock;
-  const stockStatus = getStockStatus(activeStock);
+  const stockStatus = getStockStatus(activeStock, product?.lowStockThreshold);
   const addDisabled = needsSelection || (productHasVariants ? activeStock <= 0 : stockStatus?.disabled);
   const maxQty = activeStock > 0 ? activeStock : 20;
   const decreaseQty = () => setQuantity((q) => Math.max(1, q - 1));
@@ -294,11 +367,26 @@ const ProductDetailsPage = () => {
         </div>
 
         <div className="md:w-1/2 p-6 sm:p-8 md:p-12 flex flex-col justify-center">
-          {product.category && (
-            <span className="text-sm font-semibold text-teal-600 tracking-wider uppercase mb-2">
-              {product.category}
-            </span>
-          )}
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            {product.category && (
+              <span className="text-sm font-semibold text-teal-600 tracking-wider uppercase">
+                {product.category}
+              </span>
+            )}
+            {product.brand && (
+              <>
+                <span className="text-gray-300" aria-hidden="true">•</span>
+                <span className="text-sm font-medium text-gray-500 uppercase tracking-wider">
+                  {product.brand}
+                </span>
+              </>
+            )}
+            {product.sku && (
+              <span className="ml-auto text-xs text-gray-400 font-mono">
+                SKU: {product.sku}
+              </span>
+            )}
+          </div>
 
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-4 leading-tight">
             {product.title}
@@ -320,10 +408,20 @@ const ProductDetailsPage = () => {
             {product.description}
           </p>
 
-          <div className="mt-auto flex items-center gap-4 pb-4 border-b border-gray-100 mb-6">
+          <div className="mt-auto flex items-baseline gap-3 pb-4 border-b border-gray-100 mb-6 flex-wrap">
             <span className="text-3xl sm:text-4xl font-extrabold text-gray-900">
               {formatPrice(activePrice)}
             </span>
+            {originalPrice && originalPrice > activePrice && (
+              <>
+                <span className="text-lg text-gray-400 line-through" aria-hidden="true">
+                  {formatPrice(originalPrice)}
+                </span>
+                <span className="bg-red-50 text-red-600 text-xs font-black px-2.5 py-1 rounded-full uppercase tracking-wider border border-red-100">
+                  {discountPercent}% OFF
+                </span>
+              </>
+            )}
           </div>
 
           {productHasVariants && (
@@ -397,7 +495,7 @@ const ProductDetailsPage = () => {
             </div>
           )}
 
-          {!needsSelection && <StockBadge countInStock={activeStock} className="mb-4" />}
+          {!needsSelection && <StockBadge countInStock={activeStock} threshold={product?.lowStockThreshold} className="mb-4" />}
           {needsSelection && (
             <p className="text-sm text-amber-600 font-medium mb-4">Select {requiresSize ? 'a size' : ''}{requiresSize && requiresColor ? ' and ' : ''}{requiresColor ? 'a colour' : ''} to see availability.</p>
           )}

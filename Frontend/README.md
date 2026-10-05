@@ -9,7 +9,7 @@
 [![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://cartify-hub.vercel.app/)
 
-🌐 **[Live App](https://cartify-hub.vercel.app/)** · 📁 **[Monorepo](https://github.com/surajrajput999/CARTIFY-APP)** · 🐛 **[Report Bug](https://github.com/surajrajput999/CARTIFY-APP/issues)**
+🌐 **[Live App](https://cartify-hub.vercel.app/)** · 📁 **[Monorepo](https://github.com/surajrajput15/CARTIFY-APP)** · 🐛 **[Report Bug](https://github.com/surajrajput15/CARTIFY-APP/issues)**
 
 </div>
 
@@ -19,7 +19,7 @@
 
 This is the **frontend** of **Cartify** — a premium full-stack e-commerce platform. Built with **React 19**, **Vite 8**, and **Tailwind CSS 4**, it delivers a smooth, fast, and responsive shopping experience with product browsing, cart management, multi-method authentication, and Razorpay payment integration.
 
-Part of the **Cartify Monorepo** — see the [root README](https://github.com/surajrajput999/CARTIFY-APP) for the full picture.
+Part of the **Cartify Monorepo** — see the [root README](https://github.com/surajrajput15/CARTIFY-APP) for the full picture.
 
 ---
 
@@ -77,7 +77,7 @@ npm -v
 
 1. **Clone the monorepo**
    ```bash
-   git clone https://github.com/surajrajput999/CARTIFY-APP.git
+   git clone https://github.com/surajrajput15/CARTIFY-APP.git
    ```
 
 2. **Navigate to the frontend**
@@ -115,7 +115,7 @@ npm run build
 - [x] Admin panel
 - [x] Full responsive design
 
-See the [monorepo](https://github.com/surajrajput999/CARTIFY-APP) for backend code and full documentation.
+See the [monorepo](https://github.com/surajrajput15/CARTIFY-APP) for backend code and full documentation.
 
 ---
 
@@ -133,11 +133,12 @@ Contributions, issues, and feature requests are welcome!
 
 ## 📬 Contact
 
-**Suraj Bhan Pratap Singh**
+**Suraj Bhan Pratap Singh**  
+*Full Stack Software Engineer & MERN Specialist*
 
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/suraj-bhan-pratap-singh-891727293/)
 [![Email](https://img.shields.io/badge/Email-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:surajdona2005@gmail.com)
-[![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/surajrajput999/CARTIFY-APP)
+[![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/surajrajput15/CARTIFY-APP)
 
 ---
 

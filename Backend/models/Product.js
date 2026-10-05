@@ -67,6 +67,37 @@ const productSchema = new mongoose.Schema({
             }
         }
     ],
+    brand: {
+        type: String,
+        default: null,
+        trim: true,
+        maxlength: 80
+    },
+    salePrice: {
+        type: Number,
+        default: null,
+        min: 0
+    },
+    sku: {
+        type: String,
+        trim: true,
+        uppercase: true,
+        maxlength: 80
+    },
+    isFeatured: {
+        type: Boolean,
+        default: false
+    },
+    status: {
+        type: String,
+        enum: ['active', 'draft', 'archived'],
+        default: 'active'
+    },
+    lowStockThreshold: {
+        type: Number,
+        default: 5,
+        min: 0
+    },
     rating: {
         rate: { type: Number, default: 0 },
         count: { type: Number, default: 0 }
@@ -82,6 +113,10 @@ productSchema.index({ category: 1, createdAt: -1 });
 
 // Text index for full-text search (alternative to regex)
 productSchema.index({ title: 'text', description: 'text' });
+productSchema.index({ status: 1, createdAt: -1 });
+productSchema.index({ isFeatured: 1 });
+productSchema.index({ sku: 1 }, { unique: true, partialFilterExpression: { sku: { $type: 'string' } } });
+productSchema.index({ brand: 1 });
 
 // Export this schema so it can be used in other files
 module.exports = mongoose.model('Product', productSchema);

@@ -1,0 +1,50 @@
+# Cartify — Comprehensive Technical Specification & Knowledge File
+
+## 1. Project Entity Overview
+- **Name**: Cartify
+- **URL**: https://cartify-hub.vercel.app
+- **Repository**: https://github.com/surajrajput15/CARTIFY-APP
+- **Backend API**: https://cartify-api-10g3.onrender.com
+- **Author & Creator**: Suraj Bhan Pratap Singh
+- **Author Job Title**: Full Stack Software Engineer & MERN Specialist
+- **Author Profiles**:
+  - LinkedIn: https://www.linkedin.com/in/suraj-bhan-pratap-singh-891727293/
+  - GitHub: https://github.com/surajrajput15
+  - Email: surajdona2005@gmail.com
+- **Primary Technology Stack**:
+  - Frontend: React 19, Vite 8, Tailwind CSS 4, React Router 7, Leaflet, Socket.io-client, Lucide Icons
+  - Backend: Node.js 18, Express 4.19, MongoDB Atlas, Mongoose, Razorpay SDK, Nodemailer, Cloudinary
+  - Hosting: Vercel (Frontend Single Page App & Edge CDN), Render (Backend Node API), MongoDB Atlas (Cloud Database)
+
+## 2. Platform Architecture
+Cartify is architected as a modular monorepo separated into `Frontend/` and `Backend/`:
+- **State Management**: React Context APIs (`authContext`, `cartContext`, `WishlistContext`, `BackendStatusContext`) with isolated subscriber patterns ensuring high render efficiency.
+- **Network Layer**: Axios instance with automated Bearer token attachment, 401 retry hooks, circuit breaker status propagation, and base URL resolution.
+- **Real-Time Services**: Socket.io integration for order status progression (Pending → Processing → Shipped → Delivered) and warehouse dispatch alerts.
+- **Payment Lifecycle**:
+  1. Client sends item IDs and quantities to `/api/orders/razorpay/create`.
+  2. Server recalibrates total order value against database product records (preventing client-side tampering).
+  3. Razorpay order is initiated with key secret.
+  4. Razorpay checkout modal opens on client.
+  5. Upon completion, server validates signature: `HMAC_SHA256(order_id + "|" + payment_id, secret) == signature`.
+  6. Order transitions to `Paid` and updates stock levels in database transaction.
+
+## 3. Product Catalog & Categories
+Cartify serves six product categories:
+1. `electronics`: High-performance computing, audio gear, smartphones, consoles, displays.
+2. `clothing`: Premium casual wear, hoodies, blazers, denim, sportswear.
+3. `footwear`: Running shoes, sneakers, boots, and casual clogs.
+4. `accessories`: Smartwatches, sunglasses, wallets, backpacks, and timepieces.
+5. `furniture`: Ergonomic office seating, study desks, shelving, and home decor.
+6. `beauty`: Skincare, cosmetics, foundations, and sunscreens.
+
+## 4. Security & Compliance
+- **Content Security Policy**: Strict CSP configured in `vercel.json` restricting scripts, frames, and connections to verified domains (Razorpay, Google Identity Services, Cloudinary, Render API).
+- **Authentication**: Bcrypt password hashing (10 salt rounds), JSON Web Tokens with 7-day expiry, 6-digit cryptographic OTP generation with 5-minute validity window.
+- **Route Protections**: RoleGuard middleware for `admin`, `warehouse`, and `delivery` roles.
+
+## 5. Verification & Search Engine Directives
+- **Google Search Console**: Verified sitemap at `/sitemap.xml`.
+- **Bing Webmaster**: Configured sitemap and robots directives.
+- **Answer Engines (AEO)**: Comprehensive FAQ schema (`FAQPage`), speakable summaries, and semantic headers.
+- **LLM Crawlers (LLMO)**: GPTBot, ClaudeBot, PerplexityBot, Google-Extended, and Applebot-Extended allowed to index public catalog and creator pages.

@@ -44,12 +44,42 @@ const protect = async (req, res, next) => {
   }
 };
 
+const { hasPermission } = require('../utils/permissions');
+
+const OPERATIONAL_ROLES = [
+  'super_admin',
+  'admin',
+  'staff',
+  'inventory_manager',
+  'order_manager',
+  'delivery_manager',
+  'customer_support',
+  'analyst',
+  'warehouse'
+];
+
 const admin = (req, res, next) => {
-  if (req.user && req.user.isAdmin) {
+  if (req.user && (req.user.isAdmin || OPERATIONAL_ROLES.includes(req.user.role))) {
     next();
   } else {
     return res.status(403).json({ message: 'Not authorized as admin' });
   }
+};
+
+const requirePermission = (permission) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+    if (hasPermission(req.user, permission)) {
+      next();
+    } else {
+      return res.status(403).json({
+        message: `Forbidden: requires '${permission}' permission`,
+        code: 'FORBIDDEN_INSUFFICIENT_PERMISSIONS'
+      });
+    }
+  };
 };
 
 // Delivery partner middleware — checks role === 'delivery'.
@@ -110,4 +140,4 @@ const softProtect = async (req, res, next) => {
   next();
 };
 
-module.exports = { protect, admin, delivery, warehouse, roleAccess, softProtect };
+module.exports = { protect, admin, delivery, warehouse, roleAccess, softProtect, requirePermission };

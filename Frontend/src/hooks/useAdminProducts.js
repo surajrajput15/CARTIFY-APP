@@ -97,12 +97,24 @@ export const useAdminProducts = () => {
     }
   }, [fetchProducts]);
 
+  const toggleArchiveProduct = useCallback(async (product) => {
+    const nextStatus = product.status === 'archived' ? 'active' : 'archived';
+    try {
+      await productsApi.updateProduct(product._id, { status: nextStatus });
+      await fetchProducts();
+    } catch (err) {
+      logError('Failed to toggle product archive status', err);
+      throw err;
+    }
+  }, [fetchProducts]);
+
   return {
     products,
     loading,
     fetchProducts,
     saveProduct,
     deleteProduct,
+    toggleArchiveProduct,
     seedProducts,
     clearAllProducts
   };

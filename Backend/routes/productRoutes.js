@@ -8,7 +8,8 @@ const Product = require('../models/Product');
 const InventoryItem = require('../models/InventoryItem');
 const Wishlist = require('../models/Wishlist');
 const Review = require('../models/Review');
-const { protect, admin, softProtect } = require('../middleware/auth');
+const { protect, admin, softProtect, requirePermission } = require('../middleware/auth');
+const Order = require('../models/Order');
 const { auditLogMiddleware } = require('../middleware/auditLog');
 const { activityLogger } = require('../middleware/userActivity');
 const { adminMutateGuard } = require('../utils/routeLimiters');
@@ -108,6 +109,21 @@ router.get('/', softProtect, activityLogger('PRODUCT_SEARCH', (req) => ({
 
         if (category && category !== 'all') {
             query.category = category;
+        }
+
+        if (req.query.brand) {
+            query.brand = { $regex: escapeRegex(req.query.brand.trim()), $options: 'i' };
+        }
+
+        if (req.query.featured === 'true') {
+            query.isFeatured = true;
+        }
+
+        const isAdminUser = req.user && (req.user.isAdmin || req.user.role === 'admin' || req.user.role === 'super_admin');
+        if (req.query.status && isAdminUser) {
+            if (req.query.status !== 'all') query.status = req.query.status;
+        } else if (!isAdminUser) {
+            query.status = { $ne: 'archived' };
         }
 
         // F-17: price range filter — only finite non-negative numbers are
@@ -227,9 +243,12 @@ const buildVariantSku = (productId, size, color) => {
 };
 
 // 2. POST API: Add a new product (Admin only)
-router.post('/add', protect, admin, adminMutateGuard, auditLogMiddleware('CREATE_PRODUCT', 'Product'), async (req, res) => {
+router.post('/add', protect, admin, requirePermission('products.create'), adminMutateGuard, auditLogMiddleware('CREATE_PRODUCT', 'Product'), async (req, res) => {
     try {
-        const allowedFields = ['title', 'description', 'price', 'category', 'image', 'rating', 'countInStock'];
+        const allowedFields = [
+            'title', 'description', 'price', 'category', 'image', 'rating',
+            'countInStock', 'brand', 'salePrice', 'sku', 'isFeatured', 'status', 'lowStockThreshold'
+        ];
         const sanitized = {};
 
         for (const field of allowedFields) {
@@ -288,6 +307,44 @@ router.post('/add', protect, admin, adminMutateGuard, auditLogMiddleware('CREATE
                     return res.status(400).json({ message: "Stock must be a non-negative integer" });
                 }
                 sanitized.countInStock = stock;
+            } else if (field === 'brand') {
+                const val = typeof req.body.brand === 'string' ? req.body.brand.trim().slice(0, 80) : null;
+                sanitized.brand = val || null;
+            } else if (field === 'salePrice') {
+                if (req.body.salePrice !== null && req.body.salePrice !== undefined && req.body.salePrice !== '') {
+                    const sp = Number(req.body.salePrice);
+                    if (!Number.isFinite(sp) || sp < 0) {
+                        return res.status(400).json({ message: "Sale price must be a non-negative number" });
+                    }
+                    if (sanitized.price !== undefined && sp >= sanitized.price) {
+                        return res.status(400).json({ message: "Sale price must be less than regular price" });
+                    }
+                    sanitized.salePrice = sp;
+                } else {
+                    sanitized.salePrice = null;
+                }
+            } else if (field === 'sku') {
+                if (req.body.sku && typeof req.body.sku === 'string' && req.body.sku.trim()) {
+                    const sku = req.body.sku.trim().toUpperCase().slice(0, 80);
+                    const dupe = await Product.findOne({ sku });
+                    if (dupe) {
+                        return res.status(400).json({ message: `SKU '${sku}' is already in use by another product` });
+                    }
+                    sanitized.sku = sku;
+                } else {
+                    sanitized.sku = null;
+                }
+            } else if (field === 'isFeatured') {
+                sanitized.isFeatured = Boolean(req.body.isFeatured);
+            } else if (field === 'status') {
+                if (['active', 'draft', 'archived'].includes(req.body.status)) {
+                    sanitized.status = req.body.status;
+                }
+            } else if (field === 'lowStockThreshold') {
+                const thresh = Number(req.body.lowStockThreshold);
+                if (Number.isInteger(thresh) && thresh >= 0) {
+                    sanitized.lowStockThreshold = thresh;
+                }
             }
         }
 
@@ -330,7 +387,7 @@ router.post('/add', protect, admin, adminMutateGuard, auditLogMiddleware('CREATE
 
 // 3. POST API: Insert many products at once (Admin only) — seed-safe: allowlisted,
 // capped, authentic numbers only (no _id/__v injection, no negative prices).
-router.post('/seed', protect, admin, adminMutateGuard, auditLogMiddleware('BULK_CREATE_PRODUCTS', 'Product'), (req, res, next) => {
+router.post('/seed', protect, admin, requirePermission('products.create'), adminMutateGuard, auditLogMiddleware('BULK_CREATE_PRODUCTS', 'Product'), (req, res, next) => {
     if (process.env.NODE_ENV === 'production') return res.status(403).json({ message: 'Seed disabled in production' });
     if (process.env.NODE_ENV === 'test') return next();
     ownerOnly(req, res, next);
@@ -399,7 +456,7 @@ router.get('/:id', softProtect, activityLogger('PRODUCT_VIEW', (req, body) => ({
 });
 
 // 5. DELETE API: Clear all products (Admin only)
-router.delete('/clear', protect, admin, adminMutateGuard, auditLogMiddleware('DELETE_ALL_PRODUCTS', 'Product'), (req, res, next) => {
+router.delete('/clear', protect, admin, requirePermission('products.delete'), adminMutateGuard, auditLogMiddleware('DELETE_ALL_PRODUCTS', 'Product'), (req, res, next) => {
     if (process.env.NODE_ENV === 'production') return res.status(403).json({ message: 'Clear all disabled in production' });
     if (process.env.NODE_ENV === 'test') return next();
     ownerOnly(req, res, next);
@@ -419,8 +476,25 @@ router.delete('/clear', protect, admin, adminMutateGuard, auditLogMiddleware('DE
 });
 
 // 6. DELETE API: Delete a single product (Admin only)
-router.delete('/:id', protect, admin, adminMutateGuard, auditLogMiddleware('DELETE_PRODUCT', 'Product'), async (req, res, next) => {
+router.delete('/:id', protect, admin, requirePermission('products.delete'), adminMutateGuard, auditLogMiddleware('DELETE_PRODUCT', 'Product'), async (req, res, next) => {
     try {
+        const orderCount = await Order.countDocuments({ 'orderItems.productId': req.params.id });
+        if (orderCount > 0 && req.query.force !== 'true') {
+            const archived = await Product.findByIdAndUpdate(
+                req.params.id,
+                { $set: { status: 'archived' } },
+                { returnDocument: 'after' }
+            );
+            if (!archived) {
+                return res.status(404).json({ message: "Product not found" });
+            }
+            return res.status(200).json({
+                message: "Product is linked to historical orders and has been safely archived instead of permanently deleted.",
+                archived: true,
+                product: archived
+            });
+        }
+
         const product = await Product.findByIdAndDelete(req.params.id);
         if (!product) {
             return res.status(404).json({ message: "Product not found" });
@@ -446,7 +520,7 @@ router.delete('/:id', protect, admin, adminMutateGuard, auditLogMiddleware('DELE
 });
 
 // 7. PATCH API: Update single product (Admin only)
-router.patch('/:id', protect, admin, adminMutateGuard, auditLogMiddleware('UPDATE_PRODUCT', 'Product'), async (req, res) => {
+router.patch('/:id', protect, admin, requirePermission('products.update'), adminMutateGuard, auditLogMiddleware('UPDATE_PRODUCT', 'Product'), async (req, res) => {
     try {
         const product = await Product.findById(req.params.id);
         if (!product) {
@@ -454,7 +528,10 @@ router.patch('/:id', protect, admin, adminMutateGuard, auditLogMiddleware('UPDAT
         }
         const previousImage = product.image;
 
-        const allowedFields = ['title', 'price', 'description', 'category', 'image', 'rating', 'countInStock'];
+        const allowedFields = [
+            'title', 'price', 'description', 'category', 'image', 'rating',
+            'countInStock', 'brand', 'salePrice', 'sku', 'isFeatured', 'status', 'lowStockThreshold'
+        ];
         const updates = {};
 
         for (const field of allowedFields) {
@@ -471,12 +548,48 @@ router.patch('/:id', protect, admin, adminMutateGuard, auditLogMiddleware('UPDAT
                         return res.status(400).json({ message: "Stock must be a non-negative integer" });
                     }
                     updates.countInStock = stock;
+                } else if (field === 'brand') {
+                    updates.brand = typeof req.body.brand === 'string' ? req.body.brand.trim().slice(0, 80) : null;
+                } else if (field === 'salePrice') {
+                    if (req.body.salePrice !== null && req.body.salePrice !== undefined && req.body.salePrice !== '') {
+                        const sp = Number(req.body.salePrice);
+                        const effectivePrice = updates.price !== undefined ? updates.price : product.price;
+                        if (!Number.isFinite(sp) || sp < 0) {
+                            return res.status(400).json({ message: "Sale price must be a non-negative number" });
+                        }
+                        if (sp >= effectivePrice) {
+                            return res.status(400).json({ message: "Sale price must be less than regular price" });
+                        }
+                        updates.salePrice = sp;
+                    } else {
+                        updates.salePrice = null;
+                    }
+                } else if (field === 'sku') {
+                    if (req.body.sku && typeof req.body.sku === 'string' && req.body.sku.trim()) {
+                        const sku = req.body.sku.trim().toUpperCase().slice(0, 80);
+                        const dupe = await Product.findOne({ sku, _id: { $ne: req.params.id } });
+                        if (dupe) {
+                            return res.status(400).json({ message: `SKU '${sku}' is already in use by another product` });
+                        }
+                        updates.sku = sku;
+                    } else {
+                        updates.sku = null;
+                    }
+                } else if (field === 'isFeatured') {
+                    updates.isFeatured = Boolean(req.body.isFeatured);
+                } else if (field === 'status') {
+                    if (['active', 'draft', 'archived'].includes(req.body.status)) {
+                        updates.status = req.body.status;
+                    }
+                } else if (field === 'lowStockThreshold') {
+                    const thresh = Number(req.body.lowStockThreshold);
+                    if (Number.isInteger(thresh) && thresh >= 0) {
+                        updates.lowStockThreshold = thresh;
+                    }
                 } else if (field === 'rating') {
                     const { rate, count } = req.body.rating || {};
                     const parsedRate = rate !== undefined ? Number(rate) : product.rating.rate;
                     const parsedCount = count !== undefined ? Number(count) : product.rating.count;
-                    // Same bounds as the POST /add validator — prevents rating corruption
-                    // (e.g. rate > 5 or negative) through the update path.
                     if (rate !== undefined && (isNaN(parsedRate) || parsedRate < 0 || parsedRate > 5)) {
                         return res.status(400).json({ message: "Rating rate must be between 0 and 5" });
                     }

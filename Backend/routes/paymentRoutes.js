@@ -3,7 +3,7 @@ const { logger } = require('../utils/logger');
 const router = express.Router();
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
-const { protect, admin } = require('../middleware/auth');
+const { protect, admin, requirePermission } = require('../middleware/auth');
 const { auditLogMiddleware } = require('../middleware/auditLog');
 const { activityLogger, checkoutActivityLogger } = require('../middleware/userActivity');
 const Product = require('../models/Product');
@@ -711,7 +711,7 @@ router.post('/webhook', async (req, res) => {
 
 // 4. ADMIN REFUND — issue a Razorpay refund for a paid order (e.g. stockShortfall
 //    orders that could not be fulfilled) and mark it Refunded/Cancelled.
-router.post('/refund/:orderId', protect, admin, adminMutateGuard, auditLogMiddleware('REFUND_ORDER', 'Order'), async (req, res) => {
+router.post('/refund/:orderId', protect, admin, requirePermission('orders.refund'), adminMutateGuard, auditLogMiddleware('REFUND_ORDER', 'Order'), async (req, res) => {
     try {
         const order = await Order.findById(req.params.orderId);
         if (!order) return res.status(404).json({ message: 'Order not found' });

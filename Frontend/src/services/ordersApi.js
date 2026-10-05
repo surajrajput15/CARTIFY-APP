@@ -3,8 +3,12 @@ import api from '../api/axios';
 export const fetchMyOrders = (userId) => api.get(`/api/orders/myorders/${userId}`);
 export const fetchOrderById = (orderId) => api.get(`/api/orders/${orderId}`);
 
-export const fetchAdminOrders = (status = 'all', page = 1, limit = 20) =>
-    api.get('/api/orders/admin', { params: { status, page, limit } });
+export const fetchAdminOrders = (statusOrOptions = 'all', page = 1, limit = 20) => {
+    if (typeof statusOrOptions === 'object' && statusOrOptions !== null) {
+        return api.get('/api/orders/admin', { params: statusOrOptions });
+    }
+    return api.get('/api/orders/admin', { params: { status: statusOrOptions, page, limit } });
+};
 
 export const updateOrderStatus = (orderId, status) =>
     api.patch(`/api/orders/${orderId}/status`, { status });

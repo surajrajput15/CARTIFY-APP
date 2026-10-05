@@ -1,4 +1,4 @@
-export const getStockStatus = (countInStock) => {
+export const getStockStatus = (countInStock, threshold = 10) => {
   if (countInStock === undefined || countInStock === null) return null;
 
   if (countInStock <= 0) {
@@ -11,12 +11,13 @@ export const getStockStatus = (countInStock) => {
     };
   }
 
-  if (countInStock <= 10) {
+  const lowLimit = Math.max(1, Number(threshold) || 10);
+  if (countInStock <= lowLimit) {
     return {
       label: 'Low Stock',
-      textColor: 'text-orange-600',
-      bgColor: 'bg-orange-50',
-      dotColor: 'bg-orange-400',
+      textColor: 'text-amber-700',
+      bgColor: 'bg-amber-50',
+      dotColor: 'bg-amber-500',
       disabled: false,
     };
   }

@@ -35,6 +35,7 @@ const reviewRoutes = require('./reviewRoutes');
 const notificationRoutes = require('./notificationRoutes');
 const auditRoutes = require('./auditRoutes');
 const activityRoutes = require('./activityRoutes');
+const settingsRoutes = require('./settingsRoutes');
 
 // Mount routes under v1
 router.use('/products', productRoutes);
@@ -47,6 +48,8 @@ router.use('/coupons', couponRoutes);
 router.use('/upload', uploadRoutes.router);
 router.use('/wishlist', wishlistRoutes);
 router.use('/categories', categoryRoutes);
+router.use('/settings', settingsRoutes);
+router.use('/admin/settings', settingsRoutes);
 router.use('/admin/analytics', adminRoutes);
 router.use('/admin', adminDeliveryRoutes);
 router.use('/admin/staff', adminStaffRoutes);
