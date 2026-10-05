@@ -212,6 +212,7 @@ const Navbar = () => {
                       onClick={() => { setDropdownOpen((o) => !o); setAdminMenuOpen(false); }}
                       aria-haspopup="true"
                       aria-expanded={dropdownOpen}
+                      aria-controls="account-menu"
                       aria-label="Account menu"
                       className="flex items-center gap-0.5 p-1.5 sm:p-2 rounded-lg text-teal-700 hover:text-teal-800 hover:bg-teal-50 transition-colors min-h-[38px] min-w-0 group"
                     >
@@ -258,9 +259,11 @@ const Navbar = () => {
                     <div className="relative" ref={adminMenuRef}>
                       <button
                         type="button"
+                        id="admin-menu-button"
                         onClick={() => { setAdminMenuOpen((o) => !o); setDropdownOpen(false); }}
                         aria-haspopup="true"
                         aria-expanded={adminMenuOpen}
+                        aria-controls="admin-menu"
                         aria-label="Admin control menu"
                         className="flex items-center gap-0.5 p-1.5 sm:p-2 rounded-lg text-teal-700 hover:text-teal-800 hover:bg-teal-50 transition-colors min-h-[38px]"
                       >
@@ -270,9 +273,10 @@ const Navbar = () => {
                       </button>
                       {adminMenuOpen && (
                         <div
+                          id="admin-menu"
                           className="absolute right-0 mt-2 w-60 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50"
                           role="menu"
-                          aria-label="Admin control menu"
+                          aria-labelledby="admin-menu-button"
                         >
                           <div className="px-4 py-2 border-b border-gray-100">
                             <p className="text-xs font-bold uppercase tracking-wider text-gray-500">Full control</p>

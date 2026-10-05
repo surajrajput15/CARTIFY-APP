@@ -105,9 +105,11 @@ const LocationBar = () => {
     <div className="relative" ref={popRef}>
       <button
         type="button"
+        id="location-menu-button"
         onClick={() => setOpen((o) => !o)}
-        aria-haspopup="true"
+        aria-haspopup="dialog"
         aria-expanded={open}
+        aria-controls="location-dialog"
         aria-label={`Delivery location: ${display}`}
         className="hidden sm:flex items-center gap-1.5 text-teal-50 hover:text-white transition-colors min-w-[44px] min-h-[44px] -my-4 px-2 justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-200 rounded"
       >
@@ -118,7 +120,9 @@ const LocationBar = () => {
 
       {open && (
         <div
+          id="location-dialog"
           role="dialog"
+          aria-labelledby="location-menu-button"
           aria-label="Choose delivery location"
           className="fixed sm:absolute sm:left-0 sm:top-full sm:mt-1 w-full sm:w-80 bg-white text-gray-800 rounded-xl shadow-xl border border-gray-100 z-50 p-4 sm:p-5"
         >
