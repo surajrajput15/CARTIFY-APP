@@ -80,7 +80,3 @@ Allow: /
 # Sitemap Location
 Sitemap: https://cartify-hub.vercel.app/sitemap.xml
 Host: https://cartify-hub.vercel.app
-
-# Agent Resource Discovery (ARD / WebMCP)
-Agentmap: https://cartify-hub.vercel.app/ard.json
-ARD: https://cartify-hub.vercel.app/ard.json

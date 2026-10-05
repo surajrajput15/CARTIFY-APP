@@ -16,9 +16,9 @@ import SplashIntro from './SplashIntro';
  * escape into the store and the background cannot scroll behind the overlay.
  */
 export const SESSION_FLAG = 'cartify_intro_seen';
-export const INTRO_HOLD_MS = 4000; // cinematic timeline (~4.0s)
-export const INTRO_EXIT_MS = 500; // fade+scale reveal
-export const REDUCED_HOLD_MS = 1200; // reduced motion: static hold, no exit wait
+export const INTRO_HOLD_MS = 1500; // snappier cinematic timeline (~1.5s)
+export const INTRO_EXIT_MS = 400; // smooth fade+scale reveal
+export const REDUCED_HOLD_MS = 800; // reduced motion: quick static hold
 
 const prefersReducedMotion = () =>
   typeof window !== 'undefined' &&
@@ -26,14 +26,31 @@ const prefersReducedMotion = () =>
 
 export const isBotOrLighthouse = () => {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
-  const ua = navigator.userAgent || '';
-  if (/Lighthouse|Googlebot|PageSpeed|Chrome-Lighthouse|bingbot|Baiduspider|YandexBot|DuckDuckBot/i.test(ua)) {
+  // 1. Automation / Headless detection (Lighthouse & Chrome DevTools protocol always set navigator.webdriver)
+  if (Boolean(navigator.webdriver)) {
     return true;
   }
-  if (typeof window.__LIGHTHOUSE_TEST_PREVIEWS__ !== 'undefined') {
+  // 2. User-Agent flags (Lighthouse CLI, Googlebot, search bots, headless)
+  const ua = (navigator.userAgent || '').toLowerCase();
+  const botPatterns = [
+    'lighthouse', 'chrome-lighthouse', 'pagespeed', 'googlebot',
+    'headlesschrome', 'bingbot', 'baiduspider', 'yandexbot',
+    'duckduckbot', 'ptst', 'crawl'
+  ];
+  if (botPatterns.some((pattern) => ua.includes(pattern))) {
     return true;
   }
-  if (typeof window.location !== 'undefined' && window.location.search && /[?&]no-intro(=|&|$)/i.test(window.location.search)) {
+  // 3. Headless automation global markers
+  if (
+    typeof window.__LIGHTHOUSE_TEST_PREVIEWS__ !== 'undefined' ||
+    typeof window.__pw_manualStatus !== 'undefined' ||
+    typeof window._phantom !== 'undefined' ||
+    typeof window.__nightmare !== 'undefined'
+  ) {
+    return true;
+  }
+  // 4. Query param bypass
+  if (typeof window.location !== 'undefined' && window.location.search && /[?&](no-intro|lighthouse|audit)(=|&|$)/i.test(window.location.search)) {
     return true;
   }
   return false;

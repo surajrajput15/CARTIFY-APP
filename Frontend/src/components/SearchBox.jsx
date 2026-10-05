@@ -154,7 +154,6 @@ const SearchBox = ({ onSearch, mobile = false }) => {
 
   return (
     <form
-      ref={boxRef}
       action="/"
       method="GET"
       role="search"
@@ -165,10 +164,15 @@ const SearchBox = ({ onSearch, mobile = false }) => {
         e.preventDefault();
         commit();
       }}
-      className="relative w-full"
-      aria-haspopup="listbox"
-      aria-expanded={open}
+      className="w-full relative"
     >
+      <div
+        ref={boxRef}
+        role="combobox"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="relative w-full"
+      >
       <label htmlFor={inputId} className="sr-only">
         Search products
       </label>
@@ -280,6 +284,7 @@ const SearchBox = ({ onSearch, mobile = false }) => {
           )}
         </ul>
       )}
+      </div>
     </form>
   );
 };

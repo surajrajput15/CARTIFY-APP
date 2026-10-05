@@ -68,9 +68,9 @@ const SplashIntro = ({ exiting = false }) => (
     ))}
 
     <div className="relative z-10 flex h-full flex-col items-center justify-center px-6 text-center">
-      <h1 className="intro-word font-extrabold uppercase leading-none tracking-[0.14em] text-white text-[clamp(2.4rem,11vw,4.5rem)]">
+      <div role="heading" aria-level="2" className="intro-word font-extrabold uppercase leading-none tracking-[0.14em] text-white text-[clamp(2.4rem,11vw,4.5rem)]">
         Cartify<span className="text-teal-400">.</span>
-      </h1>
+      </div>
 
       <p className="intro-tagline mt-5 sm:mt-6 font-medium tracking-wide text-white/70 text-[clamp(0.85rem,3.6vw,1.1rem)]">
         Your Modern Shopping Experience
