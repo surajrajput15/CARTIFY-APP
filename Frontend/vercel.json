@@ -5,8 +5,16 @@
   "framework": "vite",
   "rewrites": [
     {
-      "source": "/.well-known/(.*)",
-      "destination": "/.well-known/$1"
+      "source": "/.well-known/ard.json",
+      "destination": "/ard.json"
+    },
+    {
+      "source": "/.well-known/ai-catalog.json",
+      "destination": "/ai-catalog.json"
+    },
+    {
+      "source": "/.well-known/mcp.json",
+      "destination": "/mcp.json"
     },
     {
       "source": "/((?!api/|.*\\..*|\\.well-known/).*)",
