@@ -153,15 +153,31 @@ const SearchBox = ({ onSearch, mobile = false }) => {
   let flatIndex = -1;
 
   return (
-    <div ref={boxRef} className="relative w-full" role="combobox" aria-haspopup="listbox" aria-expanded={open}>
+    <form
+      ref={boxRef}
+      action="/"
+      method="GET"
+      role="search"
+      toolname="searchProducts"
+      tooldescription="Search products, electronics, fashion, and lifestyle items in Cartify store catalog"
+      toolautosubmit="true"
+      onSubmit={(e) => {
+        e.preventDefault();
+        commit();
+      }}
+      className="relative w-full"
+      aria-haspopup="listbox"
+      aria-expanded={open}
+    >
       <label htmlFor={inputId} className="sr-only">
         Search products
       </label>
       <input
         id={inputId}
         ref={inputRef}
-        type="text"
-        role="searchbox"
+        name="search"
+        type="search"
+        toolparamdescription="Search keyword or product name to filter the store catalog"
         placeholder="Search for products, brands and more..."
         value={keyword}
         onFocus={() => { setFocused(true); setOpen(true); setActiveIndex(-1); }}
@@ -202,10 +218,9 @@ const SearchBox = ({ onSearch, mobile = false }) => {
         autoComplete="off"
       />
       <button
-        type="button"
-        onClick={() => commit()}
-        className="absolute right-0 top-0 h-full px-4 text-teal-600 hover:bg-teal-100 rounded-r-lg transition-colors"
-        aria-label="Search"
+        type="submit"
+        className="absolute right-0 top-0 h-full px-4 text-teal-600 hover:bg-teal-100 rounded-r-lg transition-colors cursor-pointer"
+        aria-label="Search catalog"
       >
         <Search size={20} aria-hidden="true" />
       </button>
@@ -265,7 +280,7 @@ const SearchBox = ({ onSearch, mobile = false }) => {
           )}
         </ul>
       )}
-    </div>
+    </form>
   );
 };
 

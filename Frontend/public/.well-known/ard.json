@@ -1,0 +1,51 @@
+{
+  "$schema": "https://agenticresourcediscovery.org/schemas/v1/ard.json",
+  "specVersion": "1.0",
+  "host": {
+    "displayName": "Cartify",
+    "identifier": "https://cartify-hub.vercel.app",
+    "author": "Suraj Bhan Pratap Singh"
+  },
+  "entries": [
+    {
+      "identifier": "urn:air:cartify-hub.vercel.app:mcp:catalog-search",
+      "displayName": "Cartify Store Catalog Search Tool",
+      "type": "application/mcp-server-card+json",
+      "data": {
+        "name": "searchProducts",
+        "description": "Search products, electronics, fashion, lifestyle, and home decor items across the Cartify catalog",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Product search query keyword"
+            },
+            "category": {
+              "type": "string",
+              "description": "Product category filter (electronics, clothing, footwear, accessories, furniture, beauty)"
+            }
+          },
+          "required": ["query"]
+        }
+      },
+      "representativeQueries": [
+        "Search products on Cartify",
+        "Find electronics, smartphones, and headphones on Cartify",
+        "Browse clothes, shoes, and accessories on Cartify",
+        "Check product prices and ratings on Cartify"
+      ]
+    },
+    {
+      "identifier": "urn:air:cartify-hub.vercel.app:api:products",
+      "displayName": "Cartify Products API",
+      "type": "application/json",
+      "url": "https://cartify-api-10g3.onrender.com/api/products",
+      "representativeQueries": [
+        "Fetch product inventory list",
+        "Query products by price range and rating",
+        "Retrieve product details and stock status"
+      ]
+    }
+  ]
+}

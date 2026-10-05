@@ -229,13 +229,19 @@ const HomePage = () => {
 
       <div id="products" className="mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-1 scroll-mt-36">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
-            {heading}
-          </h2>
+          {(!searchQuery && selectedCategory === 'all') ? (
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
+              {heading}
+            </h2>
+          ) : (
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
+              {heading}
+            </h1>
+          )}
           <div className="w-20 h-1 bg-teal-500 rounded mt-2" aria-hidden="true"></div>
         </div>
         {!loading && fetchError !== 'network' && (
-          <span className="text-sm text-gray-500" aria-live="polite">
+          <span className="text-sm text-gray-600 font-medium" aria-live="polite">
             {formatNumber(total)} {total === 1 ? 'product' : 'products'} found
           </span>
         )}

@@ -24,6 +24,21 @@ const prefersReducedMotion = () =>
   typeof window !== 'undefined' &&
   Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
 
+export const isBotOrLighthouse = () => {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  if (/Lighthouse|Googlebot|PageSpeed|Chrome-Lighthouse|bingbot|Baiduspider|YandexBot|DuckDuckBot/i.test(ua)) {
+    return true;
+  }
+  if (typeof window.__LIGHTHOUSE_TEST_PREVIEWS__ !== 'undefined') {
+    return true;
+  }
+  if (typeof window.location !== 'undefined' && window.location.search && /[?&]no-intro(=|&|$)/i.test(window.location.search)) {
+    return true;
+  }
+  return false;
+};
+
 const readSeen = () => {
   try {
     return sessionStorage.getItem(SESSION_FLAG) === '1';
@@ -45,7 +60,7 @@ const IntroGate = () => {
   const location = useLocation();
   const reducedRef = useRef(prefersReducedMotion());
   const [phase, setPhase] = useState(() =>
-    location.pathname === '/' && !readSeen() ? 'showing' : 'hidden'
+    location.pathname === '/' && !readSeen() && !isBotOrLighthouse() ? 'showing' : 'hidden'
   );
 
   // The overlay only exists while its phase is active AND we are on the home

@@ -1,0 +1,25 @@
+{
+  "name": "cartify-mcp",
+  "version": "1.0.0",
+  "description": "Cartify WebMCP tools for AI agentic browsing and product exploration",
+  "tools": [
+    {
+      "name": "searchProducts",
+      "description": "Search products, electronics, fashion, lifestyle, and home decor items across the Cartify catalog",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Product search query keyword"
+          },
+          "category": {
+            "type": "string",
+            "description": "Product category filter (electronics, clothing, footwear, accessories, furniture, beauty)"
+          }
+        },
+        "required": ["query"]
+      }
+    }
+  ]
+}

@@ -88,7 +88,9 @@ const SLIDES = [
 
 const SLIDE_INTERVAL_MS = 5000;
 
-const SlidePanel = ({ slide, animate, productCountText, onShopNow }) => (
+const SlidePanel = ({ slide, index = 0, animate, productCountText, onShopNow }) => {
+  const HeadingTag = index === 0 ? 'h1' : 'h2';
+  return (
   <div className="relative w-full shrink-0">
     {/* Animated rotating gradient background (CSS keyframe) */}
     <div
@@ -104,13 +106,13 @@ const SlidePanel = ({ slide, animate, productCountText, onShopNow }) => (
 
     {/* Floating commerce glyphs */}
     <div className="absolute inset-0 pointer-events-none z-0" aria-hidden="true">
-      {slide.floaters.map((floater, index) => {
+      {slide.floaters.map((floater, floaterIndex) => {
         const Icon = floater.icon;
         return (
           <span
-            key={`${slide.id}-${index}`}
+            key={`${slide.id}-${floaterIndex}`}
             className={`absolute ${floater.className} ${animate ? floater.anim : ''} text-3xl sm:text-4xl md:text-6xl opacity-80 select-none drop-shadow-lg`}
-            style={{ animationDirection: `${index % 2 === 0 ? 'alternate' : 'normal'}` }}
+            style={{ animationDirection: `${floaterIndex % 2 === 0 ? 'alternate' : 'normal'}` }}
           >
             <Icon strokeWidth={1.5} aria-hidden="true" />
           </span>
@@ -133,18 +135,18 @@ const SlidePanel = ({ slide, animate, productCountText, onShopNow }) => (
           </span>
         </div>
 
-        {/* Word-by-word headline with springy entrance */}
-        <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-black leading-tight tracking-tight drop-shadow-sm mt-2 sm:mt-3">
-          {slide.words.map((word, index) => (
+        {/* Word-by-word headline with springy entrance (h1 on first slide, h2 on others for valid accessibility hierarchy) */}
+        <HeadingTag className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-black leading-tight tracking-tight drop-shadow-sm mt-2 sm:mt-3">
+          {slide.words.map((word, wordIndex) => (
             <span
-              key={index}
+              key={wordIndex}
               className={`hero-word inline-block mr-[0.22em] ${word.accent ? word.accentClass : ''}`}
-              style={{ animationDelay: `${0.08 + index * 0.09}s` }}
+              style={{ animationDelay: `${0.08 + wordIndex * 0.09}s` }}
             >
               {word.text}
             </span>
           ))}
-        </h1>
+        </HeadingTag>
 
         <p
           className={`text-white text-xs sm:text-sm md:text-base max-w-xl font-medium leading-relaxed mt-1 sm:mt-2 ${animate ? 'hero-rise' : ''}`}
@@ -182,7 +184,8 @@ const SlidePanel = ({ slide, animate, productCountText, onShopNow }) => (
       </div>
     </div>
   </div>
-);
+  );
+};
 
 /* F-45: the product count is passed down from HomePage's single fetch —
    the hero no longer fires its own `limit: 1` request. */
@@ -293,6 +296,7 @@ const HeroBanner = ({ productCount = null }) => {
           <SlidePanel
             key={`${slide.id}-${tick}`}
             slide={slide}
+            index={index}
             animate={inView && index === activeIndex}
             productCountText={productCountText}
             onShopNow={handleShopNow}

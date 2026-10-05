@@ -50,6 +50,31 @@ try {
 }
 listenForInstallPrompt();
 
+// WebMCP (Web Model Context Protocol) agent tool registration
+if (typeof navigator !== 'undefined' && 'modelContext' in navigator && typeof navigator.modelContext?.registerTool === 'function') {
+  try {
+    navigator.modelContext.registerTool({
+      name: 'searchProducts',
+      description: 'Search products, electronics, fashion, and lifestyle items across Cartify catalog',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Product search keyword' },
+          category: { type: 'string', description: 'Product category' },
+        },
+        required: ['query'],
+      },
+      handler: async ({ query, category }) => {
+        const url = category ? `/?category=${encodeURIComponent(category)}&search=${encodeURIComponent(query)}` : `/?search=${encodeURIComponent(query)}`;
+        window.location.href = url;
+        return { success: true, redirectUrl: url };
+      },
+    });
+  } catch {
+    // Graceful fallback for browsers without WebMCP origin trial
+  }
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ErrorBoundary>

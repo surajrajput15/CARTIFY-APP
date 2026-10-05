@@ -91,6 +91,20 @@ describe('IntroGate', () => {
     expect(sessionStorage.getItem(SESSION_FLAG)).toBeNull();
   });
 
+  it('skips the intro for Lighthouse or bot user agents', () => {
+    const originalUa = navigator.userAgent;
+    Object.defineProperty(navigator, 'userAgent', {
+      value: 'Mozilla/5.0 (Linux; Android 11; moto g power (2022)) AppleWebKit/537.36 Chrome-Lighthouse',
+      configurable: true,
+    });
+    renderGate('/');
+    expect(heading()).not.toBeInTheDocument();
+    Object.defineProperty(navigator, 'userAgent', {
+      value: originalUa,
+      configurable: true,
+    });
+  });
+
   it('shortens to a static hold under prefers-reduced-motion', () => {
     window.matchMedia = reducedMotionMatchMedia;
     renderGate('/');

@@ -359,6 +359,8 @@ const ProductDetailsPage = () => {
           <img
             src={resolveImageUrl(product.image)}
             alt={product.title || 'Product image'}
+            width="600"
+            height="600"
             loading="lazy"
             decoding="async"
             onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMG; }}

@@ -81,6 +81,8 @@ const CartPage = () => {
               <img
                 src={resolveImageUrl(item.image)}
                 alt={item.title || 'Cart item'}
+                width="96"
+                height="96"
                 loading="lazy"
                 onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMG; }}
                 className="w-24 h-24 object-cover rounded-md border flex-shrink-0"

@@ -181,7 +181,7 @@ const Navbar = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-14 md:h-16 gap-1.5 sm:gap-3">
 
-            <NavLink to="/" className="flex-shrink-0">
+            <NavLink to="/" className="flex-shrink-0" aria-label="Cartify Home">
               <span className="text-xl sm:text-3xl font-extrabold text-teal-600 tracking-tight whitespace-nowrap">
                 Cartify<span className="text-gray-800">.</span>
               </span>
@@ -332,7 +332,7 @@ const Navbar = () => {
                   </button>
                 </div>
               ) : (
-                <NavLink to="/login" className={navLinkClass}>
+                <NavLink to="/login" className={navLinkClass} aria-label="Login or create account">
                   <User size={20} aria-hidden="true" />
                   <span className="hidden sm:inline">Login</span>
                 </NavLink>

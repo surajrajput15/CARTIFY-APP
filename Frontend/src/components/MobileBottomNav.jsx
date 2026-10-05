@@ -24,7 +24,7 @@ const MobileBottomNav = () => {
   const hasCategoryQuery = useLocation().search.includes('category');
 
   const base = 'flex flex-col items-center justify-center gap-0.5 flex-1 min-w-[44px] min-h-[52px] text-[10px] font-medium transition-colors';
-  const inactive = 'text-gray-500 hover:text-teal-600';
+  const inactive = 'text-gray-600 hover:text-teal-600';
   const active = 'text-teal-600 font-bold shadow-[inset_0_2px_0_0_#0d9488]';
 
   const items = [];

@@ -109,6 +109,8 @@ const ProductCard = memo(({ product }) => {
           srcSet={srcSet}
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
           alt={altText}
+          width="300"
+          height="300"
           loading="lazy"
           decoding="async"
           onError={(e) => { e.currentTarget.src = PLACEHOLDER_IMG; }}
@@ -118,7 +120,7 @@ const ProductCard = memo(({ product }) => {
 
       <div className="p-3 sm:p-5 flex flex-col flex-grow">
         {product.brand && (
-          <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider block mb-1">
+          <span className="text-[11px] font-semibold text-gray-600 uppercase tracking-wider block mb-1">
             {product.brand}
           </span>
         )}
@@ -134,7 +136,7 @@ const ProductCard = memo(({ product }) => {
             {Number(product.rating?.rate) || 0}
           </span>
           <span className="text-gray-300 text-xs" aria-hidden="true">|</span>
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-gray-600 font-medium">
             {Number(product.rating?.count) || 0
               ? `(${Number(product.rating?.count)} reviews)`
               : 'Not yet rated'}
