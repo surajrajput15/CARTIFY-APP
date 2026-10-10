@@ -651,21 +651,37 @@ router.post('/refresh', sessionGuard, async (req, res) => {
 // Logout - clear cookies and invalidate refresh token
 router.post('/logout', sessionGuard, async (req, res) => {
     try {
+        let userId = null;
         const refreshToken = req.cookies?.refreshToken;
         if (refreshToken) {
             try {
                 const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
-                if (decoded.type === 'refresh' && decoded.id) {
-                    logActivity({ userId: decoded.id, userEmail: null, event: 'AUTH_LOGOUT', req });
-                    notifyMonitoring('AUTH_LOGOUT', { userId: decoded.id, ip: req.ip }, { req });
-                    await User.findByIdAndUpdate(decoded.id, { 
-                        refreshToken: undefined, 
-                        refreshTokenExpire: undefined 
-                    });
-                }
-            } catch (e) {
-                // Ignore verification errors, just clear cookies
-            }
+                if (decoded.id) userId = decoded.id;
+            } catch (e) {}
+        }
+        if (!userId && req.cookies?.accessToken) {
+            try {
+                const decoded = jwt.verify(req.cookies.accessToken, process.env.JWT_SECRET);
+                if (decoded.id) userId = decoded.id;
+            } catch (e) {}
+        }
+        if (!userId && req.headers?.authorization?.startsWith('Bearer ')) {
+            try {
+                const token = req.headers.authorization.split(' ')[1];
+                const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                if (decoded.id) userId = decoded.id;
+            } catch (e) {}
+        }
+
+        if (userId) {
+            const u = await User.findById(userId).select('email role').lean();
+            const email = u?.email || null;
+            logActivity({ userId, userEmail: email, event: 'AUTH_LOGOUT', req });
+            notifyMonitoring('AUTH_LOGOUT', { userId, email, ip: req.ip }, { req });
+            await User.findByIdAndUpdate(userId, { 
+                refreshToken: undefined, 
+                refreshTokenExpire: undefined 
+            });
         }
         clearAuthCookies(res);
         res.status(200).json({ message: "Logged out successfully" });

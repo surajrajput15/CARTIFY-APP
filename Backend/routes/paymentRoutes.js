@@ -433,6 +433,9 @@ router.post('/create-order', protect, paymentLimiter, activityLogger('CHECKOUT_S
                 paymentStatus: 'Paid',
                 itemCount: orderItems.length,
                 couponCode,
+                customerEmail: req.user.email,
+                shippingCity: canonicalFreeAddress.city,
+                shippingState: canonicalFreeAddress.state,
             }, { req });
             notifyMonitoring('ORDER_PAID', {
                 orderId: savedFree._id,
@@ -540,6 +543,9 @@ router.post('/create-order', protect, paymentLimiter, activityLogger('CHECKOUT_S
             paymentStatus: 'Pending',
             itemCount: orderItems.length,
             couponCode,
+            customerEmail: req.user.email,
+            shippingCity: canonicalAddress.city,
+            shippingState: canonicalAddress.state,
         }, { req });
         notifyMonitoring('PAYMENT_INITIATED', {
             orderId: savedOrder._id,
@@ -669,11 +675,7 @@ router.post('/verify-payment', protect, paymentLimiter, checkoutActivityLogger()
             orderId: order._id,
             amount: order.totalPrice,
             paymentId: razorpay_payment_id,
-        }, { req });
-        notifyMonitoring('ORDER_PAID', {
-            orderId: order._id,
-            totalPrice: order.totalPrice,
-            paymentId: razorpay_payment_id,
+            customerEmail: order.shippingAddress?.email || req.user?.email,
         }, { req });
 
         if (result.shortfall) {
