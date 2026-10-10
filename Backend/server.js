@@ -17,6 +17,7 @@ dns.setDefaultResultOrder('ipv4first');
 
 const { logger, createChildLogger } = require('./utils/logger');
 const { cache, getRedisClient } = require('./utils/redisCache');
+const { notifyMonitoring } = require('./services/telegram/monitoringService');
 
 // Sentry initialization
 if (process.env.SENTRY_DSN) {
@@ -96,7 +97,15 @@ app.set('trust proxy', 1);
 const generalLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
   max: 200,
-  message: { message: "Too many requests. Please try again later." }
+  message: { message: "Too many requests. Please try again later." },
+  handler: (req, res, next, options) => {
+    notifyMonitoring('SECURITY_RATE_LIMIT_HIT', {
+      ip: req.ip,
+      route: 'General API',
+      path: req.originalUrl,
+    }, { req });
+    res.status(options.statusCode).json(options.message);
+  },
 });
 
 app.use(generalLimiter);
@@ -295,14 +304,17 @@ mongoose.connection.on('disconnected', () => {
   // races with it and causes connect/disconnect churn. The retry loop above
   // is solely for the initial-connect failure path.
   logger.warn('MongoDB disconnected — driver auto-reconnect in progress');
+  notifyMonitoring('DB_DISCONNECTED', { message: 'MongoDB connection dropped; auto-reconnect in progress' });
 });
 
 mongoose.connection.on('reconnected', () => {
   logger.info('MongoDB reconnected');
+  notifyMonitoring('DB_RECONNECTED', { message: 'MongoDB connection restored' });
 });
 
 mongoose.connection.on('error', (err) => {
   logger.error({ err }, 'MongoDB connection error');
+  notifyMonitoring('SYSTEM_ERROR', { message: `MongoDB connection error: ${err?.message || 'unknown error'}` });
 });
 
 // Setup API Routes - Versioned (single canonical source: routes/index.js).
@@ -423,10 +435,18 @@ const shutdown = async (signal) => {
 // Handle unhandled promise rejections and uncaught exceptions
 process.on('unhandledRejection', (reason, promise) => {
   logger.error({ err: reason, promise }, 'Unhandled Rejection - server stays up');
+  notifyMonitoring('SYSTEM_ERROR', {
+    message: `Unhandled Rejection: ${reason?.message || String(reason)}`,
+    stack: reason?.stack,
+  });
 });
 
 process.on('uncaughtException', (error) => {
   logger.error({ err: error }, 'Uncaught Exception - shutting down');
+  notifyMonitoring('SYSTEM_ERROR', {
+    message: `Uncaught Exception: ${error?.message || 'Unknown error'}`,
+    stack: error?.stack,
+  });
   shutdown('uncaughtException');
 });
 

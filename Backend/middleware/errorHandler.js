@@ -1,4 +1,5 @@
 const { logger } = require('../utils/logger');
+const { notifyMonitoring } = require('../services/telegram/monitoringService');
 
 const errorHandler = (err, req, res, next) => {
   logger.error({
@@ -38,6 +39,11 @@ const errorHandler = (err, req, res, next) => {
   // CSRF validation failed — missing/invalid/expired token. Must be 403 (not 500)
   // so the frontend axios interceptor can detect it and refresh the token + retry.
   if (err.code === 'EBADCSRFTOKEN') {
+    notifyMonitoring('SECURITY_CSRF_VIOLATION', {
+      ip: req.ip,
+      path: req.originalUrl,
+      method: req.method,
+    }, { req });
     return res.status(403).json({ message: 'Invalid or missing CSRF token' });
   }
 
@@ -45,6 +51,11 @@ const errorHandler = (err, req, res, next) => {
   // 4xx carries the specific reason (e.g. rate-limit "Too many requests");
   // 5xx stays generic so internals never leak to clients.
   if (status >= 500) {
+    notifyMonitoring('SYSTEM_ERROR', {
+      message: err.message || 'Internal server error',
+      path: req.originalUrl,
+      method: req.method,
+    }, { req });
     return res.status(status).json({ message: 'Internal server error' });
   }
   return res.status(status).json({ message: err.message || 'Request failed' });

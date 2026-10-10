@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const InventoryItem = require('../models/InventoryItem');
 const StockTransaction = require('../models/StockTransaction');
 const { buildVariantKey } = require('./variants');
+const { notifyMonitoring } = require('../services/telegram/monitoringService');
 
 // Inventory service: the single place that keeps Product's sellable stock
 // numbers in sync with per-warehouse InventoryItem rows.
@@ -106,9 +107,24 @@ async function setWarehouseQuantity({ productId, warehouseId, variantKey = null,
       note: note || '',
       performedBy,
     });
+    notifyMonitoring('STOCK_ADJUSTED', {
+      productId,
+      warehouseId,
+      delta,
+      balanceAfter: qty,
+      note,
+    });
   }
 
   const product = await recomputeProductStock(productId);
+  if (product && product.countInStock <= (product.lowStockThreshold ?? 5)) {
+    notifyMonitoring('INVENTORY_LOW_STOCK', {
+      productId: product._id,
+      title: product.title,
+      quantity: product.countInStock,
+      threshold: product.lowStockThreshold ?? 5,
+    });
+  }
   return product;
 }
 

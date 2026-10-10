@@ -14,6 +14,7 @@ const { applyCouponAtCheckout } = require('../utils/couponEngine');
 const { buildVariantKey } = require('../utils/variants');
 const { emitOrderUpdate } = require('../socket/socketServer');
 const { adminMutateGuard } = require('../utils/routeLimiters');
+const { notifyMonitoring } = require('../services/telegram/monitoringService');
 const rateLimit = require('express-rate-limit');
 
 // Rate limiting for payment endpoints to prevent abuse
@@ -425,6 +426,20 @@ router.post('/create-order', protect, paymentLimiter, activityLogger('CHECKOUT_S
                     if (cp) await cp.recordUsage(req.user._id);
                 } catch (e) { logger.error({ err: e, orderId: savedFree._id }, 'Free-order coupon debit failed'); }
             }
+
+            notifyMonitoring('ORDER_CREATED', {
+                orderId: savedFree._id,
+                totalPrice: 0,
+                paymentStatus: 'Paid',
+                itemCount: orderItems.length,
+                couponCode,
+            }, { req });
+            notifyMonitoring('ORDER_PAID', {
+                orderId: savedFree._id,
+                totalPrice: 0,
+                paymentId: 'FREE_ORDER_COUPON',
+            }, { req });
+
             return res.status(200).json({
                 freeOrder: true,
                 order: {
@@ -519,6 +534,19 @@ router.post('/create-order', protect, paymentLimiter, activityLogger('CHECKOUT_S
             throw saveError;
         }
 
+        notifyMonitoring('ORDER_CREATED', {
+            orderId: savedOrder._id,
+            totalPrice: calculatedTotal,
+            paymentStatus: 'Pending',
+            itemCount: orderItems.length,
+            couponCode,
+        }, { req });
+        notifyMonitoring('PAYMENT_INITIATED', {
+            orderId: savedOrder._id,
+            razorpayOrderId: rzpOrder.id,
+            totalPrice: calculatedTotal,
+        }, { req });
+
         res.status(200).json({
             order: {
                 ...rzpOrder,
@@ -551,6 +579,7 @@ router.post('/verify-payment', protect, paymentLimiter, checkoutActivityLogger()
         const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
         if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+            notifyMonitoring('PAYMENT_VERIFY_FAILED', { razorpayOrderId: razorpay_order_id, reason: 'Missing payment verification fields', ip: req.ip }, { req });
             return res.status(400).json({ message: "Missing payment verification fields", success: false });
         }
 
@@ -561,6 +590,7 @@ router.post('/verify-payment', protect, paymentLimiter, checkoutActivityLogger()
         });
 
         if (!order) {
+            notifyMonitoring('PAYMENT_VERIFY_FAILED', { razorpayOrderId: razorpay_order_id, reason: 'Order not found for payment', ip: req.ip }, { req });
             return res.status(400).json({
                 message: "No order found for this payment. Please check the Razorpay order id.",
                 success: false
@@ -590,6 +620,7 @@ router.post('/verify-payment', protect, paymentLimiter, checkoutActivityLogger()
             .digest("hex");
 
         if (!signaturesEqual(razorpay_signature, expectedSign)) {
+            notifyMonitoring('PAYMENT_VERIFY_FAILED', { razorpayOrderId: razorpay_order_id, reason: 'Invalid signature sent', ip: req.ip }, { req });
             return res.status(400).json({ message: "Invalid signature sent!", success: false });
         }
 
@@ -611,6 +642,11 @@ router.post('/verify-payment', protect, paymentLimiter, checkoutActivityLogger()
         }
 
         if (rzpOrder.id !== razorpay_order_id || Number(rzpOrder.amount) !== Math.round(order.totalPrice * 100)) {
+            notifyMonitoring('PAYMENT_VERIFY_FAILED', {
+                razorpayOrderId: razorpay_order_id,
+                reason: `Amount mismatch: expected ${Math.round(order.totalPrice * 100)}, gateway reported ${rzpOrder.amount}`,
+                ip: req.ip
+            }, { req });
             return res.status(400).json({ message: "Payment amount mismatch", success: false });
         }
 
@@ -629,7 +665,23 @@ router.post('/verify-payment', protect, paymentLimiter, checkoutActivityLogger()
             });
         }
 
+        notifyMonitoring('PAYMENT_VERIFIED_SUCCESS', {
+            orderId: order._id,
+            amount: order.totalPrice,
+            paymentId: razorpay_payment_id,
+        }, { req });
+        notifyMonitoring('ORDER_PAID', {
+            orderId: order._id,
+            totalPrice: order.totalPrice,
+            paymentId: razorpay_payment_id,
+        }, { req });
+
         if (result.shortfall) {
+            notifyMonitoring('ORDER_STOCK_SHORTFALL', {
+                orderId: order._id,
+                totalPrice: order.totalPrice,
+                paymentId: razorpay_payment_id,
+            }, { req });
             return res.status(409).json({
                 message: "Your payment was captured for the full amount, but one or more items went out of stock during checkout. Your order is safely recorded and our team will contact you shortly to arrange a refund for the unavailable items.",
                 success: false,
@@ -668,6 +720,7 @@ router.post('/webhook', async (req, res) => {
             .digest('hex');
 
         if (!signaturesEqual(signature, expectedSign)) {
+            notifyMonitoring('SECURITY_INVALID_WEBHOOK_SIGNATURE', { ip: req.ip }, { req });
             return res.status(400).json({ ok: false, message: 'Invalid signature' });
         }
 
@@ -694,11 +747,39 @@ router.post('/webhook', async (req, res) => {
             // Defense in depth: re-check the captured amount against the server total.
             if (Number(payment.amount) !== Math.round(order.totalPrice * 100)) {
                 logger.error(`Webhook amount mismatch for order ${orderId}`);
+                notifyMonitoring('PAYMENT_WEBHOOK_MISMATCH', {
+                    orderId: order._id,
+                    expectedAmount: order.totalPrice,
+                    receivedAmount: Number(payment.amount) / 100
+                }, { req });
                 return res.status(200).json({ ok: true, skipped: 'amount mismatch' });
             }
 
             const result = await finalisePaidOrder(order, { paymentId: payment.id });
             logger.info(`Webhook processed: payment.captured -> order ${orderId} (${result.transition})`);
+
+            notifyMonitoring('PAYMENT_WEBHOOK_CAPTURED', {
+                orderId: order._id,
+                paymentId: payment.id,
+                amount: Number(payment.amount) / 100,
+                transition: result.transition
+            }, { req });
+
+            if (result.finalised) {
+                notifyMonitoring('ORDER_PAID', {
+                    orderId: order._id,
+                    totalPrice: order.totalPrice,
+                    paymentId: payment.id
+                }, { req });
+            }
+            if (result.shortfall) {
+                notifyMonitoring('ORDER_STOCK_SHORTFALL', {
+                    orderId: order._id,
+                    totalPrice: order.totalPrice,
+                    paymentId: payment.id
+                }, { req });
+            }
+
             return res.status(200).json({ ok: true, ...result });
         }
 
@@ -761,8 +842,19 @@ router.post('/refund/:orderId', protect, admin, requirePermission('orders.refund
 
         emitOrderUpdate(updated);
 
+        notifyMonitoring('REFUND_PROCESSED', {
+            orderId: order._id,
+            amount: order.totalPrice,
+            refundId: refund.id,
+            adminEmail: req.user.email
+        }, { req });
+
         res.status(200).json({ message: 'Refund initiated', refund, order: updated });
     } catch (error) {
+        notifyMonitoring('REFUND_FAILED', {
+            orderId: req.params.orderId,
+            error: error.message
+        }, { req });
         const errorResponse = handleRazorpayError(error);
         res.status(errorResponse.statusCode).json({ message: errorResponse.message });
     }

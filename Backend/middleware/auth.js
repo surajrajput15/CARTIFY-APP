@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { notifyMonitoring } = require('../services/telegram/monitoringService');
 
 const protect = async (req, res, next) => {
   let token;
@@ -62,6 +63,11 @@ const admin = (req, res, next) => {
   if (req.user && (req.user.isAdmin || OPERATIONAL_ROLES.includes(req.user.role))) {
     next();
   } else {
+    notifyMonitoring('SECURITY_UNAUTHORIZED_ADMIN', {
+      email: req.user?.email || 'Anonymous',
+      ip: req.ip,
+      path: req.originalUrl,
+    }, { req });
     return res.status(403).json({ message: 'Not authorized as admin' });
   }
 };
@@ -74,6 +80,12 @@ const requirePermission = (permission) => {
     if (hasPermission(req.user, permission)) {
       next();
     } else {
+      notifyMonitoring('SECURITY_UNAUTHORIZED_ADMIN', {
+        email: req.user.email,
+        ip: req.ip,
+        path: req.originalUrl,
+        requiredPermission: permission,
+      }, { req });
       return res.status(403).json({
         message: `Forbidden: requires '${permission}' permission`,
         code: 'FORBIDDEN_INSUFFICIENT_PERMISSIONS'

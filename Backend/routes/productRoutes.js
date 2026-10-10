@@ -14,6 +14,7 @@ const { auditLogMiddleware } = require('../middleware/auditLog');
 const { activityLogger } = require('../middleware/userActivity');
 const { adminMutateGuard } = require('../utils/routeLimiters');
 const { ownerOnly } = require('../utils/ownerValidator');
+const { notifyMonitoring } = require('../services/telegram/monitoringService');
 
 const hasCloudinary = Boolean(
   process.env.CLOUDINARY_CLOUD_NAME &&
@@ -375,6 +376,15 @@ router.post('/add', protect, admin, requirePermission('products.create'), adminM
             }
             if (skuDirty) await newProduct.save();
         }
+
+        notifyMonitoring('PRODUCT_MUTATION', {
+            action: 'Created',
+            title: newProduct.title,
+            price: newProduct.price,
+            stock: newProduct.countInStock,
+            adminEmail: req.user.email,
+        }, { req });
+
         res.status(201).json({ message: "Product added successfully", product: newProduct });
     } catch (error) {
         if (error.name === 'ValidationError') {
@@ -508,6 +518,12 @@ router.delete('/:id', protect, admin, requirePermission('products.delete'), admi
             Wishlist.deleteMany({ productId: product._id }),
             Review.deleteMany({ product: product._id })
         ]);
+
+        notifyMonitoring('PRODUCT_MUTATION', {
+            action: 'Deleted',
+            title: product.title,
+            adminEmail: req.user.email,
+        }, { req });
 
         res.status(200).json({ message: "Product deleted successfully! 🗑️" });
     } catch (error) {
@@ -652,6 +668,14 @@ router.patch('/:id', protect, admin, requirePermission('products.update'), admin
         if (updates.image && updates.image !== previousImage) {
             unlinkUploadedImage(previousImage);
         }
+
+        notifyMonitoring('PRODUCT_MUTATION', {
+            action: 'Updated',
+            title: updatedProduct.title,
+            price: updatedProduct.price,
+            stock: updatedProduct.countInStock,
+            adminEmail: req.user.email,
+        }, { req });
 
         res.status(200).json({
             success: true,

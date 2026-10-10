@@ -17,6 +17,14 @@ const credentialLimiter = rateLimit({
   message: { message: 'Too many attempts. Please try again after a minute.' },
   standardHeaders: true,
   legacyHeaders: false,
+  handler: (req, res, next, options) => {
+    notifyMonitoring('SECURITY_RATE_LIMIT_HIT', {
+      ip: req.ip,
+      route: 'Auth Credentials',
+      path: req.originalUrl,
+    }, { req });
+    res.status(options.statusCode).json(options.message);
+  },
 });
 const sessionLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
@@ -51,6 +59,7 @@ const { applyOwnerRole } = require('../utils/ownerValidator');
 const { protect } = require('../middleware/auth');
 const { auditLogMiddleware } = require('../middleware/auditLog');
 const { logActivity, activityLogger } = require('../middleware/userActivity');
+const { notifyMonitoring } = require('../services/telegram/monitoringService');
 
 const checkUserStatus = (user, res) => {
   if (user.status === 'blocked') {
@@ -349,6 +358,7 @@ router.post('/verify-otp', credentialGuard, async (req, res) => {
         if (!user.otp || !safeEqual(user.otp, hashOtp(otp)) || !user.otpExpire || user.otpExpire < Date.now()) {
             // Atomic increment: concurrent guesses can't race past the attempt cap.
             await User.updateOne({ _id: user._id }, { $inc: { otpAttempts: 1 } });
+            notifyMonitoring('AUTH_LOGIN_FAILED', { email, reason: 'Invalid or expired OTP', ip: req.ip }, { req });
             return res.status(400).json({ message: "Invalid or Expired OTP." });
         }
 
@@ -368,6 +378,13 @@ router.post('/verify-otp', credentialGuard, async (req, res) => {
         setAuthCookies(res, accessToken, refreshToken);
 
         logActivity({ userId: user._id, userEmail: user.email, event: 'AUTH_LOGIN', details: { method: 'otp' }, req });
+        notifyMonitoring('AUTH_LOGIN_SUCCESS', {
+            email: user.email,
+            method: 'otp',
+            role: user.role,
+            isAdmin: user.isAdmin,
+            ip: req.ip
+        }, { req });
 
         res.status(200).json({
             message: "Login successful! 🎉",
@@ -458,6 +475,7 @@ router.post('/register', credentialGuard, async (req, res) => {
         setAuthCookies(res, accessToken, refreshToken);
 
         logActivity({ userId: newUser._id, userEmail: newUser.email, event: 'AUTH_REGISTER', details: { method: 'password' }, req });
+        notifyMonitoring('AUTH_REGISTER', { email: newUser.email, method: 'password', ip: req.ip }, { req });
 
         res.status(201).json({ 
             message: "Account created successfully!",
@@ -478,22 +496,28 @@ router.post('/login', credentialGuard, async (req, res) => {
         // a 500 — reject as invalid credentials (uniform message, no enumeration).
         if (typeof password !== 'string' || password.length > MAX_PASSWORD_LENGTH) {
             recordLoginFail(email);
+            notifyMonitoring('AUTH_LOGIN_FAILED', { email, reason: 'Invalid password format', ip: req.ip }, { req });
             return res.status(400).json({ message: "Invalid credentials. If you have no password yet, use the OTP option." });
         }
         const lockedMessage = checkLoginLock(email);
-        if (lockedMessage) return res.status(429).json({ message: lockedMessage });
+        if (lockedMessage) {
+            notifyMonitoring('AUTH_LOCKOUT', { email, ip: req.ip }, { req });
+            return res.status(429).json({ message: lockedMessage });
+        }
         const user = await User.findOne({ email });
 
         // Uniform error for every failure mode (no account / no password / wrong password)
         // so the endpoint never reveals whether an email is registered or how it authenticates.
         if (!user || !user.password) {
             recordLoginFail(email);
+            notifyMonitoring('AUTH_LOGIN_FAILED', { email, reason: 'Account or password missing', ip: req.ip }, { req });
             return res.status(400).json({ message: "Invalid credentials. If you have no password yet, use the OTP option." });
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             recordLoginFail(email);
+            notifyMonitoring('AUTH_LOGIN_FAILED', { email, reason: 'Password mismatch', ip: req.ip }, { req });
             return res.status(400).json({ message: "Invalid credentials." });
         }
         clearLoginFails(email);
@@ -514,6 +538,13 @@ router.post('/login', credentialGuard, async (req, res) => {
         setAuthCookies(res, accessToken, refreshToken);
 
         logActivity({ userId: user._id, userEmail: user.email, event: 'AUTH_LOGIN', details: { method: 'password' }, req });
+        notifyMonitoring('AUTH_LOGIN_SUCCESS', {
+            email: user.email,
+            method: 'password',
+            role: user.role,
+            isAdmin: user.isAdmin,
+            ip: req.ip
+        }, { req });
 
         res.status(200).json({
             message: "Login successful!",
@@ -626,6 +657,7 @@ router.post('/logout', sessionGuard, async (req, res) => {
                 const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
                 if (decoded.type === 'refresh' && decoded.id) {
                     logActivity({ userId: decoded.id, userEmail: null, event: 'AUTH_LOGOUT', req });
+                    notifyMonitoring('AUTH_LOGOUT', { userId: decoded.id, ip: req.ip }, { req });
                     await User.findByIdAndUpdate(decoded.id, { 
                         refreshToken: undefined, 
                         refreshTokenExpire: undefined 
@@ -961,11 +993,13 @@ router.post('/google', credentialGuard, async (req, res) => {
                     audience: process.env.GOOGLE_CLIENT_ID,
                 });
             } catch (error) {
+                notifyMonitoring('AUTH_GOOGLE_FAILED', { reason: 'Invalid Google credential', ip: req.ip }, { req });
                 return res.status(401).json({ message: "Invalid Google credential" });
             }
 
             payload = ticket.getPayload();
             if (!payload || !payload.email_verified) {
+                notifyMonitoring('AUTH_GOOGLE_FAILED', { reason: 'Google email not verified', ip: req.ip }, { req });
                 return res.status(401).json({ message: "Google email is not verified" });
             }
         }
@@ -981,6 +1015,7 @@ router.post('/google', credentialGuard, async (req, res) => {
 
         // Check if user already exists
         let user = await User.findOne({ email });
+        const isNewUser = !user;
 
         if (!user) {
             // Passwordless Google account: no password stored (OTP/password flows still work).
@@ -1008,6 +1043,11 @@ router.post('/google', credentialGuard, async (req, res) => {
         setAuthCookies(res, accessToken, refreshToken);
 
         logActivity({ userId: user._id, userEmail: user.email, event: 'AUTH_LOGIN', details: { method: 'google' }, req });
+        notifyMonitoring('AUTH_GOOGLE_SUCCESS', {
+            email: user.email,
+            isNewUser,
+            ip: req.ip
+        }, { req });
 
         res.status(200).json({
             user: publicUser(user)

@@ -11,6 +11,7 @@ const { adminMutateGuard, staffActionGuard } = require('../utils/routeLimiters')
 const { orderStatusWorkflow, isValidOrderTransition, isValidDeliveryTransition, canCancelOrder, canFailDelivery } = require('../utils/orderStatus');
 const { emitOrderUpdate } = require('../socket/socketServer');
 const { restoreOrderStock } = require('../utils/orderFulfillment');
+const { notifyMonitoring } = require('../services/telegram/monitoringService');
 
 // Order records are built entirely server-side during the payment flow:
 //   POST /api/payment/create-order  -> persists a Pending order (server-calculated total)
@@ -165,6 +166,13 @@ router.patch('/:id/status', protect, admin, requirePermission('orders.update'), 
 
         emitOrderUpdate(order);
 
+        notifyMonitoring('ORDER_STATUS_CHANGED', {
+            orderId: order._id,
+            fromStatus: existing.status,
+            toStatus: status,
+            updatedBy: req.user.email,
+        }, { req });
+
         res.status(200).json({ message: "Order status updated", order });
     } catch (error) {
         if (error.name === 'CastError') {
@@ -231,6 +239,12 @@ router.post('/:id/assign-delivery', protect, admin, requirePermission('delivery.
         }
 
         emitOrderUpdate(updatedOrder);
+
+        notifyMonitoring('DELIVERY_UPDATE', {
+            orderId: updatedOrder._id,
+            deliveryStatus: 'assigned',
+            partnerName: deliveryPartner.name,
+        }, { req });
 
         res.status(200).json({
             message: 'Delivery partner assigned successfully',
@@ -477,6 +491,11 @@ router.post('/:id/complete-delivery', protect, delivery, staffActionGuard, audit
 
         emitOrderUpdate(updatedOrder);
 
+        notifyMonitoring('DELIVERY_UPDATE', {
+            orderId: updatedOrder._id,
+            deliveryStatus: 'delivered',
+        }, { req });
+
         res.status(200).json({
             message: 'Delivery completed successfully',
             order: updatedOrder
@@ -540,6 +559,11 @@ router.post('/:id/fail-delivery', protect, delivery, staffActionGuard, auditLogM
         }
 
         emitOrderUpdate(updatedOrder);
+
+        notifyMonitoring('DELIVERY_UPDATE', {
+            orderId: updatedOrder._id,
+            deliveryStatus: 'failed',
+        }, { req });
 
         // A failed delivery on an order that never shipped can be resolved by simply
         // cancelling (and refunding) it, so surface whether that path is still open.
@@ -826,6 +850,13 @@ router.post('/:id/cancel', protect, auditLogMiddleware('CANCEL_ORDER', 'Order'),
         await restoreOrderStock(order);
 
         emitOrderUpdate(updatedOrder);
+
+        notifyMonitoring('ORDER_CANCELLED', {
+            orderId: updatedOrder._id,
+            totalPrice: updatedOrder.totalPrice,
+            cancelledBy: isAdmin ? `Admin (${req.user.email})` : 'Customer',
+            stockRestored: true,
+        }, { req });
 
         res.status(200).json({
             message: "Order cancelled successfully",
