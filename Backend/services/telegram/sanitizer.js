@@ -91,8 +91,8 @@ function sanitizePayload(data, depth = 0) {
       continue;
     }
 
-    if (lowerKey === 'email') {
-      sanitized[key] = maskEmail(value);
+    if (lowerKey === 'email' || lowerKey === 'customeremail' || lowerKey === 'adminemail') {
+      sanitized[key] = typeof value === 'string' ? value.trim() : value;
       continue;
     }
 

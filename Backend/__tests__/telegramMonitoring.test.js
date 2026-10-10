@@ -74,8 +74,8 @@ describe('Telegram Monitoring System', () => {
       expect(sanitized.billing.cardNumber).toBe('[REDACTED]');
       expect(sanitized.items[1].userPassword).toBe('[REDACTED]');
 
-      // PII must be masked
-      expect(sanitized.email).toBe('j****e@example.com');
+      // Email preserved in full for admin tracker, phone masked
+      expect(sanitized.email).toBe('john.doe@example.com');
       expect(sanitized.billing.phone).toBe('******6655');
       expect(sanitized.name).toBe('John Doe');
       expect(sanitized.items[0].productId).toBe('prod_1');
@@ -297,7 +297,7 @@ describe('Telegram Monitoring System', () => {
       const log = await MonitoringLog.findOne({ eventType: 'AUTH_LOGIN_FAILED' });
       expect(log).not.toBeNull();
       expect(log.metadata.password).toBe('[REDACTED]');
-      expect(log.metadata.email).toBe('a***n@cartify.com');
+      expect(log.metadata.email).toBe('admin@cartify.com');
     });
 
     it('should not throw if MongoDB or Telegram client encounters an issue (fail-open)', async () => {

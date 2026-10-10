@@ -45,7 +45,7 @@ function formatAlertMessage(eventType, data = {}, options = {}) {
     case 'AUTH_REGISTER':
       return [
         '🟢 <b>NEW CUSTOMER REGISTERED</b>',
-        `👤 <b>Customer:</b> ${escapeHtml(maskEmail(data.email))}`,
+        `👤 <b>Customer:</b> ${escapeHtml(data.email)}`,
         `⚙️ <b>Method:</b> ${escapeHtml(data.method || 'Password')}`,
         data.ip ? `🌐 <b>IP Address:</b> <code>${escapeHtml(data.ip)}</code>` : null,
         `🕒 <b>Time:</b> <code>${time}</code>`,
@@ -54,7 +54,7 @@ function formatAlertMessage(eventType, data = {}, options = {}) {
     case 'AUTH_LOGIN_SUCCESS':
       return [
         data.role === 'admin' || data.isAdmin ? '🛡️ <b>ADMIN LOGIN DETECTED</b>' : '🔑 <b>CUSTOMER LOGIN</b>',
-        `👤 <b>User:</b> ${escapeHtml(maskEmail(data.email))}`,
+        `👤 <b>User:</b> ${escapeHtml(data.email)}`,
         `⚙️ <b>Method:</b> ${escapeHtml(data.method || 'Password')}`,
         data.ip ? `🌐 <b>IP Address:</b> <code>${escapeHtml(data.ip)}</code>` : null,
         data.role === 'admin' || data.isAdmin ? '👑 <b>Access:</b> <b>Full Admin Privileges</b>' : null,
@@ -64,7 +64,7 @@ function formatAlertMessage(eventType, data = {}, options = {}) {
     case 'AUTH_LOGIN_FAILED':
       return [
         '⚠️ <b>LOGIN FAILED ATTEMPT</b>',
-        `👤 <b>Attempted Email:</b> ${escapeHtml(maskEmail(data.email))}`,
+        `👤 <b>Attempted Email:</b> ${escapeHtml(data.email)}`,
         `🌐 <b>IP Address:</b> <code>${escapeHtml(data.ip || 'Unknown')}</code>`,
         `📝 <b>Reason:</b> ${escapeHtml(data.reason || 'Invalid credentials')}`,
         `🕒 <b>Time:</b> <code>${time}</code>`,
@@ -74,7 +74,7 @@ function formatAlertMessage(eventType, data = {}, options = {}) {
     case 'AUTH_LOCKOUT':
       return [
         '🚨 <b>ACCOUNT BRUTE-FORCE LOCKOUT</b>',
-        `👤 <b>Target Email:</b> ${escapeHtml(maskEmail(data.email))}`,
+        `👤 <b>Target Email:</b> ${escapeHtml(data.email)}`,
         `🌐 <b>Attacker IP:</b> <code>${escapeHtml(data.ip || 'Unknown')}</code>`,
         `⚠️ <b>Security Action:</b> 10 failed attempts reached; account locked for 15 mins`,
         `🕒 <b>Time:</b> <code>${time}</code>`,
@@ -83,7 +83,7 @@ function formatAlertMessage(eventType, data = {}, options = {}) {
     case 'AUTH_GOOGLE_SUCCESS':
       return [
         '🌐 <b>GOOGLE OAUTH LOGIN</b>',
-        `👤 <b>Customer:</b> ${escapeHtml(maskEmail(data.email))}`,
+        `👤 <b>Customer:</b> ${escapeHtml(data.email)}`,
         data.isNewUser ? '✨ <b>Status:</b> New account registered' : '🔁 <b>Status:</b> Existing user login',
         data.ip ? `🌐 <b>IP Address:</b> <code>${escapeHtml(data.ip)}</code>` : null,
         `🕒 <b>Time:</b> <code>${time}</code>`,
@@ -100,7 +100,7 @@ function formatAlertMessage(eventType, data = {}, options = {}) {
     case 'AUTH_LOGOUT':
       return [
         '🚪 <b>USER LOGOUT</b>',
-        data.email ? `👤 <b>Customer:</b> ${escapeHtml(maskEmail(data.email))}` : null,
+        data.email ? `👤 <b>Customer:</b> ${escapeHtml(data.email)}` : null,
         data.userId ? `🆔 <b>User ID:</b> <code>${escapeHtml(data.userId)}</code>` : null,
         data.ip ? `🌐 <b>IP Address:</b> <code>${escapeHtml(data.ip)}</code>` : null,
         `🕒 <b>Time:</b> <code>${time}</code>`,
@@ -111,7 +111,7 @@ function formatAlertMessage(eventType, data = {}, options = {}) {
       return [
         '🛍️ <b>NEW ORDER CREATED</b>',
         `📦 <b>Order ID:</b> <code>${escapeHtml(data.orderId)}</code>`,
-        data.customerEmail ? `👤 <b>Customer:</b> ${escapeHtml(maskEmail(data.customerEmail))}` : null,
+        data.customerEmail ? `👤 <b>Customer:</b> ${escapeHtml(data.customerEmail)}` : null,
         `💰 <b>Amount:</b> ₹${Number(data.totalPrice || 0).toFixed(2)}`,
         `💳 <b>Payment:</b> ${escapeHtml(data.paymentStatus || 'Pending')}`,
         `📋 <b>Items:</b> ${data.itemCount || 1} item(s)`,
@@ -124,7 +124,7 @@ function formatAlertMessage(eventType, data = {}, options = {}) {
       return [
         '✅ <b>ORDER CONFIRMED & PAID</b>',
         `📦 <b>Order ID:</b> <code>${escapeHtml(data.orderId)}</code>`,
-        data.customerEmail ? `👤 <b>Customer:</b> ${escapeHtml(maskEmail(data.customerEmail))}` : null,
+        data.customerEmail ? `👤 <b>Customer:</b> ${escapeHtml(data.customerEmail)}` : null,
         `💰 <b>Verified Amount:</b> ₹${Number(data.totalPrice || 0).toFixed(2)}`,
         `💳 <b>Provider Ref:</b> <code>${escapeHtml(data.paymentId || 'N/A')}</code>`,
         `🕒 <b>Time:</b> <code>${time}</code>`,
@@ -134,7 +134,7 @@ function formatAlertMessage(eventType, data = {}, options = {}) {
       return [
         '❌ <b>ORDER CANCELLED</b>',
         `📦 <b>Order ID:</b> <code>${escapeHtml(data.orderId)}</code>`,
-        data.customerEmail ? `👤 <b>Customer:</b> ${escapeHtml(maskEmail(data.customerEmail))}` : null,
+        data.customerEmail ? `👤 <b>Customer:</b> ${escapeHtml(data.customerEmail)}` : null,
         `👤 <b>Cancelled By:</b> ${escapeHtml(data.cancelledBy || 'Customer')}`,
         `💰 <b>Order Total:</b> ₹${Number(data.totalPrice || 0).toFixed(2)}`,
         `🔄 <b>Stock Restored:</b> ${data.stockRestored ? 'Yes' : 'No'}`,
@@ -183,7 +183,7 @@ function formatAlertMessage(eventType, data = {}, options = {}) {
       return [
         '💳 <b>PAYMENT VERIFIED (SERVER-SIDE)</b>',
         `📦 <b>Order ID:</b> <code>${escapeHtml(data.orderId)}</code>`,
-        data.customerEmail ? `👤 <b>Customer:</b> ${escapeHtml(maskEmail(data.customerEmail))}` : null,
+        data.customerEmail ? `👤 <b>Customer:</b> ${escapeHtml(data.customerEmail)}` : null,
         `💰 <b>Verified Amount:</b> ₹${Number(data.amount || data.totalPrice || 0).toFixed(2)} INR`,
         `💳 <b>Payment ID:</b> <code>${escapeHtml(data.paymentId)}</code>`,
         `🔒 <b>Verification:</b> Constant-time HMAC match & Gateway re-check passed`,
@@ -252,7 +252,7 @@ function formatAlertMessage(eventType, data = {}, options = {}) {
         `🏷️ <b>Title:</b> ${escapeHtml(data.title)}`,
         data.price ? `💰 <b>Price:</b> ₹${data.price}` : null,
         data.stock !== undefined ? `📊 <b>Stock:</b> ${data.stock}` : null,
-        `👤 <b>Admin:</b> ${escapeHtml(maskEmail(data.adminEmail))}`,
+        `👤 <b>Admin:</b> ${escapeHtml(data.adminEmail || data.email)}`,
         `🕒 <b>Time:</b> <code>${time}</code>`,
       ].filter(Boolean).join('\n');
 
@@ -279,7 +279,7 @@ function formatAlertMessage(eventType, data = {}, options = {}) {
     case 'SECURITY_UNAUTHORIZED_ADMIN':
       return [
         '🚨 <b>UNAUTHORIZED ADMIN ACCESS ATTEMPT</b>',
-        `👤 <b>User:</b> ${escapeHtml(maskEmail(data.email))}`,
+        `👤 <b>User:</b> ${escapeHtml(data.email)}`,
         `🌐 <b>IP:</b> <code>${escapeHtml(data.ip || 'Unknown')}</code>`,
         `📍 <b>Route:</b> <code>${escapeHtml(data.path)}</code>`,
         `🕒 <b>Time:</b> <code>${time}</code>`,
