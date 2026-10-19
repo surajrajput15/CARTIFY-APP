@@ -19,6 +19,7 @@ import { SUPPORT_EMAIL, SHIPPING_CONFIG } from '../utils/constants';
 import { fetchMyOrders } from '../services/ordersApi';
 import Card from './ui/Card';
 import Button from './ui/Button';
+import LazySection from './LazySection';
 
 const SectionHeader = ({ icon: Icon, title, subtitle, action, id }) => (
   <div className="mb-4 flex items-start justify-between gap-2">
@@ -684,11 +685,17 @@ const HomeSections = ({ takenIds = [] }) => {
           Collections → Promo → Trust. Sections share one `claims` map so each
           product appears at most once across the main grid + curated zone. */}
       <Recommendations taken={taken} version={version} claim={claim} />
-      <FeaturedPicks taken={taken} version={version} claim={claim} />
+      <LazySection placeholder={<div className="mt-12 min-h-[320px]"><SkeletonListStub /></div>} rootMargin="350px">
+        <FeaturedPicks taken={taken} version={version} claim={claim} />
+      </LazySection>
       <RecentlyViewed />
       <FromWishlist />
-      <BuyAgain />
-      <CategoryCollections taken={taken} version={version} claim={claim} />
+      <LazySection rootMargin="350px">
+        <BuyAgain />
+      </LazySection>
+      <LazySection placeholder={<div className="mt-12 min-h-[320px]"><SkeletonListStub compact /></div>} rootMargin="350px">
+        <CategoryCollections taken={taken} version={version} claim={claim} />
+      </LazySection>
       <SecondaryPromo />
       <TrustStrip />
     </>
@@ -696,4 +703,4 @@ const HomeSections = ({ takenIds = [] }) => {
 };
 
 export default HomeSections;
-export { FeaturedPicks, Recommendations, RecentlyViewed, FromWishlist, BuyAgain, CategoryCollections, SecondaryPromo, TrustStrip };
+export { LazySection, FeaturedPicks, Recommendations, RecentlyViewed, FromWishlist, BuyAgain, CategoryCollections, SecondaryPromo, TrustStrip };

@@ -24,7 +24,6 @@ export const useSeo = ({
   const schemaSerialized = schema ? JSON.stringify(schema) : null;
 
   useEffect(() => {
-    const prevTitle = document.title;
     if (title) {
       document.title = `Cartify | ${title}`;
     } else if (title === '') {

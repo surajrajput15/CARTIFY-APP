@@ -21,20 +21,71 @@
 // allowlist enforcement is a NO-OP so test suites can build admin accounts via
 // DB flags directly (their own system). Production stays strict.
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const normalizeEmail = (email) => {
+  if (!email || typeof email !== 'string') return '';
+  return email.trim().toLowerCase();
+};
+
 const getAdminEmails = () => {
-  const emails = String(process.env.ADMIN_EMAILS || '')
+  const raw = String(process.env.ADMIN_EMAILS || '');
+  const emails = raw
     .split(',')
-    .map((email) => String(email).trim().toLowerCase())
-    .filter(Boolean);
-  if (!emails.includes('admin@cartify.com')) {
+    .map(normalizeEmail)
+    .filter((email) => EMAIL_REGEX.test(email));
+
+  // In non-production (e.g. test or local dev without ADMIN_EMAILS configured),
+  // provide a safe test fixture so automated suites and local dev work seamlessly.
+  // In production (NODE_ENV === 'production'), NEVER inject any hardcoded fallback.
+  if (process.env.NODE_ENV !== 'production' && emails.length === 0) {
     emails.push('admin@cartify.com');
   }
+
   return emails;
 };
 
 const isOwnerEmail = (email) => {
-  if (!email) return false;
-  return getAdminEmails().includes(String(email).trim().toLowerCase());
+  const normalized = normalizeEmail(email);
+  if (!normalized || !EMAIL_REGEX.test(normalized)) return false;
+  return getAdminEmails().includes(normalized);
+};
+
+/**
+ * Validates the ADMIN_EMAILS configuration for production readiness.
+ * Returns { valid: true, count, emails } or { valid: false, error }.
+ */
+const validateAdminEmailsConfig = () => {
+  const raw = String(process.env.ADMIN_EMAILS || '').trim();
+  if (!raw) {
+    return {
+      valid: false,
+      error: 'ADMIN_EMAILS is required in production but was missing or empty.',
+    };
+  }
+
+  const rawEntries = raw.split(',').map((e) => e.trim()).filter(Boolean);
+  if (rawEntries.length === 0) {
+    return {
+      valid: false,
+      error: 'ADMIN_EMAILS contains no email entries.',
+    };
+  }
+
+  const invalidEntries = rawEntries.filter((email) => !EMAIL_REGEX.test(email.toLowerCase()));
+  if (invalidEntries.length > 0) {
+    return {
+      valid: false,
+      error: `ADMIN_EMAILS contains ${invalidEntries.length} invalid email address(es).`,
+    };
+  }
+
+  const normalizedEmails = rawEntries.map(normalizeEmail);
+  return {
+    valid: true,
+    count: normalizedEmails.length,
+    emails: normalizedEmails,
+  };
 };
 
 const OWNER_ROLE = 'admin';
@@ -70,4 +121,11 @@ const ownerOnly = (req, res, next) => {
   return res.status(403).json({ message: 'Owner-only. This account is not the owner.' });
 };
 
-module.exports = { isOwnerEmail, applyOwnerRole, ownerOnly, getAdminEmails };
+module.exports = {
+  isOwnerEmail,
+  applyOwnerRole,
+  ownerOnly,
+  getAdminEmails,
+  validateAdminEmailsConfig,
+  normalizeEmail,
+};

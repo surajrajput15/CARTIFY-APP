@@ -71,6 +71,17 @@ if (!hasBrevoApiKey && !hasSmtpFallback) {
   process.exit(1);
 }
 
+// Production owner configuration validation (Blocker 2 Fix)
+// Mandatory in production to prevent privilege escalation via unconfigured fallbacks
+if (process.env.NODE_ENV === 'production') {
+  const { validateAdminEmailsConfig } = require('./utils/ownerValidator');
+  const adminValidation = validateAdminEmailsConfig();
+  if (!adminValidation.valid) {
+    console.error(`[CRITICAL SECURITY] Production owner configuration invalid: ${adminValidation.error}`);
+    process.exit(1);
+  }
+}
+
 console.log('Environment variables validated successfully');
 
 // Production uploads: without Cloudinary or BACKEND_PUBLIC_URL, local /uploads URLs
@@ -83,6 +94,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 const errorHandler = require('./middleware/errorHandler');
+const { corsOptions } = require('./utils/corsConfig');
 
 const app = express();
 
@@ -111,25 +123,7 @@ const generalLimiter = rateLimit({
 app.use(generalLimiter);
 
 // Middleware
-app.use(cors({
-  origin: function (origin, callback) {
-    const allowed = [
-      'http://localhost:5173',
-      'http://localhost:5174',
-      'https://cartify-hub.vercel.app',
-    ];
-    // Allow all Vercel preview deployments (*.vercel.app) + all localhost in dev
-    const isLocalhost = origin && /^http:\/\/localhost:\d+$/.test(origin);
-    const isAllowed = !origin || allowed.includes(origin) || isLocalhost || (origin && /^https:\/\/.*\.vercel\.app$/.test(origin));
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      console.log('[CORS] Blocked origin:', origin);
-      callback(null, false);
-    }
-  },
-  credentials: true
-}));
+app.use(cors(corsOptions));
 
 app.use(cookieParser());
 

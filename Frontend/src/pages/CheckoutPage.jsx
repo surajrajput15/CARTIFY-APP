@@ -17,7 +17,7 @@ const CheckoutPage = () => {
 
   usePageTitle('Checkout');
 
-  const { addresses, addressesLoading, addressesError, fetchAddresses } = useAddresses(user?.id, true);
+  const { addresses, addressesLoading, addressesError, fetchAddresses, saveAddress } = useAddresses(user?.id, true);
 
   const [selectedAddress, setSelectedAddress] = useState(null);
 
@@ -66,6 +66,7 @@ const CheckoutPage = () => {
             selectedAddress={selectedAddress}
             onSelect={setSelectedAddress}
             onRetry={fetchAddresses}
+            onSaveAddress={saveAddress}
             onGoToProfile={() => {
               // Remember where we came from so Profile can send us back
               // right after the address is saved.

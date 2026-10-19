@@ -163,6 +163,7 @@ orderSchema.index({ razorpayPaymentId: 1 });
 
 // Compound index for admin dashboard queries
 orderSchema.index({ status: 1, paymentStatus: 1, createdAt: -1 });
+orderSchema.index({ paymentStatus: 1, createdAt: -1 });
 
 // Delivery partner: find orders assigned to a delivery partner
 orderSchema.index({ deliveryPartnerId: 1, createdAt: -1 });

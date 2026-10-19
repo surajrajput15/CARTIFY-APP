@@ -21,7 +21,6 @@ import { useAuth } from '../context/authContext';
 import { recordRecentView } from '../utils/recentlyViewed';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
-import { usePageTitle } from '../hooks/usePageTitle';
 import useSeo from '../hooks/useSeo';
 
 const ProductDetailsPage = () => {
@@ -50,6 +49,28 @@ const ProductDetailsPage = () => {
   const [reviewTitle, setReviewTitle] = useState('');
   const [reviewComment, setReviewComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
+
+  // Task 2: Mobile / Tablet sticky purchase bar observer
+  const mainCtaRef = useRef(null);
+  const [isMainCtaVisible, setIsMainCtaVisible] = useState(true);
+
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return;
+    const target = mainCtaRef.current;
+    if (!target) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsMainCtaVisible(entry.isIntersecting);
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(target);
+    return () => {
+      observer.disconnect();
+    };
+  }, [product]);
 
   const loading = product === null;
   const relatedLoading = relatedProducts === null;
@@ -347,7 +368,7 @@ const ProductDetailsPage = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-4 md:p-6 mt-4">
+    <div className="max-w-7xl mx-auto p-4 md:p-6 mt-4 pb-28 md:pb-16 lg:pb-6">
       <button onClick={handleGoBack} className="inline-flex items-center text-teal-600 hover:text-teal-800 mb-6 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 rounded-lg min-h-[44px] px-2" aria-label="Go back to previous page">
         <ArrowLeft size={20} className="mr-2" aria-hidden="true" />
         Back to Products
@@ -427,7 +448,7 @@ const ProductDetailsPage = () => {
           </div>
 
           {productHasVariants && (
-            <div className="space-y-4 mb-5">
+            <div id="variant-selector-section" className="space-y-4 mb-5">
               {requiresSize && (
                 <div>
                   <p className="text-sm font-bold text-gray-700 mb-2">Size</p>
@@ -532,7 +553,7 @@ const ProductDetailsPage = () => {
             </div>
           )}
 
-          <div className="flex items-center gap-2">
+          <div ref={mainCtaRef} className="flex items-center gap-2">
             <button
               type="button"
               onClick={handleWishlistToggle}
@@ -777,6 +798,70 @@ const ProductDetailsPage = () => {
             {[1, 2, 3, 4].map((n) => <SkeletonCard key={n} />)}
           </div>
         </section>
+      )}
+
+      {/* Task 2: Mobile / Tablet Sticky Purchase Bar (lg:hidden) */}
+      {!isMainCtaVisible && product && (
+        <aside
+          role="region"
+          aria-label="Quick purchase bar"
+          className="fixed bottom-[calc(53px+env(safe-area-inset-bottom,0px))] md:bottom-0 left-0 right-0 lg:hidden bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-[0_-4px_20px_rgba(0,0,0,0.12)] z-30 px-4 py-2.5 flex items-center justify-between gap-3 motion-safe:transition-transform"
+        >
+          <div className="flex-1 min-w-0 pr-1">
+            <p className="text-xs text-gray-500 font-medium truncate">
+              {selectedVariant
+                ? variantLabel(selectedVariant.size, selectedVariant.color)
+                : product.title}
+            </p>
+            <div className="flex items-baseline gap-1.5 flex-wrap">
+              <span className="text-base sm:text-lg font-extrabold text-gray-900 truncate">
+                {formatPrice(activePrice * quantity)}
+              </span>
+              {quantity > 1 && (
+                <span className="text-xs text-gray-400">
+                  ({quantity} × {formatPrice(activePrice)})
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {needsSelection ? (
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById('variant-selector-section') || mainCtaRef.current;
+                  if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }
+                }}
+                className="px-4 py-2 rounded-xl font-bold text-xs sm:text-sm bg-amber-500 hover:bg-amber-600 text-white shadow-sm transition-colors min-h-[44px] flex items-center gap-1.5"
+                aria-label="Select size or colour options"
+              >
+                <span>Select Options</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleAddToCart}
+                disabled={addDisabled}
+                aria-label={
+                  addDisabled
+                    ? 'Out of stock'
+                    : `Add to cart, total ${formatPrice(activePrice * quantity)}`
+                }
+                className={`px-4 sm:px-5 py-2 rounded-xl font-bold text-xs sm:text-sm transition-colors shadow-sm flex items-center justify-center gap-1.5 min-h-[44px] ${
+                  addDisabled
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-60'
+                    : 'bg-teal-600 text-white hover:bg-teal-700 shadow-teal-200'
+                }`}
+              >
+                <ShoppingCart size={16} aria-hidden="true" />
+                <span>{addDisabled ? 'Out of Stock' : 'Add to Cart'}</span>
+              </button>
+            )}
+          </div>
+        </aside>
       )}
     </div>
   );

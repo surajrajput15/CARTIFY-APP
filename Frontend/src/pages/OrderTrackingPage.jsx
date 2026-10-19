@@ -111,7 +111,17 @@ function OrderTrackingPage() {
 
   const destination = useMemo(() => {
     const a = order?.shippingAddress;
-    if (a && a.latitude != null && a.longitude != null) return [a.latitude, a.longitude];
+    if (
+      a &&
+      a.latitude != null &&
+      a.longitude != null &&
+      !isNaN(Number(a.latitude)) &&
+      !isNaN(Number(a.longitude)) &&
+      Number(a.latitude) !== 0 &&
+      Number(a.longitude) !== 0
+    ) {
+      return [Number(a.latitude), Number(a.longitude)];
+    }
     return null;
   }, [order]);
 
@@ -289,23 +299,55 @@ function OrderTrackingPage() {
               <h3 className="font-bold text-gray-800 flex items-center gap-2">
                 <Clock size={16} className="text-teal-600" aria-hidden="true" /> Live status
               </h3>
-              {etaInfo && trackable && (
+              {etaInfo && trackable ? (
                 <div className="text-right">
                   <p className="text-xs text-gray-500">ETA</p>
                   <p className="text-sm font-bold text-teal-700">{etaInfo.label}</p>
                 </div>
-              )}
+              ) : position ? (
+                <div className="text-right">
+                  <p className="text-xs text-gray-500">Courier</p>
+                  <p className="text-sm font-bold text-teal-700">En route</p>
+                </div>
+              ) : null}
             </div>
-            <div className="h-72 sm:h-96 relative">
-              <MapContainer
-                key={mapKey}
-                center={destination || [20.5937, 78.9629]}
-                zoom={12}
-                orderId={order._id}
-                trackingMode="customer"
-              />
-            </div>
-            {etaInfo && etaInfo.km < Infinity && (
+
+            {/* Task 5: Explanatory warning if courier position is shown without destination pin */}
+            {!destination && position && (
+              <div className="bg-amber-50 px-4 py-2 border-b border-amber-200 text-xs text-amber-800 flex items-center gap-2">
+                <AlertCircle size={14} className="shrink-0" aria-hidden="true" />
+                <span>Delivery address coordinates unavailable. Showing courier's live location.</span>
+              </div>
+            )}
+
+            {/* Task 5: Only render Leaflet map if we have real coordinates (destination or courier) */}
+            {destination || position ? (
+              <div className="h-72 sm:h-96 relative">
+                <MapContainer
+                  key={mapKey}
+                  center={destination || [position.latitude, position.longitude]}
+                  zoom={destination ? 13 : 14}
+                  orderId={order._id}
+                  trackingMode="customer"
+                  showDestination={Boolean(destination)}
+                />
+              </div>
+            ) : (
+              <div className="h-72 sm:h-96 flex flex-col items-center justify-center p-6 text-center bg-gray-50/70">
+                <div className="w-12 h-12 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center mb-3">
+                  <MapPin size={24} aria-hidden="true" />
+                </div>
+                <h4 className="text-base font-bold text-gray-800 mb-1">Map View Unavailable</h4>
+                <p className="text-sm text-gray-500 max-w-sm mb-3">
+                  Delivery address ke map coordinates available nahi hain. Aap order status timeline se tracking continue kar sakte hain.
+                </p>
+                <p className="text-xs text-gray-400">
+                  Order status updates and delivery stages are tracked above.
+                </p>
+              </div>
+            )}
+
+            {destination && etaInfo && etaInfo.km < Infinity && (
               <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between text-sm">
                 <span className="text-gray-500">
                   {position ? `Courier ${etaInfo.km.toFixed(1)} km away` : 'Awaiting courier position'}
@@ -315,6 +357,15 @@ function OrderTrackingPage() {
                     Updated {timeLabel(position.updatedAt)}
                   </span>
                 )}
+              </div>
+            )}
+
+            {!destination && position && (
+              <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between text-sm">
+                <span className="text-gray-500">Courier broadcast active</span>
+                <span className="font-semibold text-gray-700">
+                  Updated {timeLabel(position.updatedAt)}
+                </span>
               </div>
             )}
           </Card>

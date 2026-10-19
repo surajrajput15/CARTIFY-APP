@@ -1,20 +1,16 @@
 import { Link } from 'react-router-dom';
 import {
-  Code2,
   CheckCircle2,
   ShieldCheck,
   Zap,
-  Globe2,
   Cpu,
   Database,
   Lock,
-  Layers,
   Award,
   Sparkles,
   ArrowRight,
   ExternalLink,
-  Mail,
-  HeartHandshake
+  Mail
 } from 'lucide-react';
 import useSeo from '../hooks/useSeo';
 import { AUTHOR_INFO } from '../utils/constants';

@@ -4,12 +4,12 @@ const { logger } = require('../utils/logger');
 const router = express.Router();
 const Review = require('../models/Review');
 const Product = require('../models/Product');
-const { protect, admin } = require('../middleware/auth');
+const { protect, admin, requirePermission } = require('../middleware/auth');
 const { ownerOnly } = require('../utils/ownerValidator');
 const { auditLogMiddleware } = require('../middleware/auditLog');
 
 // ADMIN: GET /api/v1/admin/reviews — moderation list with status filter
-router.get('/', protect, admin, async (req, res, next) => {
+router.get('/', protect, admin, requirePermission('reviews.read'), async (req, res, next) => {
     try {
         const page = Math.max(1, parseInt(req.query.page, 10) || 1);
         const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
@@ -44,7 +44,7 @@ router.get('/', protect, admin, async (req, res, next) => {
 });
 
 // ADMIN: PATCH /api/v1/admin/reviews/:id/status — approve/hide
-router.patch('/:id/status', protect, admin, ownerOnly, auditLogMiddleware('MODERATE_REVIEW', 'Review'), async (req, res, next) => {
+router.patch('/:id/status', protect, admin, requirePermission('reviews.moderate'), ownerOnly, auditLogMiddleware('MODERATE_REVIEW', 'Review'), async (req, res, next) => {
     try {
         const { id } = req.params;
         const { status } = req.body || {};

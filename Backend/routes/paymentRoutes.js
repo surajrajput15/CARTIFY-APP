@@ -802,6 +802,9 @@ router.post('/refund/:orderId', protect, admin, requirePermission('orders.refund
         if (order.paymentStatus !== 'Paid') {
             return res.status(400).json({ message: 'Only paid orders can be refunded' });
         }
+        if (order.refundId) {
+            return res.status(400).json({ message: 'This order has already been refunded' });
+        }
         if (!order.razorpayPaymentId) {
             return res.status(400).json({ message: 'No Razorpay payment id on this order' });
         }

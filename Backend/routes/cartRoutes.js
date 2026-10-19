@@ -72,6 +72,9 @@ router.post('/merge', protect, activityLogger('CART_MERGE', (req, body) => ({
   itemCount: Array.isArray(body && body.items) ? body.items.length : 0,
 })), async (req, res) => {
   try {
+    if (req.body && req.body.items !== undefined && !Array.isArray(req.body.items)) {
+      return res.status(400).json({ message: 'items must be an array' });
+    }
     const localItems = Array.isArray(req.body.items) ? req.body.items : [];
     // Caps mirror the payment limit (qty 1-20) so a stored cart can never
     // hold a quantity that checkout would reject; 100 items bounds the write.
@@ -148,6 +151,9 @@ router.put('/', protect, activityLogger('CART_SYNC', (req, body) => ({
   itemCount: Array.isArray(body && body.items) ? body.items.length : 0,
 })), async (req, res) => {
   try {
+    if (req.body && req.body.items !== undefined && !Array.isArray(req.body.items)) {
+      return res.status(400).json({ message: 'items must be an array' });
+    }
     const localItems = Array.isArray(req.body.items) ? req.body.items : [];
     // Caps mirror the payment limit (qty 1-20) so a stored cart can never
     // hold a quantity that checkout would reject; 100 items bounds the write.

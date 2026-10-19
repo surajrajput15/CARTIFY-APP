@@ -3,14 +3,14 @@ const { logger } = require('../utils/logger');
 const router = express.Router();
 const User = require('../models/User');
 const Order = require('../models/Order');
-const { protect, admin } = require('../middleware/auth');
+const { protect, admin, requirePermission } = require('../middleware/auth');
 
 const ACTIVE_DELIVERY_STATUSES = ['assigned', 'accepted', 'picked_up', 'out_for_delivery'];
 
 // GET /api/v1/admin/delivery-partners
 // Admin only — list delivery partners (role: 'delivery') with their current
 // live-order count so the assign UI can show workload.
-router.get('/delivery-partners', protect, admin, async (req, res, next) => {
+router.get('/delivery-partners', protect, admin, requirePermission('delivery.read'), async (req, res, next) => {
   try {
     const [partners, liveCounts] = await Promise.all([
       User.find({ role: 'delivery' })

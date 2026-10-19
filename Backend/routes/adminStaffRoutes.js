@@ -79,13 +79,17 @@ router.post('/', protect, admin, requirePermission('staff.manage'), adminMutateG
       return res.status(400).json({ message: 'Invalid phone format' });
     }
 
+    if ((role === 'admin' || role === 'super_admin') && !isOwnerEmail(email)) {
+      return res.status(403).json({ message: 'Forbidden: only allowlisted owner emails can be created with admin privileges' });
+    }
+
     const hashed = await bcrypt.hash(password, 10);
     const user = await User.create({
       name: name.trim(),
       email: String(email).trim().toLowerCase(),
       password: hashed,
       role,
-      isAdmin: role === 'admin' || role === 'super_admin',
+      isAdmin: (role === 'admin' || role === 'super_admin') && isOwnerEmail(email),
       phone: phone || null,
       assignedWarehouseId: role === 'warehouse' ? warehouseId : null,
     });
@@ -126,8 +130,11 @@ router.patch('/:id', protect, admin, requirePermission('staff.manage'), adminMut
       if (!STAFF_ROLES.includes(req.body.role) && req.body.role !== 'customer') {
         return res.status(400).json({ message: 'Invalid role' });
       }
+      if ((req.body.role === 'admin' || req.body.role === 'super_admin') && !isOwnerEmail(user.email)) {
+        return res.status(403).json({ message: 'Forbidden: only allowlisted owner emails can hold admin privileges' });
+      }
       set.role = req.body.role;
-      set.isAdmin = req.body.role === 'admin' || req.body.role === 'super_admin';
+      set.isAdmin = (req.body.role === 'admin' || req.body.role === 'super_admin') && isOwnerEmail(user.email);
       if (req.body.role !== 'warehouse') set.assignedWarehouseId = null;
     }
     if (req.body.warehouseId !== undefined) {
@@ -169,7 +176,7 @@ router.delete('/:id', protect, admin, requirePermission('staff.manage'), adminMu
       return res.status(403).json({ message: 'Cannot demote or delete a super_admin account' });
     }
 
-    await User.findByIdAndUpdate(id, { $set: { role: 'customer', assignedWarehouseId: null } });
+    await User.findByIdAndUpdate(id, { $set: { role: 'customer', isAdmin: false, assignedWarehouseId: null } });
     res.status(200).json({ message: 'Staff account demoted to customer' });
   } catch (error) {
     logger.error({ err: error }, 'Staff delete error');

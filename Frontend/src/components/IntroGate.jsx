@@ -24,10 +24,10 @@ const prefersReducedMotion = () =>
   typeof window !== 'undefined' &&
   Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
 
-export const isBotOrLighthouse = () => {
+const isBotOrLighthouse = () => {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
   // 1. Automation / Headless detection (Lighthouse & Chrome DevTools protocol always set navigator.webdriver)
-  if (Boolean(navigator.webdriver)) {
+  if (navigator.webdriver) {
     return true;
   }
   // 2. User-Agent flags (Lighthouse CLI, Googlebot, search bots, headless)
