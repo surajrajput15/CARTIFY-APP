@@ -122,7 +122,7 @@ resolved or tracked as future features.
 | Component | Value | Status |
 |---|---|---|
 | Frontend | https://cartify-hub.vercel.app | ✅ Live |
-| Backend | https://cartify-api-10g3.onrender.com | ✅ Live |
+| Backend | https://cartify-api-gio4.onrender.com | ✅ Live |
 | Database | MongoDB Atlas | ✅ Connected |
 | Payments | Razorpay (test mode) | ✅ Working |
 | Google Login | Server-side ID token verification | ✅ Working |

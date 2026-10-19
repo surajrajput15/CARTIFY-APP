@@ -206,7 +206,7 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc: ["'self'", 'https://fonts.gstatic.com'],
       imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
-      connectSrc: ["'self'", 'https://cartify-api-10g3.onrender.com', 'https://api.razorpay.com', 'https://checkout.razorpay.com'],
+      connectSrc: ["'self'", 'https://cartify-api-gio4.onrender.com', 'https://api.razorpay.com', 'https://checkout.razorpay.com'],
       frameSrc: ["'self'", 'https://checkout.razorpay.com'],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],

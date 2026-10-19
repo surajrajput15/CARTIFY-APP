@@ -40,7 +40,7 @@
       "identifier": "urn:air:cartify-hub.vercel.app:api:products",
       "displayName": "Cartify Products API",
       "type": "application/json",
-      "url": "https://cartify-api-10g3.onrender.com/api/products",
+      "url": "https://cartify-api-gio4.onrender.com/api/products",
       "representativeQueries": [
         "Fetch product inventory list",
         "Query products by price range and rating",

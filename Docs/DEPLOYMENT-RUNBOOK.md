@@ -8,7 +8,7 @@ This document describes the deployment process for Cartify, including frontend (
 
 | Environment | Frontend URL | Backend URL | Database |
 |-------------|--------------|-------------|----------|
-| Production | https://cartify-hub.vercel.app | https://cartify-api-10g3.onrender.com | MongoDB Atlas (prod) |
+| Production | https://cartify-hub.vercel.app | https://cartify-api-gio4.onrender.com | MongoDB Atlas (prod) |
 | Staging | https://cartify-staging.vercel.app | https://cartify-api-staging.onrender.com | MongoDB Atlas (staging) |
 
 ## Pre-Deployment Checklist
@@ -62,11 +62,11 @@ npm run migrate:up
 git push origin main
 
 # 3. Verify health
-curl https://cartify-api-10g3.onrender.com/health
+curl https://cartify-api-gio4.onrender.com/health
 # Expected: {"status":"ok","timestamp":"..."}
 
 # 4. Verify readiness
-curl https://cartify-api-10g3.onrender.com/ready
+curl https://cartify-api-gio4.onrender.com/ready
 # Expected: {"status":"ready","timestamp":"..."}
 ```
 
@@ -92,7 +92,7 @@ curl https://cartify-api-10g3.onrender.com/ready
 
 | Variable | Value | Sensitive |
 |----------|-------|-----------|
-| `VITE_API_URL` | `https://cartify-api-10g3.onrender.com/api/v1` | No |
+| `VITE_API_URL` | `https://cartify-api-gio4.onrender.com/api/v1` | No |
 | `VITE_RAZORPAY_KEY` | `rzp_live_...` | Yes |
 | `VITE_GOOGLE_CLIENT_ID` | From Google Cloud Console | Yes |
 | `VITE_SENTRY_DSN` | From Sentry | Yes |

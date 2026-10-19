@@ -22,7 +22,7 @@ const options = {
         description: 'Development server',
       },
       {
-        url: 'https://cartify-api-10g3.onrender.com/api/v1',
+        url: 'https://cartify-api-gio4.onrender.com/api/v1',
         description: 'Production server',
       },
     ],

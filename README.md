@@ -12,7 +12,7 @@
 [![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://mongodb.com/)
 [![Razorpay](https://img.shields.io/badge/Razorpay-Payments-02042B?style=for-the-badge&logo=razorpay&logoColor=white)](https://razorpay.com/)
 [![Vercel](https://img.shields.io/badge/Frontend-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://cartify-hub.vercel.app/)
-[![Render](https://img.shields.io/badge/Backend-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://cartify-api-10g3.onrender.com/)
+[![Render](https://img.shields.io/badge/Backend-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://cartify-api-gio4.onrender.com/)
 
 🌐 **[Live App](https://cartify-hub.vercel.app/)** · 📘 **[API Docs](#-api-endpoints)** · 🐛 **[Report Bug](https://github.com/surajrajput15/CARTIFY-APP/issues)** · ⭐ **[Star on GitHub](https://github.com/surajrajput15/CARTIFY-APP)**
 
@@ -526,7 +526,7 @@ curl http://localhost:5000/health
 
 | Detail | Value |
 |--------|-------|
-| **Live URL** | [https://cartify-api-10g3.onrender.com](https://cartify-api-10g3.onrender.com) |
+| **Live URL** | [https://cartify-api-gio4.onrender.com](https://cartify-api-gio4.onrender.com) |
 | **Root Directory** | `Backend` |
 | **Build Command** | `npm install` |
 | **Start Command** | `npm start` |
