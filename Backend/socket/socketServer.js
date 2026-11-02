@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { logger } = require('../utils/logger');
+const { isOriginAllowed } = require('../utils/corsConfig');
 
 // Socket.IO realtime layer (V2 live tracking).
 //
@@ -39,24 +40,36 @@ const initSocket = (httpServer) => {
 
   io = new Server(httpServer, {
     cors: {
-      origin: [
-        'http://localhost:5173',
-        'http://localhost:5174',
-        'https://cartify-hub.vercel.app',
-      ],
+      origin: (origin, callback) => {
+        if (isOriginAllowed(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error('Origin not allowed by CORS'));
+        }
+      },
       credentials: true,
     },
     path: '/socket.io',
   });
 
-  // Allow any *.vercel.app origin (mirrors server.js REST CORS policy).
+  // Align Engine.IO headers strictly with the centralized CORS policy
   io.engine.on('headers', (headers, req) => {
-    const origin = req.headers.origin;
-    if (origin && /^https:\/\/.*\.vercel\.app$/.test(origin)) {
+    const origin = req.headers?.origin;
+    if (origin && isOriginAllowed(origin)) {
       headers['Access-Control-Allow-Origin'] = origin;
       headers['Access-Control-Allow-Credentials'] = 'true';
       headers['Vary'] = headers['Vary'] ? `${headers['Vary']}, Origin` : 'Origin';
     }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Handshake Origin Guard + Auth
+  io.use((socket, next) => {
+    const origin = socket.handshake.headers?.origin;
+    if (origin && !isOriginAllowed(origin)) {
+      return next(new Error('Not authorized: Origin not allowed by CORS'));
+    }
+    next();
   });
 
   // ---------------------------------------------------------------------------

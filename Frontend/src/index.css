@@ -180,7 +180,6 @@
   .animate-fade-in-up,
   .animate-ping,
   .animate-pulse,
-  .animate-spin,
   *,
   *::before,
   *::after {
@@ -191,5 +190,12 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* Critical accessibility exception: loading spinners must continue indicating progress
+     so users with reduced motion are not left assuming the app has frozen or crashed. */
+  .animate-spin {
+    animation-duration: 1s !important;
+    animation-iteration-count: infinite !important;
   }
 }

@@ -1,41 +1,25 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useContext } from 'react';
 import { io } from 'socket.io-client';
 import { API_ORIGIN } from '../config';
+import SocketContext from '../context/SocketContext';
 
 /**
  * Socket.IO Hook — manages Socket.IO connection with auth, rooms, and events.
- * 
- * Returns:
- *   socket: Socket instance (or null if not connected)
- *   connected: boolean
- *   subscribe(orderId): Promise<void> — join order room, get initial location
- *   unsubscribe(orderId): void — leave order room
- *   on(event, handler): void — listen for events
- *   off(event, handler): void — remove listener
- * 
- * Events emitted by server:
- *   - courier:location { orderId, latitude, longitude, updatedAt, partnerId? }
- *   - order:updated { orderId, status, deliveryStatus, updatedAt }
- *   - delivery:assignment { orderId, status, deliveryStatus, updatedAt }
- *   - order:assigned { orderId, deliveryPartnerId }
- * 
- * Usage:
- *   const { socket, connected, subscribe, on } = useSocket();
- *   useEffect(() => {
- *     if (!connected) return;
- *     subscribe(orderId);
- *     on('courier:location', handleLocation);
- *     return () => { unsubscribe(orderId); off('courier:location', handleLocation); };
- *   }, [connected, orderId]);
+ * If used within a <SocketProvider>, reuses the shared singleton connection.
+ * If used outside, maintains an isolated fallback connection.
  */
 export function useSocket() {
+  const sharedContext = useContext(SocketContext);
   const [connected, setConnected] = useState(false);
   const [socket, setSocket] = useState(null);
   const socketRef = useRef(null);
   const reconnectAttemptsRef = useRef(0);
   const handlersRef = useRef(new Map());
 
+  const isStandalone = !sharedContext;
+
   useEffect(() => {
+    if (!isStandalone) return;
     // API_ORIGIN points to the backend (e.g. http://localhost:5000), falling back to window.location.origin
     const socketUrl = API_ORIGIN || window.location.origin;
 
@@ -96,36 +80,40 @@ export function useSocket() {
       setSocket(null);
       setConnected(false);
     };
-  }, []);
+  }, [isStandalone]);
 
   // Subscribe to order room for live tracking
   const subscribe = useCallback(async (orderId) => {
+    if (sharedContext) return sharedContext.subscribe(orderId);
     const s = socketRef.current;
     if (!s || !s.connected) {
-      throw new Error('Socket not connected');
+      return;
     }
-    if (!orderId) throw new Error('orderId required');
+    if (!orderId) return;
     s.emit('order:subscribe', { orderId });
-  }, []);
+  }, [sharedContext]);
 
   const unsubscribe = useCallback((orderId) => {
+    if (sharedContext) return sharedContext.unsubscribe(orderId);
     const s = socketRef.current;
     if (s && orderId) {
       s.emit('order:unsubscribe', { orderId });
     }
-  }, []);
+  }, [sharedContext]);
 
   // Event listener management
   const on = useCallback((event, handler) => {
+    if (sharedContext) return sharedContext.on(event, handler);
     const s = socketRef.current;
     if (!s) return;
     s.on(event, handler);
     const handlers = handlersRef.current.get(event) || [];
     handlers.push(handler);
     handlersRef.current.set(event, handlers);
-  }, []);
+  }, [sharedContext]);
 
   const off = useCallback((event, handler) => {
+    if (sharedContext) return sharedContext.off(event, handler);
     const s = socketRef.current;
     if (!s) return;
     if (handler) {
@@ -136,10 +124,11 @@ export function useSocket() {
       s.off(event);
       handlersRef.current.delete(event);
     }
-  }, []);
+  }, [sharedContext]);
 
   // Cleanup all handlers on unmount
   useEffect(() => {
+    if (!isStandalone) return;
     const handlersMap = handlersRef.current;
     return () => {
       handlersMap.forEach((handlers, event) => {
@@ -150,7 +139,11 @@ export function useSocket() {
       });
       handlersMap.clear();
     };
-  }, []);
+  }, [isStandalone]);
+
+  if (sharedContext) {
+    return sharedContext;
+  }
 
   return {
     socket,

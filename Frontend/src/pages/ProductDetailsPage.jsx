@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../context/cartContext';
 import { ShoppingCart, ArrowLeft, RefreshCw, Minus, Plus, Lock, Heart, Star, MessageSquare, CheckCircle2 } from 'lucide-react';
 import { getStockStatus } from '../utils/stockStatus';
-import { resolveImageUrl, PLACEHOLDER_IMG } from '../utils/imageUrl';
+import { resolveImageUrl, generateSrcSet, PLACEHOLDER_IMG } from '../utils/imageUrl';
 import { formatPrice, formatNumber, formatDate } from '../utils/format';
 import { getShippingMessage } from '../utils/constants';
 import StockBadge from '../components/StockBadge';
@@ -379,6 +379,8 @@ const ProductDetailsPage = () => {
         <div className="md:w-1/2 p-6 sm:p-8 bg-gray-50 flex justify-center items-center aspect-square">
           <img
             src={resolveImageUrl(product.image)}
+            srcSet={generateSrcSet(product.image, [320, 600, 900, 1200])}
+            sizes="(max-width: 768px) 100vw, 50vw"
             alt={product.title || 'Product image'}
             width="600"
             height="600"

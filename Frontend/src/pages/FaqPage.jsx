@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { HelpCircle, Mail, Phone, Package, RotateCcw, Truck, User, ShieldCheck, Code2 } from 'lucide-react';
-import { SUPPORT_EMAIL, SHIPPING_CONFIG } from '../utils/constants';
+import { SUPPORT_EMAIL, SUPPORT_PHONE, SHIPPING_CONFIG } from '../utils/constants';
 import useSeo from '../hooks/useSeo';
 
 const FAQS = [
@@ -34,7 +34,7 @@ const FAQS = [
   },
   {
     q: 'How can I contact customer support?',
-    a: `You can reach our dedicated support team at ${SUPPORT_EMAIL} or call toll-free at 1800-419-4242. Our engineering and support team operates 24/7 for order, payment, or account assistance.`,
+    a: `You can reach our dedicated support team at ${SUPPORT_EMAIL} or call toll-free at ${SUPPORT_PHONE}. Our engineering and support team operates 24/7 for order, payment, or account assistance.`,
   },
 ];
 
@@ -135,10 +135,10 @@ const FaqPage = () => {
             <Mail size={18} aria-hidden="true" /> {SUPPORT_EMAIL}
           </a>
           <a
-            href="tel:1800-419-4242"
+            href={`tel:${SUPPORT_PHONE.replace(/[^0-9]/g, '')}`}
             className="inline-flex items-center gap-2 bg-white/20 border border-white/40 text-white font-bold px-6 py-3 rounded-xl hover:bg-white/30 transition-colors min-h-[44px]"
           >
-            <Phone size={18} aria-hidden="true" /> 1800-419-4242
+            <Phone size={18} aria-hidden="true" /> {SUPPORT_PHONE}
           </a>
         </div>
       </div>

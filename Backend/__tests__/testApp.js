@@ -26,6 +26,7 @@ const adminStaffRoutes = require('../routes/adminStaffRoutes');
 const warehousePortalRoutes = require('../routes/warehousePortalRoutes');
 const adminDeliveryRoutes = require('../routes/adminDeliveryRoutes');
 const uploadRoutes = require('../routes/uploadRoutes');
+const settingsRoutes = require('../routes/settingsRoutes');
 
 /**
  * Build a test Express app that mirrors the real server's middleware stack.
@@ -55,6 +56,10 @@ const buildTestApp = () => {
   app.use('/api/admin', adminDeliveryRoutes);
   app.use('/api/upload', uploadRoutes.router);
   app.use('/api/warehouse', warehousePortalRoutes);
+  app.use('/api/settings', settingsRoutes);
+  app.use('/api/admin/settings', settingsRoutes);
+  app.use('/api/v1/settings', settingsRoutes);
+  app.use('/api/v1/admin/settings', settingsRoutes);
 
   // Health and readiness endpoints (mirrors server.js)
   app.get('/health', (req, res) => {

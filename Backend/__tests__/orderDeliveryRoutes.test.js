@@ -41,6 +41,7 @@ const baseOrder = (overrides = {}) => ({
 });
 
 describe('Order Delivery Routes (Phase 1)', () => {
+  jest.setTimeout(30000);
   let customerAgent, adminAgent, partnerAgent, otherPartnerAgent;
   let customer, adminUser, partner, otherPartner;
 

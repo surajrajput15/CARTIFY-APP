@@ -122,24 +122,45 @@ const hashRefreshToken = (token) => crypto.createHash('sha256').update(String(to
 
 // Per-account failed-password tracker (distributed brute-force guard). Complements the
 // per-IP credentialLimiter: 10 failures lock the account for 15 min. Bypassed in tests.
+// Uses distributed Redis with in-memory fallback for multi-node synchronization.
 const loginFailTracker = new Map();
 const LOGIN_FAIL_LIMIT = 10;
 const LOGIN_FAIL_WINDOW_MS = 15 * 60 * 1000;
-const checkLoginLock = (email) => {
+
+const checkLoginLock = async (email) => {
   if (process.env.NODE_ENV === 'test') return null;
   const now = Date.now();
-  const entry = loginFailTracker.get(email);
-  if (entry && now - entry.firstFail < LOGIN_FAIL_WINDOW_MS && entry.count >= LOGIN_FAIL_LIMIT) {
-    const waitMin = Math.ceil((LOGIN_FAIL_WINDOW_MS - (now - entry.firstFail)) / 60000);
+
+  // 1. In-memory check
+  const memEntry = loginFailTracker.get(email);
+  if (memEntry && now - memEntry.firstFail < LOGIN_FAIL_WINDOW_MS && memEntry.count >= LOGIN_FAIL_LIMIT) {
+    const waitMin = Math.ceil((LOGIN_FAIL_WINDOW_MS - (now - memEntry.firstFail)) / 60000);
     return `Too many failed attempts. Try again in ${waitMin} minute(s).`;
   }
-  if (!entry || now - entry.firstFail >= LOGIN_FAIL_WINDOW_MS) loginFailTracker.delete(email);
+  if (memEntry && now - memEntry.firstFail >= LOGIN_FAIL_WINDOW_MS) {
+    loginFailTracker.delete(email);
+  }
+
+  // 2. Distributed Redis check
+  try {
+    const key = `ratelimit:login:fail:${email}`;
+    const redisEntry = await cache.get(key);
+    if (redisEntry && now - redisEntry.firstFail < LOGIN_FAIL_WINDOW_MS && redisEntry.count >= LOGIN_FAIL_LIMIT) {
+      const waitMin = Math.ceil((LOGIN_FAIL_WINDOW_MS - (now - redisEntry.firstFail)) / 60000);
+      return `Too many failed attempts. Try again in ${waitMin} minute(s).`;
+    }
+  } catch (err) {
+    // Fail-open to in-memory fallback
+  }
+
   return null;
 };
-const recordLoginFail = (email) => {
+
+const recordLoginFail = async (email) => {
   if (process.env.NODE_ENV === 'test') return;
   const now = Date.now();
-  // Prune expired windows so the map can't grow unbounded on email floods.
+
+  // 1. Prune expired windows and record in memory
   for (const [key, entry] of loginFailTracker) {
     if (now - entry.firstFail >= LOGIN_FAIL_WINDOW_MS) loginFailTracker.delete(key);
   }
@@ -149,35 +170,84 @@ const recordLoginFail = (email) => {
   } else {
     entry.count += 1;
   }
+
+  // 2. Record in Redis
+  try {
+    const key = `ratelimit:login:fail:${email}`;
+    const redisEntry = (await cache.get(key)) || { count: 0, firstFail: now };
+    if (now - redisEntry.firstFail >= LOGIN_FAIL_WINDOW_MS) {
+      redisEntry.count = 1;
+      redisEntry.firstFail = now;
+    } else {
+      redisEntry.count += 1;
+    }
+    await cache.set(key, redisEntry, Math.ceil(LOGIN_FAIL_WINDOW_MS / 1000));
+  } catch (err) {
+    // Fail-open to in-memory fallback
+  }
 };
-const clearLoginFails = (email) => loginFailTracker.delete(email);
+
+const clearLoginFails = async (email) => {
+  loginFailTracker.delete(email);
+  try {
+    const key = `ratelimit:login:fail:${email}`;
+    await cache.del(key);
+  } catch (err) {
+    // Fail-open
+  }
+};
 
 // Lower bound for failed OTP attempts before the account's OTP is locked.
 const MAX_OTP_ATTEMPTS = 5;
 
-// In-memory per-email OTP send cooldown. Stops email-bombing/DB-pollution of
-// passwordless accounts even when the per-IP rate limit is rotated around.
-// OTP send tracker using Redis for distributed-safe cooldown.
-// Key pattern: ratelimit:otp:send:{email}
+// In-memory per-email OTP send cooldown with Redis distributed sync.
+// Stops email-bombing of accounts even when the per-IP rate limit is rotated.
+const memoryOtpCooldown = new Map();
 const OTP_SEND_COOLDOWN_MS = 30 * 1000;
 
 // Read-only check: does NOT record anything, so a failed DB save or mail
 // failure never blocks the user's legitimate retry.
 const checkOtpCooldown = async (email) => {
-  const key = `ratelimit:otp:send:${email}`;
-  const lastSent = await cache.get(key);
-  if (lastSent && Date.now() - lastSent < OTP_SEND_COOLDOWN_MS) {
-    const wait = Math.ceil((OTP_SEND_COOLDOWN_MS - (Date.now() - lastSent)) / 1000);
+  const now = Date.now();
+  // 1. In-memory check (guaranteed fallback if Redis is offline)
+  const memLastSent = memoryOtpCooldown.get(email);
+  if (memLastSent && now - memLastSent < OTP_SEND_COOLDOWN_MS) {
+    const wait = Math.ceil((OTP_SEND_COOLDOWN_MS - (now - memLastSent)) / 1000);
     return `Please wait ${wait} second(s) before requesting another OTP.`;
   }
+
+  // 2. Redis distributed check
+  try {
+    const key = `ratelimit:otp:send:${email}`;
+    const lastSent = await cache.get(key);
+    if (lastSent && now - lastSent < OTP_SEND_COOLDOWN_MS) {
+      const wait = Math.ceil((OTP_SEND_COOLDOWN_MS - (now - lastSent)) / 1000);
+      return `Please wait ${wait} second(s) before requesting another OTP.`;
+    }
+  } catch (err) {
+    // Fail-open to in-memory fallback
+  }
+
   return null;
 };
 
 // Write path: call ONLY after the OTP mail actually went out.
-// Sets TTL so the key auto-expires and can be reused.
+// Sets memory map and Redis TTL so the key auto-expires and can be reused.
 const markOtpSent = async (email) => {
-  const key = `ratelimit:otp:send:${email}`;
-  await cache.set(key, Date.now(), Math.ceil(OTP_SEND_COOLDOWN_MS / 1000));
+  const now = Date.now();
+  memoryOtpCooldown.set(email, now);
+  // Auto-prune memory map
+  if (memoryOtpCooldown.size > 1000) {
+    for (const [k, v] of memoryOtpCooldown) {
+      if (now - v > OTP_SEND_COOLDOWN_MS) memoryOtpCooldown.delete(k);
+    }
+  }
+  try {
+    const key = `ratelimit:otp:send:${email}`;
+    await cache.set(key, now, Math.ceil(OTP_SEND_COOLDOWN_MS / 1000));
+  } catch (err) {
+    // Fail-open to in-memory fallback
+  }
 };
 
 // Shared email format guard — normalizeEmail only trims/lowercases, so without
@@ -495,11 +565,11 @@ router.post('/login', credentialGuard, async (req, res) => {
         // Non-string passwords (objects/arrays) would crash bcrypt.compare with
         // a 500 — reject as invalid credentials (uniform message, no enumeration).
         if (typeof password !== 'string' || password.length > MAX_PASSWORD_LENGTH) {
-            recordLoginFail(email);
+            await recordLoginFail(email);
             notifyMonitoring('AUTH_LOGIN_FAILED', { email, reason: 'Invalid password format', ip: req.ip }, { req });
             return res.status(400).json({ message: "Invalid credentials. If you have no password yet, use the OTP option." });
         }
-        const lockedMessage = checkLoginLock(email);
+        const lockedMessage = await checkLoginLock(email);
         if (lockedMessage) {
             notifyMonitoring('AUTH_LOCKOUT', { email, ip: req.ip }, { req });
             return res.status(429).json({ message: lockedMessage });
@@ -509,18 +579,18 @@ router.post('/login', credentialGuard, async (req, res) => {
         // Uniform error for every failure mode (no account / no password / wrong password)
         // so the endpoint never reveals whether an email is registered or how it authenticates.
         if (!user || !user.password) {
-            recordLoginFail(email);
+            await recordLoginFail(email);
             notifyMonitoring('AUTH_LOGIN_FAILED', { email, reason: 'Account or password missing', ip: req.ip }, { req });
             return res.status(400).json({ message: "Invalid credentials. If you have no password yet, use the OTP option." });
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            recordLoginFail(email);
+            await recordLoginFail(email);
             notifyMonitoring('AUTH_LOGIN_FAILED', { email, reason: 'Password mismatch', ip: req.ip }, { req });
             return res.status(400).json({ message: "Invalid credentials." });
         }
-        clearLoginFails(email);
+        await clearLoginFails(email);
 
         if (!checkUserStatus(user, res)) return;
 
@@ -922,7 +992,7 @@ router.put('/change-password/:id', sessionGuard, credentialGuard, protect, async
         // Throttle repeated guesses from a hijacked session. Keyed with a prefix so
         // these failures never lock the normal login flow for the same email.
         const failKey = `change:${req.user.email}`;
-        const lockedMessage = checkLoginLock(failKey);
+        const lockedMessage = await checkLoginLock(failKey);
         if (lockedMessage) return res.status(429).json({ message: lockedMessage });
 
         // protect strips the password field, so re-read it explicitly here.
@@ -933,13 +1003,13 @@ router.put('/change-password/:id', sessionGuard, credentialGuard, protect, async
         // don't have — any submitted current password is rejected, and the email
         // OTP reset flow remains the only way to set one (nothing is guessable).
         if (!user.password) {
-            recordLoginFail(failKey);
+            await recordLoginFail(failKey);
             return res.status(400).json({ message: "No password is set on this account. Use 'Forgot password' on the login page to create one." });
         }
 
         const isMatch = await bcrypt.compare(currentPassword, user.password);
         if (!isMatch) {
-            recordLoginFail(failKey);
+            await recordLoginFail(failKey);
             return res.status(400).json({ message: "Current password is incorrect." });
         }
 
@@ -953,7 +1023,7 @@ router.put('/change-password/:id', sessionGuard, credentialGuard, protect, async
         // cannot outlive a password change (the 60s grace slot keeps in-flight
         // refreshes from this tab working), then reissue the auth cookie pair.
         const { newAccessToken, newRefreshToken } = rotateRefreshToken(user);
-        clearLoginFails(failKey);
+        await clearLoginFails(failKey);
         await user.save();
 
         setAuthCookies(res, newAccessToken, newRefreshToken);

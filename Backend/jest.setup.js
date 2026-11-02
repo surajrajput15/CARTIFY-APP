@@ -6,6 +6,9 @@ jest.mock('./utils/sendEmail', () => jest.fn().mockResolvedValue('ok'), { virtua
 
 let mongoServer;
 
+// Increase default timeout to 60s so MongoMemoryServer binary startup on Windows never times out
+jest.setTimeout(60000);
+
 // Setup before all tests
 beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
@@ -25,7 +28,7 @@ beforeAll(async () => {
   process.env.NODE_ENV = 'test';
 
   await mongoose.connect(uri);
-});
+}, 60000);
 
 // Cleanup after each test
 afterEach(async () => {
@@ -33,14 +36,14 @@ afterEach(async () => {
   for (const key in collections) {
     await collections[key].deleteMany({});
   }
-});
+}, 30000);
 
 // Teardown after all tests
 afterAll(async () => {
   await mongoose.connection.dropDatabase();
   await mongoose.connection.close();
   await mongoServer.stop();
-});
+}, 60000);
 
 // Suppress console.log during tests unless DEBUG=true
 if (!process.env.DEBUG) {

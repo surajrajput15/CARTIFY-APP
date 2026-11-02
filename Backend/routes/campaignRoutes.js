@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const { logger } = require('../utils/logger');
+const { cache } = require('../utils/redisCache');
 const router = express.Router();
 const Campaign = require('../models/Campaign');
 const { protect, admin } = require('../middleware/auth');
@@ -25,6 +26,13 @@ router.get('/', protect, admin, async (req, res, next) => {
 // eligibility, without exposing admin-only fields.
 router.get('/active', async (req, res, next) => {
   try {
+    res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=30');
+    const cacheKey = 'campaigns:active';
+    const cached = await cache.get(cacheKey);
+    if (cached) {
+      return res.status(200).json({ campaigns: cached });
+    }
+
     const now = new Date();
     const live = await Campaign.find({ isActive: true })
       .where('startDate').lte(now)
@@ -45,6 +53,7 @@ router.get('/active', async (req, res, next) => {
       eligibleCategories: c.eligibleCategories || [],
       eligibleProductIds: c.eligibleProductIds || [],
     }));
+    await cache.set(cacheKey, payload, 60);
     res.status(200).json({ campaigns: payload });
   } catch (error) {
     logger.error({ err: error }, 'Active campaign error');
@@ -159,6 +168,7 @@ router.post('/', protect, admin, adminMutateGuard, auditLogMiddleware('CREATE_CA
     }
 
     const campaign = await Campaign.create({ ...parsed.data, createdBy: req.user._id });
+    await cache.del('campaigns:active');
     res.status(201).json({ campaign });
   } catch (error) {
     logger.error({ err: error }, 'Campaign create error');
@@ -183,6 +193,7 @@ router.patch('/:id', protect, admin, adminMutateGuard, auditLogMiddleware('UPDAT
 
     Object.assign(campaign, parsed.data);
     await campaign.save();
+    await cache.del('campaigns:active');
     res.status(200).json({ campaign });
   } catch (error) {
     logger.error({ err: error }, 'Campaign update error');
@@ -198,6 +209,7 @@ router.patch('/:id/toggle', protect, admin, adminMutateGuard, auditLogMiddleware
     if (!campaign) return res.status(404).json({ message: 'Campaign not found' });
     campaign.isActive = !campaign.isActive;
     await campaign.save();
+    await cache.del('campaigns:active');
     res.status(200).json({ campaign });
   } catch (error) {
     logger.error({ err: error }, 'Campaign toggle error');
@@ -211,6 +223,7 @@ router.delete('/:id', protect, admin, adminMutateGuard, auditLogMiddleware('DELE
     if (!isValidId(req.params.id)) return res.status(400).json({ message: 'Invalid campaign id' });
     const campaign = await Campaign.findByIdAndDelete(req.params.id);
     if (!campaign) return res.status(404).json({ message: 'Campaign not found' });
+    await cache.del('campaigns:active');
     res.status(200).json({ message: 'Campaign deleted' });
   } catch (error) {
     logger.error({ err: error }, 'Campaign delete error');

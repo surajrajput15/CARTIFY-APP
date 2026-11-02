@@ -1,5 +1,6 @@
 const express = require('express');
 const { logger } = require('../utils/logger');
+const { cache } = require('../utils/redisCache');
 const router = express.Router();
 const Order = require('../models/Order');
 const Product = require('../models/Product');
@@ -48,6 +49,14 @@ router.get('/overview', protect, admin, requirePermission('analytics.view'), asy
   try {
     const { days: rangeDays } = parseRange(req.query.range);
 
+    const cacheKey = `admin:overview:${rangeDays}`;
+    if (process.env.NODE_ENV !== 'test') {
+      const cached = await cache.get(cacheKey);
+      if (cached) {
+        return res.status(200).json(cached);
+      }
+    }
+
     const now = new Date();
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const yRange = yesterdayRange();
@@ -55,10 +64,8 @@ router.get('/overview', protect, admin, requirePermission('analytics.view'), asy
     const [
       revenueAgg,
       orderCounts,
-      userCount,
-      productCount,
-      lowStockCount,
-      outOfStockCount,
+      userFacet,
+      productFacet,
       activeDeliveryCount,
       pendingDeliveryAssignment,
       todayRevenueAgg,
@@ -70,8 +77,6 @@ router.get('/overview', protect, admin, requirePermission('analytics.view'), asy
       pendingReviewsCount,
       activeCouponsCount,
       activeCampaignsCount,
-      newUsersToday,
-      newUsers30d,
       recentOrders
     ] = await Promise.all([
       Order.aggregate([
@@ -81,10 +86,25 @@ router.get('/overview', protect, admin, requirePermission('analytics.view'), asy
       Order.aggregate([
         { $group: { _id: '$status', count: { $sum: 1 } } }
       ]),
-      User.countDocuments({ role: 'customer' }),
-      Product.countDocuments({}),
-      Product.countDocuments({ countInStock: { $gt: 0, $lte: 5 } }),
-      Product.countDocuments({ countInStock: { $lte: 0 } }),
+      User.aggregate([
+        { $match: { role: 'customer' } },
+        {
+          $facet: {
+            total: [{ $count: 'count' }],
+            today: [{ $match: { createdAt: { $gte: todayStart() } } }, { $count: 'count' }],
+            thirtyDays: [{ $match: { createdAt: { $gte: thirtyDaysAgo } } }, { $count: 'count' }]
+          }
+        }
+      ]),
+      Product.aggregate([
+        {
+          $facet: {
+            total: [{ $count: 'count' }],
+            lowStock: [{ $match: { countInStock: { $gt: 0, $lte: 5 } } }, { $count: 'count' }],
+            outOfStock: [{ $match: { countInStock: { $lte: 0 } } }, { $count: 'count' }]
+          }
+        }
+      ]),
       Order.countDocuments({ deliveryStatus: { $in: ACTIVE_DELIVERY_STATUSES } }),
       Order.countDocuments({ deliveryStatus: 'not_assigned', status: { $nin: EXCLUDED_FROM_REVENUE } }),
       Order.aggregate([
@@ -102,8 +122,6 @@ router.get('/overview', protect, admin, requirePermission('analytics.view'), asy
       Review.countDocuments({ status: 'pending' }),
       Coupon.countDocuments({ isActive: true, validUntil: { $gte: now } }),
       Campaign.countDocuments({ isActive: true, startDate: { $lte: now }, endDate: { $gte: now } }),
-      User.countDocuments({ role: 'customer', createdAt: { $gte: todayStart() } }),
-      User.countDocuments({ role: 'customer', createdAt: { $gte: thirtyDaysAgo } }),
       Order.find({})
         .sort({ createdAt: -1 })
         .limit(8)
@@ -112,6 +130,14 @@ router.get('/overview', protect, admin, requirePermission('analytics.view'), asy
         .select('userId orderItems totalPrice status paymentStatus deliveryStatus createdAt razorpayPaymentId razorpayOrderId refundId stockShortfall')
         .lean()
     ]);
+
+    const userCount = userFacet[0]?.total[0]?.count || 0;
+    const newUsersToday = userFacet[0]?.today[0]?.count || 0;
+    const newUsers30d = userFacet[0]?.thirtyDays[0]?.count || 0;
+
+    const productCount = productFacet[0]?.total[0]?.count || 0;
+    const lowStockCount = productFacet[0]?.lowStock[0]?.count || 0;
+    const outOfStockCount = productFacet[0]?.outOfStock[0]?.count || 0;
 
     const statusMap = new Map(orderCounts.map((r) => [r._id, r.count]));
 
@@ -201,7 +227,7 @@ router.get('/overview', protect, admin, requirePermission('analytics.view'), asy
       });
     }
 
-    res.status(200).json({
+    const responsePayload = {
       revenue,
       todayRevenue,
       yesterdayRevenue,
@@ -247,7 +273,13 @@ router.get('/overview', protect, admin, requirePermission('analytics.view'), asy
       recentOrders,
       rangeDays,
       serverTime: new Date().toISOString()
-    });
+    };
+
+    if (process.env.NODE_ENV !== 'test') {
+      await cache.set(cacheKey, responsePayload, 30);
+    }
+
+    res.status(200).json(responsePayload);
   } catch (error) {
     logger.error({ err: error }, 'Analytics overview error');
     next(error);

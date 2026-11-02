@@ -26,26 +26,68 @@ export function campaignAppliesTo(campaign, product) {
   return idHit || catHit;
 }
 
+// Module-level shared cache and subscriber pool so dozens of ProductCard instances
+// share one cached list of campaigns without redundant React states or network queries.
+let cachedCampaigns = null;
+let inflightCampaignsPromise = null;
+const campaignListeners = new Set();
+
+const notifyCampaignListeners = () => {
+  campaignListeners.forEach((fn) => {
+    try { fn(cachedCampaigns || []); } catch { /* ignore */ }
+  });
+};
+
+export const clearCampaignsCache = () => {
+  cachedCampaigns = null;
+  inflightCampaignsPromise = null;
+};
+
 // Fetch active campaigns once, derive the best applicable campaign for a product
 // (the one with the larger line discount), and expose a stable snapshot.
 export const useActiveCampaigns = () => {
-  const [campaigns, setCampaigns] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [campaigns, setCampaigns] = useState(() => cachedCampaigns || []);
+  const [loading, setLoading] = useState(() => cachedCampaigns === null);
 
   const refresh = useCallback(async () => {
-    try {
-      const { data } = await fetchActiveCampaigns();
-      setCampaigns(data.campaigns || []);
-    } catch {
-      // Non-blocking: campaigns enrich display prices; checkout is authoritative.
-    } finally {
-      setLoading(false);
+    if (inflightCampaignsPromise) {
+      return inflightCampaignsPromise;
     }
+    setLoading(cachedCampaigns === null);
+    inflightCampaignsPromise = (async () => {
+      try {
+        const { data } = await fetchActiveCampaigns();
+        cachedCampaigns = data.campaigns || [];
+        notifyCampaignListeners();
+        return cachedCampaigns;
+      } catch {
+        if (!cachedCampaigns) cachedCampaigns = [];
+        return cachedCampaigns;
+      } finally {
+        inflightCampaignsPromise = null;
+        setLoading(false);
+      }
+    })();
+    return inflightCampaignsPromise;
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount fetch
-    refresh();
+    const onUpdate = (newList) => {
+      setCampaigns(newList);
+      setLoading(false);
+    };
+    campaignListeners.add(onUpdate);
+
+    if (cachedCampaigns === null) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- mount fetch
+      refresh();
+    } else {
+      setLoading(false);
+    }
+
+    return () => {
+      campaignListeners.delete(onUpdate);
+    };
   }, [refresh]);
 
   const bestForProduct = useCallback(

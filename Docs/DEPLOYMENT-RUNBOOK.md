@@ -92,7 +92,7 @@ curl https://cartify-api-gio4.onrender.com/ready
 
 | Variable | Value | Sensitive |
 |----------|-------|-----------|
-| `VITE_API_URL` | `https://cartify-api-gio4.onrender.com/api/v1` | No |
+| `VITE_API_URL` | `https://cartify-api-gio4.onrender.com` | No |
 | `VITE_RAZORPAY_KEY` | `rzp_live_...` | Yes |
 | `VITE_GOOGLE_CLIENT_ID` | From Google Cloud Console | Yes |
 | `VITE_SENTRY_DSN` | From Sentry | Yes |

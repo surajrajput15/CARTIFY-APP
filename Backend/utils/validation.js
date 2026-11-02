@@ -170,11 +170,12 @@ const validate = (schema, source = 'body') => {
       
       next();
     } catch (error) {
-      if (error.errors) {
+      const issues = error.issues || error.errors;
+      if (Array.isArray(issues) && issues.length > 0) {
         return res.status(400).json({
-          message: 'Validation failed',
-          errors: error.errors.map(e => ({
-            field: e.path.join('.'),
+          message: issues[0]?.message || 'Validation failed',
+          errors: issues.map(e => ({
+            field: Array.isArray(e.path) ? e.path.join('.') : String(e.path || ''),
             message: e.message,
             code: e.code,
           })),

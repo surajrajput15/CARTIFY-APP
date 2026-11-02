@@ -6,8 +6,8 @@ const { protect, admin, requirePermission } = require('../middleware/auth');
 const { auditLogMiddleware } = require('../middleware/auditLog');
 const { adminMutateGuard } = require('../utils/routeLimiters');
 
-// PUBLIC: GET /api/v1/settings — public store configuration
-router.get('/', async (req, res, next) => {
+// PUBLIC: fetch public store configuration
+const getPublicSettings = async (req, res, next) => {
   try {
     const settings = await StoreSettings.getSettings();
     res.status(200).json({
@@ -23,10 +23,10 @@ router.get('/', async (req, res, next) => {
     logger.error({ err: error }, 'Public settings fetch error');
     next(error);
   }
-});
+};
 
-// ADMIN: GET /api/v1/settings/admin — all store configurations
-router.get('/admin', protect, admin, requirePermission('settings.view'), async (req, res, next) => {
+// ADMIN: fetch full store configuration
+const getAdminSettings = async (req, res, next) => {
   try {
     const settings = await StoreSettings.getSettings();
     res.status(200).json({ settings });
@@ -34,10 +34,10 @@ router.get('/admin', protect, admin, requirePermission('settings.view'), async (
     logger.error({ err: error }, 'Admin settings fetch error');
     next(error);
   }
-});
+};
 
-// ADMIN: PUT /api/v1/settings/admin — update store settings
-router.put('/admin', protect, admin, requirePermission('settings.manage'), adminMutateGuard, auditLogMiddleware('UPDATE_SETTINGS', 'StoreSettings'), async (req, res, next) => {
+// ADMIN: update store settings
+const updateAdminSettings = async (req, res, next) => {
   try {
     const allowed = [
       'storeName', 'supportEmail', 'supportPhone', 'currency', 'currencySymbol',
@@ -78,6 +78,29 @@ router.put('/admin', protect, admin, requirePermission('settings.manage'), admin
     logger.error({ err: error }, 'Admin settings update error');
     next(error);
   }
+};
+
+// GET /: If mounted under /admin/settings, serve getAdminSettings; otherwise serve getPublicSettings
+router.get('/', (req, res, next) => {
+  if (req.baseUrl && req.baseUrl.includes('/admin/settings')) {
+    return protect(req, res, () => {
+      admin(req, res, () => {
+        requirePermission('settings.view')(req, res, () => {
+          getAdminSettings(req, res, next);
+        });
+      });
+    });
+  }
+  return getPublicSettings(req, res, next);
 });
+
+// GET /admin: Always serve getAdminSettings (covered by /settings/admin and /admin/settings/admin)
+router.get('/admin', protect, admin, requirePermission('settings.view'), getAdminSettings);
+
+// PUT /: Admin update when mounted under /admin/settings
+router.put('/', protect, admin, requirePermission('settings.manage'), adminMutateGuard, auditLogMiddleware('UPDATE_SETTINGS', 'StoreSettings'), updateAdminSettings);
+
+// PUT /admin: Admin update when mounted under /settings/admin
+router.put('/admin', protect, admin, requirePermission('settings.manage'), adminMutateGuard, auditLogMiddleware('UPDATE_SETTINGS', 'StoreSettings'), updateAdminSettings);
 
 module.exports = router;

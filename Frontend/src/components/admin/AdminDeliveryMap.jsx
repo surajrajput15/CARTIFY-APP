@@ -29,7 +29,7 @@ function AdminDeliveryMap() {
   const [loading, setLoading] = useState(true);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [livePositions, setLivePositions] = useState({});
-  const { connected, socket } = useSocket();
+  const { connected, on, off } = useSocket();
 
   const loadOrders = useCallback(async () => {
     setLoading(true);
@@ -59,11 +59,11 @@ function AdminDeliveryMap() {
         }));
       }
     };
-    socket.on('courier:location', handler);
+    on('courier:location', handler);
     return () => {
-      socket.off('courier:location', handler);
+      off('courier:location', handler);
     };
-  }, [connected, socket]);
+  }, [connected, on, off]);
 
   // Derive active deliveries with live courier position where available
   const activeOrders = useMemo(() => {

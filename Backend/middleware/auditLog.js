@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const AuditLog = require('../models/AuditLog');
 const { logger } = require('../utils/logger');
 
@@ -95,7 +96,6 @@ async function logAudit({
 
     // resourceId is ObjectId-typed: non-ObjectId :id params (e.g. /clear) must not
     // reach the create call or Mongoose throws CastError and kills the audit write.
-    const mongoose = require('mongoose');
     const safeResourceId = resourceId && mongoose.Types.ObjectId.isValid(String(resourceId))
       ? resourceId
       : undefined;

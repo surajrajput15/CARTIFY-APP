@@ -11,24 +11,26 @@
 // key is required at the point of payment: the Razorpay handler shows a clear error
 // and refuses to open the modal if RAZORPAY_KEY is empty. Browsing stays functional,
 // failures are loud and user-visible, and no test key is ever used silently.
-export const API_URL = import.meta.env.VITE_API_URL;
+//
+// API_URL is normalized to strip any trailing slashes and any trailing `/api` or `/api/v1`
+// prefix so that baseURL cleanly represents the server root origin. All frontend service
+// modules consistently define their endpoints starting with `/api/...`.
+export const API_URL = (() => {
+  const raw = String(import.meta.env.VITE_API_URL || '').trim();
+  if (!raw) return '';
+  return raw.replace(/\/+$/, '').replace(/\/api(\/v1)?$/, '');
+})();
+
 export const RAZORPAY_KEY = import.meta.env.VITE_RAZORPAY_KEY || '';
 export const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
-// Bare origin of the API host, with any path prefix (e.g. the `/api/v1` that
-// DEPLOYMENT-RUNBOOK.md documents) stripped.
-//
-// Health endpoints live at the server root, NOT under the versioned prefix, so
-// resolving them against API_URL can 404 whenever VITE_API_URL carries a path.
-// That silently broke the banner's retry button: it always reported "still
-// down" even when the backend was healthy.
+// Bare origin of the API host, with any path prefix stripped.
+// Health endpoints live at the server root, NOT under the versioned prefix.
 export const API_ORIGIN = (() => {
-  const raw = String(API_URL || '').trim();
-  if (!raw) return '';
+  if (!API_URL) return '';
   try {
-    return new URL(raw).origin;
+    return new URL(API_URL).origin;
   } catch {
-    // Relative or malformed value — drop trailing slashes and any trailing path.
-    return raw.replace(/\/+$/, '').replace(/\/api(\/v1)?$/, '');
+    return API_URL;
   }
 })();

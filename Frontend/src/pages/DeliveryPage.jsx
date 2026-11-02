@@ -254,7 +254,7 @@ function DeliveryPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [stats, setStats] = useState(null);
-  const { connected } = useSocket();
+  const { connected, on, off } = useSocket();
 
   const loadStats = useCallback(async () => {
     try {
@@ -301,6 +301,20 @@ function DeliveryPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- refetch on tab change
     loadOrders(tab, 1);
   }, [tab, loadOrders]);
+
+  // Real-time assignment listener: when admin assigns an order to this courier,
+  // refresh active deliveries and stats without requiring manual page refresh.
+  useEffect(() => {
+    if (!on || !off) return;
+    const handleAssignment = (payload) => {
+      const shortId = payload?.orderId ? String(payload.orderId).slice(-6) : '';
+      toast.success(shortId ? `New delivery assigned! Order #${shortId}` : 'New delivery assigned!');
+      loadOrders(tab, page);
+      loadStats();
+    };
+    on('delivery:assignment', handleAssignment);
+    return () => off('delivery:assignment', handleAssignment);
+  }, [on, off, loadOrders, loadStats, tab, page]);
 
   const handleAction = async (order, action) => {
     setLoadingOrderId(order._id);

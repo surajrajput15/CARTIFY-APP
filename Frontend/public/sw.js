@@ -1,6 +1,6 @@
-/* Cartify Service Worker — v2 */
+/* Cartify Service Worker — v3 */
 const CACHE_PREFIX = 'cartify';
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const APP_SHELL = 'cartify-shell';
 const ASSET_CACHE = 'cartify-assets';
 const IMAGE_CACHE = 'cartify-images';
@@ -8,12 +8,12 @@ const API_CACHE = 'cartify-api';
 
 const SHELL_URLS = ['/', '/index.html', '/manifest.json', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/icon-maskable-512.png'];
 
+// Public catalog endpoints only. Private user endpoints (/api/auth/me, /api/cart,
+// /api/orders, /api/addresses) must NEVER be cached by the service worker to prevent
+// sensitive PII leaks in shared/offline environments.
 const API_ROUTES_TO_CACHE = [
   '/api/products',
-  '/api/auth/me',
-  '/api/cart',
-  '/api/orders',
-  '/api/addresses',
+  '/api/categories',
 ];
 
 function isNavigationRequest(request) {

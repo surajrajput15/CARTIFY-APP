@@ -19,6 +19,7 @@ export const ORDER_STATUSES = [
 ];
 
 export const SUPPORT_EMAIL = 'support@cartify.com';
+export const SUPPORT_PHONE = '1800-419-4242';
 
 // Author & creator canonical identity (E-E-A-T & indexing consistency)
 export const AUTHOR_INFO = {

@@ -29,6 +29,18 @@ import { saveLoginRedirect } from '@/utils/navigation';
  *   that bypasses the server. If you add a new source of user data, update
  *   AuthContext first.
  */
+// Operational roles aligned with backend middleware/auth.js OPERATIONAL_ROLES
+const OPERATIONAL_ROLES = [
+  'super_admin',
+  'admin',
+  'staff',
+  'inventory_manager',
+  'order_manager',
+  'delivery_manager',
+  'customer_support',
+  'analyst',
+];
+
 function RoleGuard({ allowedRoles, children }) {
   const { user, authLoading } = useAuth();
   const location = useLocation();
@@ -45,7 +57,12 @@ function RoleGuard({ allowedRoles, children }) {
   // Authenticated but wrong role (only enforced when roles are specified)
   if (allowedRoles) {
     const isAdminRoute = allowedRoles.includes('admin');
-    const isUserAdmin = Boolean(user.isAdmin || user.role === 'admin' || user.role === 'super_admin');
+    const isUserAdmin = Boolean(
+      user.isAdmin ||
+      user.role === 'admin' ||
+      user.role === 'super_admin' ||
+      OPERATIONAL_ROLES.includes(user.role)
+    );
     const isAllowed = allowedRoles.includes(user.role) || (isAdminRoute && isUserAdmin);
     if (!isAllowed) {
       return <AccessDenied />;

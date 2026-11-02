@@ -7,6 +7,7 @@ import { AuthProvider } from './context/authContext';
 import { CartProvider } from './context/cartContext';
 import { CouponProvider } from './context/couponContext';
 import { WishlistProvider } from './context/WishlistContext';
+import { SocketProvider } from './context/SocketContext';
 import { BackendStatusProvider } from './context/BackendStatusContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import { toast } from 'react-hot-toast';
@@ -84,7 +85,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <CartProvider>
               {/* F-33: single coupon state shared by Cart + Checkout */}
               <CouponProvider>
-                <App />
+                <SocketProvider>
+                  <App />
+                </SocketProvider>
               </CouponProvider>
             </CartProvider>
           </WishlistProvider>

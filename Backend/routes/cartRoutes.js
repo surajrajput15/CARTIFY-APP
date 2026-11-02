@@ -90,7 +90,16 @@ router.post('/merge', protect, activityLogger('CART_MERGE', (req, body) => ({
       .filter((item) => item.productId && isValidId(item.productId));
 
     if (normalized.length === 0) {
-      return res.status(200).json({ items: [] });
+      // If there are no local items to merge, return the user's existing hydrated
+      // server cart so a returning user logging in with an empty guest cart doesn't
+      // lose their previously saved cart items.
+      const existingCart = await Cart.findOne({ userId: req.user._id });
+      if (!existingCart || existingCart.items.length === 0) {
+        return res.status(200).json({ items: [] });
+      }
+      const existingProductIds = existingCart.items.map((i) => i.productId);
+      const existingProducts = await Product.find({ _id: { $in: existingProductIds } }).lean();
+      return res.status(200).json({ items: hydrateItems(existingCart.items, existingProducts) });
     }
 
     // Reject unknown product ids before they pollute the stored cart.

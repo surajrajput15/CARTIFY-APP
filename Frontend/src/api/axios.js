@@ -115,19 +115,15 @@ export const clearGetCache = () => {
 
 const isGet = (config) => (config.method || 'get').toLowerCase() === 'get';
 
-const PRIVATE_ENDPOINT_PATTERNS = [
-  '/api/cart',
-  '/api/auth/me',
-  '/api/wishlist',
-  '/api/notifications',
-  '/api/addresses',
-  '/api/orders/myorders'
-];
+// Private user-scoped endpoints must always be fresh — never cached across user switches.
+// Regex matches versioned (/api/v1/cart), unversioned (/api/cart), and path segments,
+// preventing accidental caching if base paths or route versioning change.
+const PRIVATE_ENDPOINT_REGEX = /(?:^|\/)(?:api\/(?:v1\/)?)?(cart|auth\/me|wishlist|notifications|addresses|orders\/myorders)(?:[/?#]|$)/i;
 
 const getCacheKey = (config) => {
   if (!config.url || config.dataCache === false) return null;
   // Private user-scoped endpoints must always be fresh — never cached across user switches
-  if (PRIVATE_ENDPOINT_PATTERNS.some((p) => config.url.includes(p))) return null;
+  if (PRIVATE_ENDPOINT_REGEX.test(config.url)) return null;
   // The CSRF token rotates — a cached one turns every retry into a 403 loop.
   if (config.url.includes('csrf-token')) return null;
   let qs = '';

@@ -1,2 +1,6 @@
 node_modules/
 .env
+*.log
+coverage/
+scripts/_tmp_*
+.DS_Store

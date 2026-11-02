@@ -41,6 +41,17 @@ export const useSeo = ({
       el.setAttribute('content', content);
     };
 
+    const prevDesc = document.querySelector('meta[name="description"]')?.getAttribute('content');
+    const prevOgDesc = document.querySelector('meta[property="og:description"]')?.getAttribute('content');
+    const prevTwitterDesc = document.querySelector('meta[name="twitter:description"]')?.getAttribute('content');
+    const prevOgTitle = document.querySelector('meta[property="og:title"]')?.getAttribute('content');
+    const prevTwitterTitle = document.querySelector('meta[name="twitter:title"]')?.getAttribute('content');
+    const prevCanonical = document.querySelector('link[rel="canonical"]')?.getAttribute('href');
+    const prevOgUrl = document.querySelector('meta[property="og:url"]')?.getAttribute('content');
+    const prevOgImage = document.querySelector('meta[property="og:image"]')?.getAttribute('content');
+    const prevTwitterImage = document.querySelector('meta[name="twitter:image"]')?.getAttribute('content');
+    const prevOgType = document.querySelector('meta[property="og:type"]')?.getAttribute('content');
+
     if (description) {
       setMetaTag('name', 'description', description);
       setMetaTag('property', 'og:description', description);
@@ -90,6 +101,19 @@ export const useSeo = ({
       if (schemaScript && schemaScript.parentNode) {
         schemaScript.parentNode.removeChild(schemaScript);
       }
+      if (description && prevDesc !== undefined) setMetaTag('name', 'description', prevDesc);
+      if (description && prevOgDesc !== undefined) setMetaTag('property', 'og:description', prevOgDesc);
+      if (description && prevTwitterDesc !== undefined) setMetaTag('name', 'twitter:description', prevTwitterDesc);
+      if (title && prevOgTitle !== undefined) setMetaTag('property', 'og:title', prevOgTitle);
+      if (title && prevTwitterTitle !== undefined) setMetaTag('name', 'twitter:title', prevTwitterTitle);
+      if (canonical && prevCanonical !== undefined) {
+        const link = document.querySelector('link[rel="canonical"]');
+        if (link) link.setAttribute('href', prevCanonical);
+        setMetaTag('property', 'og:url', prevOgUrl);
+      }
+      if (image && prevOgImage !== undefined) setMetaTag('property', 'og:image', prevOgImage);
+      if (image && prevTwitterImage !== undefined) setMetaTag('name', 'twitter:image', prevTwitterImage);
+      if (type && prevOgType !== undefined) setMetaTag('property', 'og:type', prevOgType);
     };
   }, [title, description, canonical, image, type, schemaSerialized]);
 };

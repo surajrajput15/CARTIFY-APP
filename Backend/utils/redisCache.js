@@ -79,16 +79,39 @@ const cache = {
     }
   },
 
-  // Delete multiple keys by pattern
+  // Delete multiple keys by pattern using non-blocking SCAN stream
   async delPattern(pattern) {
     try {
       const client = getRedisClient();
       if (client?.status !== 'ready') return false;
-      const keys = await client.keys(pattern);
-      if (keys.length > 0) {
-        await client.del(...keys);
-      }
-      return true;
+
+      return new Promise((resolve) => {
+        const stream = client.scanStream({ match: pattern, count: 100 });
+        const keysToDelete = [];
+
+        stream.on('data', (resultKeys) => {
+          for (let i = 0; i < resultKeys.length; i++) {
+            keysToDelete.push(resultKeys[i]);
+          }
+        });
+
+        stream.on('end', async () => {
+          try {
+            if (keysToDelete.length > 0) {
+              await client.del(...keysToDelete);
+            }
+            resolve(true);
+          } catch (delErr) {
+            logger.error({ err: delErr, pattern }, 'Cache delPattern batch delete error');
+            resolve(false);
+          }
+        });
+
+        stream.on('error', (err) => {
+          logger.error({ err, pattern }, 'Cache scanStream error');
+          resolve(false);
+        });
+      });
     } catch (error) {
       logger.error({ err: error, pattern }, 'Cache delPattern error');
       return false;

@@ -73,6 +73,24 @@ describe('RoleGuard (F-15 — unified route guard + return path)', () => {
     expect(screen.getByText('profile-zone')).toBeInTheDocument();
   });
 
+  it('allows backend operational roles to access admin routes', () => {
+    const operationalRoles = [
+      'staff',
+      'inventory_manager',
+      'order_manager',
+      'delivery_manager',
+      'customer_support',
+      'analyst',
+    ];
+
+    for (const role of operationalRoles) {
+      authState.user = { role };
+      const { unmount } = renderGuard('/admin', ['admin']);
+      expect(screen.getByText('admin-zone')).toBeInTheDocument();
+      unmount();
+    }
+  });
+
   it('renders nothing while the JWT check is still running', () => {
     authState.authLoading = true;
     renderGuard('/admin', ['admin']);

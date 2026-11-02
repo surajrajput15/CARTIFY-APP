@@ -110,7 +110,7 @@ export const CartProvider = ({ children }) => {
 
     (async () => {
       try {
-        if (loggedInAtMountRef.current) {
+        if (loggedInAtMountRef.current || !cartRef.current || cartRef.current.length === 0) {
           const { data } = await fetchCart();
           if (cancelled) return;
           setCart(data.items);

@@ -4,7 +4,7 @@ import {
   Bell, Save, Loader2, CheckCircle2, Lock
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import api from '../../api/axios';
+import { fetchAdminSettings, updateAdminSettings } from '../../services/settingsApi';
 import { isNetworkError } from '../../utils/apiError';
 import Button from '../ui/Button';
 
@@ -31,7 +31,7 @@ export default function AdminSettingsTab() {
   const loadSettings = useCallback(async (showSpinner = false) => {
     if (showSpinner) setLoading(true);
     try {
-      const res = await api.get('/api/v1/admin/settings');
+      const res = await fetchAdminSettings();
       if (res.data?.settings) {
         setSettings(res.data.settings);
       }
@@ -74,7 +74,7 @@ export default function AdminSettingsTab() {
         emailNotificationsEnabled: Boolean(settings.emailNotificationsEnabled)
       };
 
-      const res = await api.put('/api/v1/admin/settings', payload);
+      const res = await updateAdminSettings(payload);
       if (res.data?.settings) {
         setSettings(res.data.settings);
       }
