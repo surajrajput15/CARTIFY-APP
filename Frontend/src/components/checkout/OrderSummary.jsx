@@ -1,9 +1,8 @@
-import { Loader2, ShieldCheck, Lock, Truck, Ticket, CheckCircle2 } from 'lucide-react';
+import { Loader2, ShieldCheck, Lock, Truck } from 'lucide-react';
 import { formatPrice } from '../../utils/format';
 import { getShippingMessage } from '../../utils/constants';
 import CouponInput from './CouponInput';
 import Button from '../ui/Button';
-import Badge from '../ui/Badge';
 
 const OrderSummary = ({ cart = [], total, discount = 0, appliedCoupon, couponCode, setCouponCode, couponLoading, couponError, onApplyCoupon, onRemoveCoupon, onFindBestCoupon, bestCouponLoading, loading, paymentError, canPay, onPay, cartItems }) => {
   const normalizedDiscount = Math.min(Math.max(0, Number(discount) || 0), Math.max(0, Number(total) || 0));
@@ -45,6 +44,12 @@ const OrderSummary = ({ cart = [], total, discount = 0, appliedCoupon, couponCod
           <span>Subtotal</span>
           <span className="font-semibold text-gray-800">{formatPrice(total)}</span>
         </div>
+        {normalizedDiscount > 0 && appliedCoupon && (
+          <div className="flex justify-between text-emerald-600 font-medium">
+            <span>Coupon Discount ({appliedCoupon.code})</span>
+            <span className="font-bold">−{formatPrice(normalizedDiscount)}</span>
+          </div>
+        )}
         <div className="flex justify-between text-gray-600">
           <span className="flex items-center gap-1">
             <Truck size={14} aria-hidden="true" /> Shipping
@@ -56,25 +61,6 @@ const OrderSummary = ({ cart = [], total, discount = 0, appliedCoupon, couponCod
       {setCouponCode && (
         <div className="mb-4 min-w-0">
           <CouponInput code={couponCode} setCode={setCouponCode} applied={appliedCoupon} loading={couponLoading} error={couponError} onApply={onApplyCoupon} onRemove={onRemoveCoupon} onFindBest={onFindBestCoupon} bestLoading={bestCouponLoading} cart={itemsForCoupon} totalAmount={total} />
-        </div>
-      )}
-
-      {normalizedDiscount > 0 && appliedCoupon && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <div className="flex items-center gap-1.5">
-              <CheckCircle2 size={16} className="text-green-600 shrink-0" aria-hidden="true" />
-              <span className="text-sm font-bold text-green-800">Coupon Applied</span>
-            </div>
-            <Badge variant="success" className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium">
-              <Ticket size={10} aria-hidden="true" />
-              {appliedCoupon.type === 'percentage' ? `${appliedCoupon.value}% OFF` : `${formatPrice(appliedCoupon.value, { showDecimals: false })} OFF`}
-            </Badge>
-          </div>
-          <div className="flex justify-between text-sm text-green-700">
-            <span>Code: <span className="font-mono font-bold">{appliedCoupon.code}</span></span>
-            <span className="font-bold">Saved {formatPrice(normalizedDiscount)}</span>
-          </div>
         </div>
       )}
 
